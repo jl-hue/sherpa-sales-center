@@ -505,7 +505,13 @@ function maybeOverrideForMatiere(filierePath, matieres) {
   return profilMatiere || filierePath;
 }
 
+// Wrapper public : applique l'override matière à TOUTES les recommandations
 export function getRecommendedHierarchy(diag) {
+  const path = _getRecommendedHierarchyRaw(diag);
+  return maybeOverrideForMatiere(path, diag?.matieres || []);
+}
+
+function _getRecommendedHierarchyRaw(diag) {
   const { niveau, classe, brevetPrep, spes = [], parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, matieres = [], psycho, objectif } = diag || {};
 
   const has = (m) => matieres.includes(m);
