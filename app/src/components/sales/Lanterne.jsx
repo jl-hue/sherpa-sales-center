@@ -85,26 +85,35 @@ const NEURO_BADGE = {
 };
 
 // ── Map PROF_TYPES to NEURO_PROFS ───────────────────────────────
-// The neuro matrix uses different prof names. This maps the chosen prof type to the closest neuro matrix prof.
 const PROF_TO_NEURO = {
-  "Etudiant grande ecole": "Etudiant en Psychologie",
-  "Etudiant universite": "Etudiant en Psychologie",
+  "Étudiant grande école": "Étudiant en Psychologie",
+  "Étudiant université": "Étudiant en Psychologie",
   "Professeur EN": "Professeur EN classique",
   "AESH": "AESH / AVS",
-  "Professeur certifie": "Professeur EN classique",
-  "Formateur": "Prof EN Psychopedagogie",
+  "Professeur certifié": "Professeur EN classique",
+  "Formateur": "Prof EN Psychopédagogie",
 };
 
 function findNeuroMatch(profTyp, trouble) {
-  // Try direct match first
   let entry = NEURO_MATRIX.find(r => r.prof === profTyp && r.trouble === trouble);
   if (entry) return entry;
-  // Try mapped match
   const mapped = PROF_TO_NEURO[profTyp];
   if (mapped) {
     entry = NEURO_MATRIX.find(r => r.prof === mapped && r.trouble === trouble);
   }
   return entry || null;
+}
+
+// ── NEURO + NIVEAU : alerte post-collège ────────────────────────
+const NIVEAUX_NEURO_OK = ["Primaire", "Collège"];
+function getNeuroNiveauWarning(niveau, trouble, nom) {
+  const n = nom || "votre enfant";
+  if (NIVEAUX_NEURO_OK.includes(niveau)) return null;
+  return {
+    warning: true,
+    title: `Profil neuroatypique + ${niveau} — Accompagnement spécialisé limité`,
+    script: `Je vais être transparent avec vous : à partir du lycée, accompagner un élève ${trouble} avec un professeur vraiment spécialisé devient beaucoup plus difficile.\n\nPourquoi ?\n• Au collège, les AESH, psychologues et profs en psychopédagogie peuvent couvrir le programme tout en adaptant leur pédagogie au trouble de ${n}\n• À partir du lycée, le niveau académique monte — il faut un prof qui maîtrise la matière ET qui comprenne le ${trouble}. Ce double profil est rare.\n\nCe que je vous recommande concrètement :\n\n1. Un prof spécialiste de la matière (notre prescription Lanterne) qui va assurer le niveau académique\n2. En parallèle, un suivi avec un professionnel spécialisé ${trouble} (orthophoniste, psychomotricien, neuropsychologue) pour l'accompagnement du trouble\n\nNotre prof ne remplace pas le spécialiste — mais on va le briefer sur le profil de ${n} pour qu'il adapte sa pédagogie au maximum :\n• Consignes plus courtes et plus claires\n• Supports visuels si besoin\n• Rythme adapté avec des pauses\n• Pas de double tâche (écouter + écrire en même temps)\n\nL'idéal, c'est que le prof et le spécialiste ${trouble} communiquent — et ça, on peut le faciliter.\n\nOn part sur cette approche ?`
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -766,7 +775,28 @@ function SalesLanterne({ stock, setMatchings, user }) {
               </C>
             )}
 
-            {/* ── SECTION 4: NEURO (conditional) ── */}
+            {/* ── ALERTE NEURO POST-COLLEGE ── */}
+            {neuroActive && neuroTrouble && (()=>{
+              const neuroWarn = getNeuroNiveauWarning(niveau, neuroTrouble, nom);
+              if (!neuroWarn) return null;
+              return <C style={{ marginBottom: 10, background: "#FFFBEB", border: "2px solid #FDE68A", padding: "16px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontSize: 16 }}>⚠️</span>
+                      <Pill color="#D97706">{neuroWarn.title}</Pill>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#71717A" }}>{neuroTrouble} + {niveau} — Approche mixte recommandée</div>
+                  </div>
+                  <CopyBtn text={neuroWarn.script} />
+                </div>
+                <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #D97706" }}>
+                  {neuroWarn.script}
+                </div>
+              </C>;
+            })()}
+
+            {/* ── SECTION NEURO (conditional) ── */}
             {neuroActive && neuroTrouble && (
               <C style={{ marginBottom: 10, background: "#F5F3FF", border: "1px solid #DDD6FE", padding: "16px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
