@@ -108,6 +108,117 @@ function getSpinQuestions(parentProfile, nom, psycho, objectifVie, diag) {
   return contextQ ? [contextQ, ...base] : base;
 }
 
+// ── Guide d'argumentation par profil parent ─────────────────────
+function getArgumentationGuide(parentProfile, nom, profPropose, diag) {
+  const n = nom || "votre enfant";
+  const p = profPropose || "ce profil";
+  const ctx = buildAcademicContext(diag);
+  const ctxStr = ctx ? ` (${ctx})` : "";
+
+  const guides = {
+    stresse: {
+      questions: [
+        `"Qu'est-ce qui vous inquiète le plus pour ${n} en ce moment ?"`,
+        `"Avez-vous déjà essayé d'autres solutions qui n'ont pas fonctionné ?"`,
+        `"Si rien ne change, qu'est-ce que ça veut dire pour ${n} dans 6 mois ?"`,
+        `"Qu'est-ce qui vous rassurerait sur le profil du prof ?"`,
+      ],
+      arguments: [
+        `"On a sélectionné ${p} précisément pour son côté rassurant et sa capacité à créer un climat de confiance. C'est exactement ce dont ${n} a besoin."`,
+        `"Vous n'êtes pas seul dans cette démarche : notre équipe pédagogique supervise chaque match et reste disponible si vous avez des questions."`,
+        `"Si jamais ça ne convient pas, on change immédiatement de prof — c'est garanti, sans frais."`,
+        `"La première séance est un test : zéro engagement, vous voyez si ${n} se sent à l'aise avant de continuer."`,
+      ],
+      objections: [
+        `Si elle dit "je dois en parler à mon conjoint" → "Bien sûr, c'est important. Voulez-vous qu'on bloque déjà un créneau de découverte sans engagement, le temps que vous en parliez ensemble ?"`,
+        `Si elle hésite sur le prix → "Je comprends. Sachez que la première séance est offerte si jamais ${n} ne veut pas continuer."`,
+      ],
+    },
+    rationnel: {
+      questions: [
+        `"Quel est le niveau actuel de ${n} en chiffres : moyenne générale, classement ?"`,
+        `"Quels objectifs concrets visez-vous d'ici la fin de l'année ?"`,
+        `"Avez-vous identifié précisément les chapitres ou compétences qui posent problème ?"`,
+        `"Comment souhaitez-vous mesurer la progression ?"`,
+      ],
+      arguments: [
+        `"${p} a été sélectionné via notre algorithme de matching avec un taux de réussite de 94% sur les profils similaires à ${n}${ctxStr}."`,
+        `"Notre méthodologie repose sur 4 critères croisés : niveau, profil psychologique, objectif et besoin d'accompagnement."`,
+        `"Chaque séance fait l'objet d'un compte-rendu structuré que vous recevez par email. Vous mesurez la progression objectivement."`,
+        `"Statistiquement, les élèves qui suivent ce type d'accompagnement progressent de 3 à 5 points en moyenne en 3 mois."`,
+      ],
+      objections: [
+        `Si elle compare les prix → "Le ratio prix/résultat est notre meilleur argument. Les plateformes low-cost ont 50% d'abandon en 2 mois."`,
+        `Si elle veut des références → "Je peux vous transmettre des études de cas anonymisées sur des profils similaires."`,
+      ],
+    },
+    presse: {
+      questions: [
+        `"En une phrase : c'est quoi LE problème principal de ${n} aujourd'hui ?"`,
+        `"C'est urgent à cause de quoi ? Examen, passage, décrochage ?"`,
+        `"On peut commencer cette semaine — ça vous va ?"`,
+      ],
+      arguments: [
+        `"J'ai ${p} qui correspond exactement. Il/elle est disponible dès cette semaine."`,
+        `"Pas de bla-bla : on lance la première séance, on voit si ça matche, et on ajuste."`,
+        `"Vous n'avez rien à signer aujourd'hui — juste à valider le créneau."`,
+      ],
+      objections: [
+        `Si elle dit "je vais réfléchir" → "Bien sûr. Mais sachez qu'on a 3 demandes en cours pour ce profil. Si vous voulez le bloquer, c'est maintenant."`,
+      ],
+    },
+    negociateur: {
+      questions: [
+        `"Avez-vous déjà essayé du soutien scolaire ailleurs ? Qu'est-ce qui n'a pas marché ?"`,
+        `"Combien avez-vous déjà investi sans résultat satisfaisant ?"`,
+        `"Qu'est-ce qui ferait basculer votre décision aujourd'hui ?"`,
+      ],
+      arguments: [
+        `"${p} n'est pas un prof lambda — c'est une prescription précise. C'est ce qui justifie notre approche premium."`,
+        `"Notre ROI est mesurable : en moyenne, +3 points en 3 mois sur les profils similaires."`,
+        `"On prescrit le bon profil d'abord, on facture ensuite. Si ${n} ne progresse pas, c'est qu'on s'est trompé — et c'est notre responsabilité."`,
+        `"Comparativement aux cours en agence (2 à 3x plus cher) ou aux plateformes sans matching (50% d'abandon), notre approche est la plus efficiente."`,
+      ],
+      objections: [
+        `Si elle veut négocier le prix → "Je ne peux pas baisser le tarif horaire, mais je peux vous offrir la première séance découverte. Deal ?"`,
+      ],
+    },
+    indecis: {
+      questions: [
+        `"Parlez-moi de ${n} — comment ça se passe à l'école au quotidien ?"`,
+        `"Si vous deviez identifier UN truc qui bloque ${n}, ce serait quoi ?"`,
+        `"Est-ce que ça commence à affecter sa confiance, son moral ?"`,
+        `"Vous préférez démarrer par une seule séance test, sans engagement ?"`,
+      ],
+      arguments: [
+        `"${p} est exactement le profil qu'il faut pour ${n}${ctxStr}. Mais je ne vous demande pas de vous engager maintenant."`,
+        `"On a un protocole simple : 1 séance découverte, vous voyez si ça plaît, vous décidez après."`,
+        `"87% des parents dans votre situation sont satisfaits dès le premier mois. Mais ce qui compte, c'est ce que VOUS allez ressentir après cette première séance."`,
+        `"Un pas à la fois — on commence doucement et on ajuste."`,
+      ],
+      objections: [
+        `Si elle dit "je ne sais pas" → "C'est normal. Justement, la séance découverte est faite pour ça : pas besoin de décider maintenant."`,
+        `Si elle veut comparer → "Bien sûr. Mais notez qu'on est la seule plateforme à proposer une prescription personnalisée. Les autres vendent des heures."`,
+      ],
+    },
+  };
+
+  const fomo = {
+    stresse: `"Je veux être transparent : ${p} est très demandé et je n'ai que 2 créneaux disponibles cette semaine pour ${n}. Je peux vous bloquer un créneau maintenant — vous aurez 24h pour confirmer définitivement, sans aucun engagement. Si vous attendez, je risque de ne plus l'avoir disponible."`,
+    rationnel: `"Donnée factuelle : ${p} accompagne actuellement 6 élèves et n'a plus que 2 créneaux libres cette semaine. Si vous validez aujourd'hui, je vous garantis le créneau optimal pour ${n}. Demain, je ne peux pas garantir."`,
+    presse: `"On a 3 demandes en cours pour ${p} — si vous voulez sécuriser, c'est maintenant. Demain, je ne pourrai pas vous le promettre."`,
+    negociateur: `"Petit point honnête : ${p} est notre meilleur match pour ${n}, mais c'est aussi l'un de nos profils les plus demandés. Si vous validez aujourd'hui, je vous bloque le tarif actuel. Si vous attendez, j'ai 2 autres familles intéressées qui pourraient prendre la place."`,
+    indecis: `"Je vais être franc avec vous : ${p} a été spécifiquement identifié pour ${n}, mais d'autres familles sont sur le coup. Je peux vous bloquer une séance découverte sans engagement aujourd'hui — comme ça vous gardez la priorité. Si vous attendez et qu'on me prend le créneau, je ne pourrai pas faire revenir ce profil avant 2-3 semaines."`,
+  };
+
+  return {
+    questions: guides[parentProfile]?.questions || guides.rationnel.questions,
+    arguments: guides[parentProfile]?.arguments || guides.rationnel.arguments,
+    objections: guides[parentProfile]?.objections || guides.rationnel.objections,
+    fomo: fomo[parentProfile] || fomo.rationnel,
+  };
+}
+
 function getClosingScript(parentProfile, nom, chosenLabel, diag) {
   const n = nom || "votre enfant";
   const ctx = buildAcademicContext(diag);
@@ -298,6 +409,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [prepaFiliere, setPrepaFiliere] = useState("");
   const [univFiliere, setUnivFiliere] = useState("");
 
+  // ── State: Guide d'argumentation (Step 2) ──────────────────────
+  const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
+
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
   const [chosenRebond, setChosenRebond] = useState("");
@@ -336,6 +450,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setParcoursupEcole("");
     setPrepaFiliere("");
     setUnivFiliere("");
+    setProfProposeNom("");
   }
 
   const matchingSavedRef = useRef(false);
@@ -1071,6 +1186,90 @@ function SalesLanterne({ stock, setMatchings, user }) {
             💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaFiliere}` : ""}
           </div>
         </C>
+
+        {/* ── GUIDE D'ARGUMENTATION ── */}
+        {(()=>{
+          const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere };
+          const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx);
+          return <C style={{ marginBottom: 16, background: "#FFFBEB", border: "2px solid #FCD34D", padding: "18px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 22 }}>🎤</span>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Guide d'argumentation</div>
+                <div style={{ fontSize: 11, color: "#A16207" }}>Adapté au profil parent : {ppLabel}</div>
+              </div>
+            </div>
+
+            {/* Champ : Prof proposé */}
+            <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #FDE68A" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>👨‍🏫 Professeur que je vais proposer</div>
+              <input value={profProposeNom} onChange={e => setProfProposeNom(e.target.value)} placeholder="Ex : Martin, étudiant en Prépa MP à Louis-le-Grand" style={{ width: "100%", fontSize: 13, border: "1px solid #FDE68A", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
+              <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 4 }}>Renseigne le nom + profil pour personnaliser les arguments ci-dessous</div>
+            </div>
+
+            {/* Questions à poser */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>❓ Questions à poser à la famille</div>
+                <CopyBtn text={guide.questions.join("\n\n")} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {guide.questions.map((q, i) => (
+                  <div key={i} style={{ fontSize: 13, color: "#3F3F46", padding: "9px 12px", background: "rgba(255,255,255,.7)", borderRadius: 8, borderLeft: "3px solid #D97706", fontStyle: "italic" }}>
+                    {q}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Arguments */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>💪 Arguments à utiliser</div>
+                <CopyBtn text={guide.arguments.join("\n\n")} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {guide.arguments.map((a, i) => (
+                  <div key={i} style={{ fontSize: 13, color: "#3F3F46", padding: "9px 12px", background: "rgba(255,255,255,.7)", borderRadius: 8, borderLeft: "3px solid #16A34A", fontStyle: "italic" }}>
+                    {a}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Objections */}
+            {guide.objections.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>🛡️ Gestion des objections</div>
+                  <CopyBtn text={guide.objections.join("\n\n")} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {guide.objections.map((o, i) => (
+                    <div key={i} style={{ fontSize: 12, color: "#3F3F46", padding: "9px 12px", background: "rgba(255,255,255,.7)", borderRadius: 8, borderLeft: "3px solid #0B68B4" }}>
+                      {o}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* FOMO */}
+            <div style={{ padding: "14px 16px", background: "linear-gradient(135deg,#E11D48,#F97316)", borderRadius: 12, color: "#fff" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>⚡</span>
+                  <div style={{ fontSize: 13, fontWeight: 900, fontFamily: "'Outfit',sans-serif" }}>FOMO — Créer l'urgence</div>
+                </div>
+                <CopyBtn text={guide.fomo} />
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, fontStyle: "italic", padding: "10px 14px", background: "rgba(255,255,255,.18)", borderRadius: 10 }}>
+                {guide.fomo}
+              </div>
+              <div style={{ fontSize: 10, opacity: .85, marginTop: 8 }}>💡 À utiliser quand le parent hésite — crée la peur de manquer l'opportunité</div>
+            </div>
+          </C>;
+        })()}
 
         {/* TOP 3 CARDS */}
         {top3.map(({ typ, score }, idx) => {
