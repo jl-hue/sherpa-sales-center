@@ -6,7 +6,7 @@ function SidebarWithUser({role,page,setPage,onLogout,user,dbReady,loading}){
   const menus={
     sales:[["dash","📊","Tableau de bord"],["lanterne","🔦","Lanterne V5 ✦"],["scripts","📞","Scripts d'appel"],["objections","🛡️","Fiches objections"],["formation","🎓","Formation"],["feedback","💬","Mon feedback"],["demandes","📍","Demandes sans match"],["rentree","🏫","Réservoir Rentrée"]],
     manager:[["m-vue","🧭","Vue d'ensemble"],["m-matching","⚖️","Idéal vs Manuel"],["m-besoins","🎯","Besoins formation"],["m-rentree","📈","Réservoir Rentrée"],["m-feedback","💬","Feedbacks équipe"],["m-progression","👥","Progression"]],
-    formateur:[["f-scripts","📞","Éditeur Scripts"],["f-stock","📦","Gestion du Stock"],["f-suggestions","💡","Suggestions équipe"],["f-users","👤","Utilisateurs"]],
+    formateur:[["f-scripts","📞","Éditeur Scripts"],["f-formations","🎓","Éditeur Formations"],["f-stock","📦","Gestion du Stock"],["f-suggestions","💡","Suggestions équipe"],["f-users","👤","Utilisateurs"]],
   };
   return <div style={{width:226,background:th.sidebar,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}}>
     {/* Header */}
