@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -241,6 +241,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
   const [chosenRebond, setChosenRebond] = useState("");
+  const [rebondPath, setRebondPath] = useState([]); // ex: ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]
 
   const stockMap = Object.fromEntries(stock.map(s => [s.typ, s]));
   const canAnalyze = niveau && psycho && objectifVie;
@@ -255,6 +256,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setStep(1);
     setPortrait(null);
     setChosenRebond("");
+    setRebondPath([]);
     setPrenom("");
     setNiveau("");
     setMatieres([]);
@@ -818,7 +820,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
         {/* Bottom buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-          <Btn onClick={() => { setChosenRebond(""); setStep(3); }} full color="#DA4F00" style={{ padding: "14px", borderRadius: 99, fontSize: 15 }}>
+          <Btn onClick={() => { setChosenRebond(""); setRebondPath([]); setStep(3); }} full color="#DA4F00" style={{ padding: "14px", borderRadius: 99, fontSize: 15 }}>
             Je n'ai pas ces profils en stock →
           </Btn>
           <Btn onClick={resetAndSave} full outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
@@ -846,32 +848,85 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </p>
         </div>
 
-        {/* Prof type selector */}
+        {/* Prof type selector — CASCADE HIERARCHY */}
         <C style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 10, fontFamily: "'Outfit',sans-serif" }}>
-            Selectionnez le profil que vous avez en stock :
+            Affinez le profil du prof que vous avez trouvé :
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {PROF_TYPES.map(t => {
-              const on = chosenRebond === t;
-              const s = stockMap[t];
-              return (
-                <button key={t} onClick={() => setChosenRebond(t)}
-                  style={{
-                    padding: "10px 14px", borderRadius: 12,
-                    border: `2px solid ${on ? "#DA4F00" : "#E4E4E7"}`,
-                    background: on ? "#FFF7F0" : "#FAFAFA",
-                    textAlign: "left", cursor: "pointer", transition: "all .15s",
-                  }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: s?.dispo ? "#16A34A" : "#E11D48", flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: on ? "#DA4F00" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{t}</span>
-                    <span style={{ fontSize: 10, color: "#A1A1AA", marginLeft: "auto" }}>({s?.nb || 0})</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+
+          {/* Breadcrumb path */}
+          {rebondPath.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, padding: "8px 12px", background: "#FFF7F0", borderRadius: 8, border: "1px solid #FED7AA", flexWrap: "wrap" }}>
+            <button onClick={() => { setRebondPath([]); setChosenRebond(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#DA4F00", fontWeight: 700 }}>↺ Reset</button>
+            {rebondPath.map((p, i) => (
+              <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ color: "#A1A1AA", fontSize: 11 }}>›</span>
+                <button onClick={() => { setRebondPath(rebondPath.slice(0, i + 1)); setChosenRebond(rebondPath[0]); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#92400E", fontWeight: 600, fontFamily: "'Outfit',sans-serif" }}>{p}</button>
+              </span>
+            ))}
+          </div>}
+
+          {/* Cascade selector */}
+          {(()=>{
+            // Determine current level
+            let currentLevel = PROF_HIERARCHY;
+            for (const key of rebondPath) {
+              if (currentLevel[key]?.children) {
+                currentLevel = currentLevel[key].children;
+              } else {
+                return null; // Leaf reached
+              }
+            }
+            const entries = Object.entries(currentLevel || {});
+            if (entries.length === 0) return null;
+
+            return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {entries.map(([key, val]) => {
+                const isLevel0 = rebondPath.length === 0;
+                const stock = isLevel0 ? stockMap[key] : null;
+                const hasChildren = val.children && Object.keys(val.children).length > 0;
+                return (
+                  <button key={key} onClick={() => {
+                    const newPath = [...rebondPath, key];
+                    setRebondPath(newPath);
+                    if (isLevel0) setChosenRebond(key);
+                  }}
+                    style={{
+                      padding: "12px 14px", borderRadius: 12,
+                      border: "2px solid #E4E4E7",
+                      background: "#FAFAFA",
+                      textAlign: "left", cursor: "pointer", transition: "all .15s",
+                    }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 18 }}>{val.emoji || "📌"}</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "#3F3F46", fontFamily: "'Outfit',sans-serif", flex: 1 }}>{key}</span>
+                      {hasChildren && <span style={{ fontSize: 14, color: "#A1A1AA" }}>›</span>}
+                      {stock && <span style={{ fontSize: 10, color: stock.dispo ? "#15803D" : "#B91C1C", fontWeight: 600 }}>{stock.dispo ? "✓" : "✗"} {stock.nb}</span>}
+                    </div>
+                    {val.description && <div style={{ fontSize: 11, color: "#71717A", marginLeft: 26 }}>{val.description}</div>}
+                  </button>
+                );
+              })}
+            </div>;
+          })()}
+
+          {/* Final selection summary */}
+          {rebondPath.length >= 2 && (()=>{
+            const last = rebondPath[rebondPath.length - 1];
+            // Walk path to get last node info
+            let node = PROF_HIERARCHY;
+            for (let i = 0; i < rebondPath.length - 1; i++) {
+              node = node[rebondPath[i]]?.children || {};
+            }
+            const finalNode = node[last];
+            return <div style={{ marginTop: 12, padding: "12px 16px", background: "#F0FDF4", border: "2px solid #C0EAD3", borderRadius: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 18 }}>{finalNode?.emoji || "✓"}</span>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>Profil sélectionné : {last}</div>
+              </div>
+              {finalNode?.description && <div style={{ fontSize: 11, color: "#71717A", marginLeft: 26 }}>{finalNode.description}</div>}
+              <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 6, marginLeft: 26 }}>Catégorie : {chosenRebond}</div>
+            </div>;
+          })()}
         </C>
 
         {/* Chosen rebond details */}
