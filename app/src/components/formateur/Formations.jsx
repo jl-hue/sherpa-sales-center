@@ -11,6 +11,7 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
   const [showNewMod,setShowNewMod]=useState(false);
   const [showNewPilier,setShowNewPilier]=useState(false);
   const [viewMode,setViewMode]=useState("edit"); // "edit", "progress", or "toolbox"
+  const [detailMod,setDetailMod]=useState(null); // {pk, idx} — full module editor
 
   const [mTitle,setMTitle]=useState("");const [mDur,setMDur]=useState("");const [mDesc,setMDesc]=useState("");
   const [pTitle,setPTitle]=useState("");const [pIcon,setPIcon]=useState("");const [pColor,setPColor]=useState("#16A34A");
@@ -19,6 +20,44 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
   const COLORS=["#16A34A","#0B68B4","#DA4F00","#7C3AED","#E11D48","#0891B2"];
 
   const [copiedSnippet,setCopiedSnippet]=useState(null);
+
+  // Detail module editor state
+  const [dmTitle,setDmTitle]=useState("");
+  const [dmDur,setDmDur]=useState("");
+  const [dmDesc,setDmDesc]=useState("");
+  const [dmObjectives,setDmObjectives]=useState([]);
+  const [dmContent,setDmContent]=useState([]);
+  const [newObjText,setNewObjText]=useState("");
+
+  function openDetailMod(pk,idx){
+    const m=F[pk].modules[idx];
+    setDmTitle(m.title||"");setDmDur(m.duration||"");setDmDesc(m.description||"");
+    setDmObjectives(m.objectives?[...m.objectives]:[]);
+    setDmContent(m.content?m.content.map(c=>({...c})):[]);
+    setDetailMod({pk,idx});
+  }
+  function saveDetailMod(){
+    if(!dmTitle.trim()||!detailMod) return;
+    const next={...F};
+    next[detailMod.pk]={...next[detailMod.pk],modules:[...next[detailMod.pk].modules]};
+    next[detailMod.pk].modules[detailMod.idx]={
+      ...next[detailMod.pk].modules[detailMod.idx],
+      title:dmTitle,duration:dmDur,description:dmDesc,
+      objectives:dmObjectives,content:dmContent
+    };
+    save(next);setDetailMod(null);
+  }
+  function addObjective(){if(!newObjText.trim())return;setDmObjectives(p=>[...p,newObjText.trim()]);setNewObjText("");}
+  function removeObjective(idx){setDmObjectives(p=>p.filter((_,i)=>i!==idx));}
+  function addContentBlock(type){
+    const defaults={text:{type:"text",title:"Nouvelle section",body:""},quiz:{type:"quiz",title:"Quiz",body:"1. Question ?\n   a) ...\n   b) ...\n   → Réponse : "},exercise:{type:"exercise",title:"Exercice",body:"Consigne : ...\nDurée : ... min\nLivrable : ..."},checklist:{type:"checklist",title:"Points clés",body:"- [ ] Point 1\n- [ ] Point 2\n- [ ] Point 3"},link:{type:"link",title:"Ressources",body:"📎 Lien : ...\n📎 Lien : ..."}};
+    setDmContent(p=>[...p,defaults[type]||defaults.text]);
+  }
+  function updateContentBlock(idx,field,val){setDmContent(p=>p.map((c,i)=>i===idx?{...c,[field]:val}:c));}
+  function removeContentBlock(idx){setDmContent(p=>p.filter((_,i)=>i!==idx));}
+  function moveContentBlock(idx,dir){
+    setDmContent(p=>{const a=[...p];const target=idx+dir;if(target<0||target>=a.length)return a;[a[idx],a[target]]=[a[target],a[idx]];return a;});
+  }
 
   function save(next){setFormations({...next});}
 
@@ -138,6 +177,99 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
   const allModules=Object.values(F).flatMap(p=>p.modules);
   const salesUsers=USERS.filter(u=>u.role==="sales");
 
+  const BLOCK_TYPES=[{id:"text",emoji:"📝",label:"Texte"},{id:"quiz",emoji:"❓",label:"Quiz"},{id:"exercise",emoji:"✏️",label:"Exercice"},{id:"checklist",emoji:"✅",label:"Checklist"},{id:"link",emoji:"🔗",label:"Liens"}];
+  const BLOCK_COLORS={text:"#0B68B4",quiz:"#7C3AED",exercise:"#DA4F00",checklist:"#16A34A",link:"#6B7280"};
+
+  // ═══ DETAIL MODULE EDITOR (full screen) ═══
+  if(detailMod){
+    const dm=F[detailMod.pk]?.modules[detailMod.idx];
+    const pc=F[detailMod.pk]?.color||"#DA4F00";
+    return <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div>
+          <Btn sm outline color="#71717A" onClick={()=>setDetailMod(null)} style={{marginBottom:8}}>← Retour aux modules</Btn>
+          <h1 style={{fontSize:20,fontWeight:900,color:"#18181B",fontFamily:"'Outfit',sans-serif",margin:0}}>{dmTitle||"Nouveau module"}</h1>
+          <div style={{fontSize:12,color:"#71717A",marginTop:2}}>{F[detailMod.pk]?.icon} {F[detailMod.pk]?.title} — Module {detailMod.idx+1}</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <Btn color="#71717A" outline onClick={()=>setDetailMod(null)}>Annuler</Btn>
+          <Btn color={pc} onClick={saveDetailMod}>Sauvegarder</Btn>
+        </div>
+      </div>
+
+      {/* Meta */}
+      <C style={{marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#18181B",marginBottom:12,fontFamily:"'Outfit',sans-serif"}}>Informations du module</div>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10,marginBottom:10}}>
+          <div><div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>Titre *</div><input value={dmTitle} onChange={e=>setDmTitle(e.target.value)} style={{width:"100%",fontSize:14,fontWeight:700,border:"1px solid #E4E4E7",borderRadius:8,padding:"10px 12px",boxSizing:"border-box",fontFamily:"'Outfit',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>Durée</div><input value={dmDur} onChange={e=>setDmDur(e.target.value)} placeholder="45 min" style={{width:"100%",fontSize:13,border:"1px solid #E4E4E7",borderRadius:8,padding:"10px 12px",boxSizing:"border-box",fontFamily:"'Inter',sans-serif"}}/></div>
+        </div>
+        <div><div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>Description courte</div><input value={dmDesc} onChange={e=>setDmDesc(e.target.value)} placeholder="Résumé en une ligne..." style={{width:"100%",fontSize:13,border:"1px solid #E4E4E7",borderRadius:8,padding:"10px 12px",boxSizing:"border-box",fontFamily:"'Inter',sans-serif"}}/></div>
+      </C>
+
+      {/* Objectives */}
+      <C style={{marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#18181B",marginBottom:10,fontFamily:"'Outfit',sans-serif"}}>🎯 Objectifs pédagogiques</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+          {dmObjectives.map((obj,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:8,background:"#F0FDF4",border:"1px solid #C0EAD3"}}>
+              <span style={{color:"#16A34A",fontWeight:700,fontSize:12}}>✓</span>
+              <span style={{flex:1,fontSize:12,color:"#3F3F46"}}>{obj}</span>
+              <button onClick={()=>removeObjective(i)} style={{border:"none",background:"none",cursor:"pointer",fontSize:12,color:"#E11D48"}}>✗</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <input value={newObjText} onChange={e=>setNewObjText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addObjective()} placeholder="Ajouter un objectif..." style={{flex:1,fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",fontFamily:"'Inter',sans-serif"}}/>
+          <Btn sm color="#16A34A" onClick={addObjective} disabled={!newObjText.trim()}>+ Ajouter</Btn>
+        </div>
+      </C>
+
+      {/* Content blocks */}
+      <C style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>📄 Contenu du module</div>
+          <div style={{display:"flex",gap:4}}>
+            {BLOCK_TYPES.map(bt=>(
+              <button key={bt.id} onClick={()=>addContentBlock(bt.id)} title={`Ajouter ${bt.label}`} style={{padding:"5px 10px",borderRadius:7,border:"1px solid #E4E4E7",background:"#FAFAFA",cursor:"pointer",fontSize:11,fontWeight:600,color:"#71717A",fontFamily:"'Outfit',sans-serif"}}>{bt.emoji} {bt.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {dmContent.length===0&&<div style={{textAlign:"center",padding:32,color:"#A1A1AA",fontSize:13,border:"2px dashed #E4E4E7",borderRadius:10}}>Aucun contenu — utilise les boutons ci-dessus pour ajouter des blocs</div>}
+
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {dmContent.map((blk,i)=>{
+            const bc=BLOCK_COLORS[blk.type]||"#71717A";
+            const bt=BLOCK_TYPES.find(b=>b.id===blk.type);
+            return <div key={i} style={{borderRadius:12,border:`1px solid ${bc}35`,overflow:"hidden"}}>
+              {/* Block header */}
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:bc+"08",borderBottom:`1px solid ${bc}20`}}>
+                <span style={{fontSize:16}}>{bt?.emoji||"📝"}</span>
+                <Pill color={bc}>{bt?.label||blk.type}</Pill>
+                <div style={{flex:1}}/>
+                <button onClick={()=>moveContentBlock(i,-1)} disabled={i===0} style={{padding:"3px 6px",borderRadius:5,border:"1px solid #E4E4E7",background:"#fff",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:11}}>↑</button>
+                <button onClick={()=>moveContentBlock(i,1)} disabled={i===dmContent.length-1} style={{padding:"3px 6px",borderRadius:5,border:"1px solid #E4E4E7",background:"#fff",cursor:i===dmContent.length-1?"default":"pointer",opacity:i===dmContent.length-1?.3:1,fontSize:11}}>↓</button>
+                <button onClick={()=>removeContentBlock(i)} style={{padding:"3px 6px",borderRadius:5,border:"1px solid #FEE2E2",background:"#FFF1F2",cursor:"pointer",fontSize:11,color:"#E11D48"}}>🗑</button>
+              </div>
+              {/* Block body */}
+              <div style={{padding:14}}>
+                <div style={{marginBottom:8}}><input value={blk.title} onChange={e=>updateContentBlock(i,"title",e.target.value)} placeholder="Titre de la section" style={{width:"100%",fontSize:13,fontWeight:700,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",boxSizing:"border-box",fontFamily:"'Outfit',sans-serif"}}/></div>
+                <textarea value={blk.body} onChange={e=>updateContentBlock(i,"body",e.target.value)} rows={blk.body?.split("\n").length>6?Math.min(blk.body.split("\n").length+1,20):6} style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"10px 12px",fontFamily:"'Inter',sans-serif",resize:"vertical",boxSizing:"border-box",lineHeight:1.7}}/>
+              </div>
+            </div>;
+          })}
+        </div>
+      </C>
+
+      {/* Save bar */}
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+        <Btn outline color="#71717A" onClick={()=>setDetailMod(null)}>Annuler</Btn>
+        <Btn color={pc} onClick={saveDetailMod} style={{padding:"12px 28px"}}>Sauvegarder le module</Btn>
+      </div>
+    </div>;
+  }
+
   return <div>
     <ST emoji="\uD83C\uDF93" sub="G\u00e9rez les formations et suivez la progression de l\u2019\u00e9quipe.">Éditeur Formations</ST>
 
@@ -226,13 +358,15 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
                 <div style={{display:"flex",gap:7}}><Btn sm color={pill.color} onClick={saveMod}>Sauvegarder</Btn><Btn sm outline color="#71717A" onClick={()=>setEditMod(null)}>Annuler</Btn></div>
               </div>
             ):(
-              <C style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderLeft:`4px solid ${pill.color}`}}>
+              <C style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderLeft:`4px solid ${pill.color}`,cursor:"pointer"}} onClick={()=>openDetailMod(pilier,i)}>
                 <div style={{width:32,height:32,borderRadius:9,background:pill.color+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{i+1}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{m.title}</div>
                   <div style={{fontSize:11,color:"#A1A1AA",marginTop:1}}>⏱ {m.duration}{m.description&&` · ${m.description}`}</div>
+                  {(m.content?.length>0||m.objectives?.length>0)&&<div style={{display:"flex",gap:4,marginTop:4}}>{m.objectives?.length>0&&<Pill color="#16A34A">{m.objectives.length} objectifs</Pill>}{m.content?.length>0&&<Pill color="#0B68B4">{m.content.length} blocs</Pill>}</div>}
                 </div>
-                <div style={{display:"flex",gap:5}}>
+                <div style={{display:"flex",gap:5}} onClick={e=>e.stopPropagation()}>
+                  <button onClick={()=>openDetailMod(pilier,i)} style={{padding:"5px 9px",borderRadius:7,border:"1px solid #C0EAD3",background:"#F0FDF4",cursor:"pointer",fontSize:11,fontWeight:600,color:"#16A34A",fontFamily:"'Outfit',sans-serif"}}>Ouvrir</button>
                   <button onClick={()=>startEditMod(pilier,i)} style={{padding:"5px 9px",borderRadius:7,border:"1px solid #E4E4E7",background:"#fff",cursor:"pointer",fontSize:12}}>✏️</button>
                   <button onClick={()=>deleteMod(pilier,i)} style={{padding:"5px 9px",borderRadius:7,border:"1px solid #FEE2E2",background:"#FFF1F2",cursor:"pointer",fontSize:12,color:"#E11D48"}}>🗑️</button>
                 </div>
