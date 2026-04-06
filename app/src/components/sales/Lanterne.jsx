@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, getRecommendedHierarchy } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -238,6 +238,14 @@ function SalesLanterne({ stock, setMatchings, user }) {
   // ── State: Nombre de profs ─────────────────────────────────────
   const [nbProfs, setNbProfs] = useState("1");
 
+  // ── State: Diagnostic académique détaillé ──────────────────────
+  const [classe, setClasse] = useState("");
+  const [brevetPrep, setBrevetPrep] = useState(false);
+  const [spes, setSpes] = useState([]);
+  const [parcoursupCible, setParcoursupCible] = useState("");
+  const [prepaFiliere, setPrepaFiliere] = useState("");
+  const [univFiliere, setUnivFiliere] = useState("");
+
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
   const [chosenRebond, setChosenRebond] = useState("");
@@ -268,6 +276,12 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setNeuroTrouble("");
     setParentProfile("");
     setNbProfs("1");
+    setClasse("");
+    setBrevetPrep(false);
+    setSpes([]);
+    setParcoursupCible("");
+    setPrepaFiliere("");
+    setUnivFiliere("");
   }
 
   const matchingSavedRef = useRef(false);
@@ -439,8 +453,82 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 16, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📚 Diagnostic academique</div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Niveau scolaire <span style={{ color: "#E11D48" }}>*</span></div>
-            <Chips options={NIVEAUX} selected={niveau} onChange={setNiveau} color="#16A34A" single={true} />
+            <Chips options={NIVEAUX} selected={niveau} onChange={n => { setNiveau(n); setClasse(""); setBrevetPrep(false); setSpes([]); setParcoursupCible(""); setPrepaFiliere(""); }} color="#16A34A" single={true} />
           </div>
+
+          {/* QUESTIONS CONDITIONNELLES SELON NIVEAU */}
+          {niveau === "Collège" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe précise <span style={{ color: "#E11D48" }}>*</span></div>
+              <Chips options={CLASSES_COLLEGE} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+              {classe === "3e" && (
+                <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => setBrevetPrep(!brevetPrep)} style={{ width: 22, height: 22, borderRadius: 5, border: `2px solid ${brevetPrep ? "#16A34A" : "#D4D4D8"}`, background: brevetPrep ? "#16A34A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 12 }}>{brevetPrep ? "✓" : ""}</button>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#3F3F46" }}>Prépare le brevet (DNB) ?</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {niveau === "Lycée général" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
+              <Chips options={CLASSES_LYCEE_GENERAL} selected={classe} onChange={c => { setClasse(c); setSpes([]); setParcoursupCible(""); }} color="#16A34A" single={true} />
+
+              {(classe === "Première" || classe === "Terminale") && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 6 }}>{classe === "Première" ? "Spécialités (3 choix)" : "Spécialités conservées (2 choix)"}</div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Sélectionne {classe === "Première" ? "les 3 spécialités" : "les 2 spécialités gardées"}</div>
+                  <Chips options={SPE_PREMIERE} selected={spes} onChange={setSpes} color="#0B68B4" />
+                </div>
+              )}
+
+              {classe === "Terminale" && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 6 }}>🎯 Cible Parcoursup</div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Quelles études supérieures vise l'élève ?</div>
+                  <select value={parcoursupCible} onChange={e => setParcoursupCible(e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+                    <option value="">— Sélectionner —</option>
+                    {PARCOURSUP_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {niveau === "Lycée pro" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
+              <Chips options={CLASSES_LYCEE_PRO} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+            </div>
+          )}
+
+          {niveau === "BTS / IUT" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
+              <Chips options={CLASSES_BTS} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+            </div>
+          )}
+
+          {niveau === "Prépa" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Filière de prépa <span style={{ color: "#E11D48" }}>*</span></div>
+              <select value={prepaFiliere} onChange={e => setPrepaFiliere(e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+                <option value="">— Sélectionner —</option>
+                {PREPA_FILIERES.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+          )}
+
+          {niveau === "Université" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Année</div>
+              <Chips options={CLASSES_UNIV} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 6 }}>Filière</div>
+              <input value={univFiliere} onChange={e => setUnivFiliere(e.target.value)} placeholder="Ex : Médecine, Maths-info, Droit, Lettres..." style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
+            </div>
+          )}
+
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
             <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
@@ -719,6 +807,28 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const maxScore = top3[0]?.score || 1;
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
+
+    // ── Recommandation hiérarchique précise ──
+    const recommendedPath = getRecommendedHierarchy({
+      niveau, classe, brevetPrep, spes, parcoursupCible, prepaFiliere, univFiliere,
+      matieres, psycho, objectif: objectifVie
+    });
+    // Récupère l'emoji + description du nœud final
+    let recoNode = PROF_HIERARCHY;
+    let recoFinalEmoji = "🎯";
+    let recoFinalDesc = "";
+    let recoFinalLabel = "";
+    for (let i = 0; i < recommendedPath.length; i++) {
+      const k = recommendedPath[i];
+      if (recoNode && recoNode[k]) {
+        if (i === recommendedPath.length - 1) {
+          recoFinalEmoji = recoNode[k].emoji || "🎯";
+          recoFinalDesc = recoNode[k].description || "";
+          recoFinalLabel = k;
+        }
+        recoNode = recoNode[k].children || {};
+      }
+    }
     const rankLabels = ["1er", "2e", "3e"];
     const rankColors = ["#16A34A", "#0B68B4", "#D97706"];
     const rankBgs = ["#F0FDF4", "#EFF6FF", "#FFFBEB"];
@@ -736,6 +846,26 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </p>
           </div>
         </div>
+
+        {/* RECOMMANDATION HIERARCHIQUE PRECISE */}
+        <C style={{ marginBottom: 16, background: "linear-gradient(135deg,#16A34A,#62E58E)", border: "none", padding: "20px 22px", color: "#fff" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Pill color="#fff" bg="rgba(255,255,255,.25)">🎯 PROFIL IDEAL — RECOMMANDATION PRECISE</Pill>
+          </div>
+          <div style={{ fontSize: 12, opacity: .85, marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>
+            {recommendedPath.join(" › ")}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 36 }}>{recoFinalEmoji}</div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 900, fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>{recoFinalLabel}</div>
+              {recoFinalDesc && <div style={{ fontSize: 12, opacity: .9, marginTop: 4 }}>{recoFinalDesc}</div>}
+            </div>
+          </div>
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(255,255,255,.15)", borderRadius: 10, fontSize: 12, lineHeight: 1.6 }}>
+            💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaFiliere}` : ""}
+          </div>
+        </C>
 
         {/* TOP 3 CARDS */}
         {top3.map(({ typ, score }, idx) => {

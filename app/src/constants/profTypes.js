@@ -3,6 +3,56 @@ export const PROF_TYPES=["Étudiant grande école","Étudiant université","Prof
 export const PSYCH_PROFILES=["Introverti / Réservé","Décrocheur / Démotivé","Compétiteur / Haut Potentiel","Stressé / Anxieux"];
 export const VIE_OBJECTIFS=["Remise à niveau","Réussite concours","Méthodologie pure","Excellence académique"];
 export const NIVEAUX=["Primaire","Collège","Lycée général","Lycée pro","BTS / IUT","Prépa","Université"];
+
+// ─── Détails académiques par niveau ────────────────────────────
+export const CLASSES_PRIMAIRE=["CP","CE1","CE2","CM1","CM2"];
+export const CLASSES_COLLEGE=["6e","5e","4e","3e"];
+export const CLASSES_LYCEE_GENERAL=["Seconde","Première","Terminale"];
+export const CLASSES_LYCEE_PRO=["Seconde pro","Première pro","Terminale pro"];
+export const CLASSES_BTS=["BTS 1","BTS 2","BUT 1","BUT 2","BUT 3"];
+export const CLASSES_UNIV=["L1","L2","L3","M1","M2","Doctorat"];
+
+export const PREPA_FILIERES=[
+  "MPSI (Maths-Physique-Info)",
+  "PCSI (Physique-Chimie-Info)",
+  "PTSI (Physique-Techno-Info)",
+  "BCPST (Bio-Chimie-Physique)",
+  "MP (2e année MPSI)",
+  "PC (2e année PCSI)",
+  "PSI (2e année PCSI/PTSI)",
+  "PT (2e année PTSI)",
+  "ECG (Éco-Gestion)",
+  "ECT (Technologique)",
+  "Khâgne A/L (Lettres)",
+  "Khâgne B/L (Lettres-Sciences sociales)",
+];
+
+export const SPE_PREMIERE=[
+  "Maths","Physique-Chimie","SVT","SES","HGGSP",
+  "HLP (Humanités-Lettres-Philo)","LLCE Anglais","LLCE Espagnol",
+  "NSI (Numérique-Sciences info)","SI (Sciences de l'ingénieur)",
+  "Arts","Bio-écologie","EPPCS","Maths complémentaires","Maths expertes",
+];
+
+export const PARCOURSUP_OPTIONS=[
+  "Prépa MPSI / MP (Maths-Physique)",
+  "Prépa PCSI / PC (Physique-Chimie)",
+  "Prépa PTSI / PT (Physique-Techno)",
+  "Prépa BCPST (Bio-Chimie)",
+  "Prépa ECG (Éco-Commerce)",
+  "Prépa Khâgne A/L (Lettres)",
+  "Prépa Khâgne B/L (Lettres-Sciences sociales)",
+  "École d'ingé post-bac (INSA, UTC, UTBM, Polytech)",
+  "École de commerce post-bac (IÉSEG, ESCE, EBS)",
+  "Sciences Po Paris",
+  "IEP Région (Lyon, Bordeaux, etc.)",
+  "Médecine — PASS / LAS",
+  "Université — Licence Sciences",
+  "Université — Licence Lettres / SHS",
+  "Université — Licence Droit / Éco",
+  "BTS / BUT",
+  "Pas encore décidé",
+];
 export const MATIERES=["Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
 
 export const RULES={
@@ -158,6 +208,160 @@ export const PROF_HIERARCHY = {
     }
   },
 };
+
+// ─── Recommandation hierarchique selon diagnostic ────────────
+// Retourne le chemin precis dans PROF_HIERARCHY pour un diagnostic complet
+export function getRecommendedHierarchy(diag) {
+  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, prepaFiliere, univFiliere, matieres = [], psycho, objectif } = diag || {};
+
+  const has = (m) => matieres.includes(m);
+  const hasAny = (...mats) => mats.some(m => matieres.includes(m));
+
+  // ── PRIMAIRE / COLLEGE (sauf 3e brevet) ──
+  if (niveau === "Primaire" || (niveau === "Collège" && classe !== "3e")) {
+    return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+  }
+
+  // ── 3E + BREVET ──
+  if (niveau === "Collège" && classe === "3e" && brevetPrep) {
+    if (hasAny("Français", "Histoire-Géo")) {
+      return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+    }
+    return ["Professeur EN", "Professeur certifié (CAPES)"];
+  }
+
+  // ── LYCEE GENERAL ──
+  if (niveau === "Lycée général") {
+    // SECONDE
+    if (classe === "Seconde") {
+      if (hasAny("Maths", "Physique", "Chimie", "SVT")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
+      }
+      return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+    }
+
+    // PREMIERE — selon spés
+    if (classe === "Première") {
+      if (spes.includes("Maths") && spes.includes("Physique-Chimie")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+      }
+      if (spes.includes("Maths") && spes.includes("SVT")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa BCPST (Bio-Chimie)"];
+      }
+      if (spes.includes("Maths") && spes.includes("SES")) {
+        return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+      }
+      if (spes.includes("HGGSP") && spes.includes("HLP (Humanités-Lettres-Philo)")) {
+        return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
+      }
+      if (spes.includes("NSI (Numérique-Sciences info)")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+      }
+      return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
+    }
+
+    // TERMINALE — Parcoursup decide
+    if (classe === "Terminale") {
+      const ps = parcoursupCible || "";
+      if (ps.includes("MPSI") || ps.includes("MP")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+      }
+      if (ps.includes("PCSI") || ps.includes("PC")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa PC (Physique-Chimie)"];
+      }
+      if (ps.includes("PTSI") || ps.includes("PT")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa PT (Physique-Techno)"];
+      }
+      if (ps.includes("BCPST")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "Prépa BCPST (Bio-Chimie)"];
+      }
+      if (ps.includes("ECG") || ps.includes("Éco-Commerce")) {
+        return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+      }
+      if (ps.includes("Khâgne A/L") || ps.includes("Lettres)")) {
+        return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
+      }
+      if (ps.includes("Khâgne B/L")) {
+        return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne B/L (Lettres-Sciences)"];
+      }
+      if (ps.includes("INSA") || ps.includes("UTC")) {
+        return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
+      }
+      if (ps.includes("commerce post-bac")) {
+        return ["Étudiant grande école", "École de commerce", "École post-bac (commerce)"];
+      }
+      if (ps.includes("Sciences Po Paris")) {
+        return ["Étudiant grande école", "Sciences Po", "Sciences Po Paris"];
+      }
+      if (ps.includes("IEP")) {
+        return ["Étudiant grande école", "Sciences Po", "IEP Région"];
+      }
+      if (ps.includes("PASS") || ps.includes("LAS") || ps.includes("Médecine")) {
+        return ["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"];
+      }
+      if (ps.includes("Sciences")) {
+        if (has("SVT") || has("Chimie")) return ["Étudiant université", "Sciences (maths, physique, info)", "SVT / Biologie"];
+        if (has("Informatique") || spes.includes("NSI (Numérique-Sciences info)")) return ["Étudiant université", "Sciences (maths, physique, info)", "Informatique / BUT info"];
+        return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+      }
+      if (ps.includes("Lettres")) {
+        return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+      }
+      if (ps.includes("Droit") || ps.includes("Éco")) {
+        return ["Étudiant université", "Économie / Gestion / Droit", "Économie / AES"];
+      }
+      if (ps.includes("BTS") || ps.includes("BUT")) {
+        return ["Étudiant université", "Sciences (maths, physique, info)", "Informatique / BUT info"];
+      }
+      // Defaut Terminale selon spés
+      if (spes.includes("Maths")) return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
+      return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+    }
+  }
+
+  // ── LYCEE PRO ──
+  if (niveau === "Lycée pro") {
+    return ["Professeur EN", "Professeur certifié (CAPES)"];
+  }
+
+  // ── BTS / BUT ──
+  if (niveau === "BTS / IUT") {
+    if (hasAny("Maths", "Physique", "Informatique")) {
+      return ["Étudiant université", "Sciences (maths, physique, info)", "Informatique / BUT info"];
+    }
+    return ["Étudiant université", "Économie / Gestion / Droit", "Économie / AES"];
+  }
+
+  // ── PREPA ──
+  if (niveau === "Prépa") {
+    const f = prepaFiliere || "";
+    if (f.includes("MPSI") || f.includes("MP ")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+    if (f.includes("PCSI") || f.includes("PC ")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa PC (Physique-Chimie)"];
+    if (f.includes("PTSI") || f.includes("PT ")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa PT (Physique-Techno)"];
+    if (f.includes("BCPST")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa BCPST (Bio-Chimie)"];
+    if (f.includes("ECG")) return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+    if (f.includes("Khâgne A/L")) return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
+    if (f.includes("Khâgne B/L")) return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne B/L (Lettres-Sciences)"];
+    return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+  }
+
+  // ── UNIVERSITE ──
+  if (niveau === "Université") {
+    if (univFiliere) {
+      const f = univFiliere.toLowerCase();
+      if (f.includes("medecine") || f.includes("médecine") || f.includes("pharma")) return ["Étudiant université", "Médecine / Pharmacie", "Médecine (DFGSM)"];
+      if (f.includes("info")) return ["Étudiant université", "Sciences (maths, physique, info)", "Informatique / BUT info"];
+      if (f.includes("math")) return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+      if (f.includes("droit")) return ["Étudiant université", "Économie / Gestion / Droit", "Droit"];
+      if (f.includes("eco") || f.includes("éco")) return ["Étudiant université", "Économie / Gestion / Droit", "Économie / AES"];
+      if (f.includes("lettres") || f.includes("philo") || f.includes("histoire")) return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+    }
+    return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+  }
+
+  // Defaut
+  return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+}
 
 // Helper : récupère un item dans la hiérarchie par son chemin
 export function getProfHierarchyPath(path) {
