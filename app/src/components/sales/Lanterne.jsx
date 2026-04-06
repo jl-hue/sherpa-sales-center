@@ -530,59 +530,13 @@ function SalesLanterne({ stock, setMatchings, user }) {
             {/* Header + copy all */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>📜 Script Complet d'Appel</div>
-                <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>{chosenLabel} · {nom} · {psycho} · {ppLabel}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>📜 Script Personnalisé</div>
+                <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>{chosenLabel} · {nom} · {psycho}</div>
               </div>
               <CopyBtn text={fullScript} />
             </div>
 
-            {/* ── SECTION 1: INTRODUCTION ── */}
-            <C style={{ marginBottom: 10, background: "#FFFBEB", border: "1px solid #FDE68A", padding: "16px 18px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                    <span style={{ fontSize: 16 }}>👋</span>
-                    <Pill color="#D97706">SECTION 1 — INTRODUCTION</Pill>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#71717A" }}>Accroche personnalisee — profil {ppLabel}</div>
-                </div>
-                <CopyBtn text={introText} />
-              </div>
-              <div style={{ fontSize: 14, color: "#3F3F46", lineHeight: 1.75, marginTop: 8, fontStyle: "italic", fontFamily: "'Inter',sans-serif", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "12px 14px", borderLeft: "3px solid #D97706" }}>
-                "{introText}"
-              </div>
-            </C>
-
-            {/* ── SECTION 2: DECOUVERTE SPIN ── */}
-            <C style={{ marginBottom: 10, background: "#F0F9FF", border: "1px solid #BAE6FD", padding: "16px 18px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                    <span style={{ fontSize: 16 }}>🔍</span>
-                    <Pill color="#0284C7">SECTION 2 — DECOUVERTE (SPIN)</Pill>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#71717A" }}>Questions adaptees au profil {ppLabel}</div>
-                </div>
-                <CopyBtn text={spinQuestions.join("\n\n")} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-                {spinQuestions.map((q, i) => {
-                  const colors = ["#16A34A", "#E11D48", "#D97706", "#0B68B4"];
-                  const labels = ["Situation", "Probleme", "Implication", "Need-Payoff"];
-                  return (
-                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                      <div style={{ flex: 1, fontSize: 13, color: "#3F3F46", lineHeight: 1.7, background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "10px 13px", borderLeft: `3px solid ${colors[i]}` }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: colors[i], textTransform: "uppercase", letterSpacing: ".06em" }}>{labels[i]}</span>
-                        <div style={{ marginTop: 4, fontStyle: "italic" }}>{q.replace(/^[A-Z-]+ : /, "")}</div>
-                      </div>
-                      <CopyBtn text={q} />
-                    </div>
-                  );
-                })}
-              </div>
-            </C>
-
-            {/* ── SECTION 3: PRESCRIPTION (4 arguments) ── */}
+            {/* ── PRESCRIPTION (4 arguments) ── */}
             {args && (
               <C style={{ marginBottom: 10, background: "#F0FDF4", border: "1px solid #C0EAD3", padding: "16px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -685,23 +639,6 @@ function SalesLanterne({ stock, setMatchings, user }) {
                 )}
               </C>
             )}
-
-            {/* ── SECTION 5 (or 4): CLOSING ── */}
-            <C style={{ marginBottom: 10, background: "#FFF1F2", border: "1px solid #FECDD3", padding: "16px 18px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                    <span style={{ fontSize: 16 }}>🎯</span>
-                    <Pill color="#E11D48">SECTION {neuroActive && neuroTrouble ? "5" : "4"} — CLOSING</Pill>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#71717A" }}>Conclusion adaptee — profil {ppLabel}</div>
-                </div>
-                <CopyBtn text={closingText} />
-              </div>
-              <div style={{ fontSize: 14, color: "#3F3F46", lineHeight: 1.75, marginTop: 8, fontStyle: "italic", fontFamily: "'Inter',sans-serif", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "12px 14px", borderLeft: "3px solid #E11D48" }}>
-                "{closingText}"
-              </div>
-            </C>
 
             <div style={{ marginTop: 4 }}>
               <Btn onClick={() => { setScriptGenerated(false); }} outline color="#71717A" sm>Changer d'option</Btn>
