@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { ST, GC, C, Pill, Btn } from '../ui';
+import { ST, GC, C, Pill, Btn, CopyBtn } from '../ui';
 import { FORMATION_DEFAULT } from '../../constants/data';
+
+const BLOCK_COLORS={text:"#0B68B4",quiz:"#7C3AED",exercise:"#DA4F00",checklist:"#16A34A",link:"#6B7280"};
+const BLOCK_EMOJIS={text:"📝",quiz:"❓",exercise:"✏️",checklist:"✅",link:"🔗"};
 
 function SalesFormation({formations, progress={}, setProgress, user}){
   const F = formations && Object.keys(formations).length > 0 ? formations : FORMATION_DEFAULT;
@@ -8,6 +11,7 @@ function SalesFormation({formations, progress={}, setProgress, user}){
   const [showScore,setShowScore]=useState(false);
   const [scoreVal,setScoreVal]=useState(80);
   const [completingMod,setCompletingMod]=useState(null);
+  const [openMod,setOpenMod]=useState(null); // {pilierKey, idx} — reading a module
 
   const userId = user?.id || "unknown";
   const userProgress = progress[userId] || {};
@@ -22,15 +26,105 @@ function SalesFormation({formations, progress={}, setProgress, user}){
   const total = allModules.length;
   const done = allModules.filter(m=>isModDone(m.id)).length;
 
-  function completeModule(){
-    if(!completingMod || !setProgress) return;
+  function completeModule(modId){
+    if(!setProgress) return;
+    const id = modId || completingMod;
+    if(!id) return;
     const next = {...progress};
     if(!next[userId]) next[userId] = {};
-    next[userId] = {...next[userId], [completingMod]: {done:true, score:scoreVal}};
+    next[userId] = {...next[userId], [id]: {done:true, score:scoreVal}};
     setProgress(next);
     setCompletingMod(null);
     setShowScore(false);
     setScoreVal(80);
+  }
+
+  // ═══ MODULE READER (full content view) ═══
+  if(openMod){
+    const op=F[openMod.pk];
+    const m=op?.modules[openMod.idx];
+    if(!m) { setOpenMod(null); return null; }
+    const pc=op.color||"#16A34A";
+    const isDone=isModDone(m.id);
+    const score=getModScore(m.id);
+    const hasContent=m.content?.length>0||m.objectives?.length>0;
+    const isCurrent=!isDone;
+
+    return <div>
+      <Btn sm outline color="#71717A" onClick={()=>setOpenMod(null)} style={{marginBottom:12}}>← Retour aux modules</Btn>
+
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,${pc},${pc}CC)`,borderRadius:16,padding:24,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <div style={{display:"flex",gap:8,marginBottom:8}}>
+              <Pill color="#fff" bg="rgba(255,255,255,.2)">{op.icon} {op.title}</Pill>
+              {isDone&&<Pill color="#fff" bg="rgba(255,255,255,.25)">Terminé {score?`— ${score}%`:""}</Pill>}
+            </div>
+            <h1 style={{fontSize:22,fontWeight:900,color:"#fff",fontFamily:"'Outfit',sans-serif",margin:"0 0 6px"}}>{m.title}</h1>
+            <div style={{fontSize:13,color:"rgba(255,255,255,.8)"}}>{m.description}</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:6}}>⏱ {m.duration} · Module {openMod.idx+1}/{op.modules.length}</div>
+          </div>
+          <div style={{fontSize:48}}>{isDone?"✅":"📖"}</div>
+        </div>
+      </div>
+
+      {/* Objectives */}
+      {m.objectives?.length>0&&<C style={{marginBottom:14,borderLeft:`4px solid ${pc}`}}>
+        <div style={{fontSize:14,fontWeight:800,color:"#18181B",marginBottom:12,fontFamily:"'Outfit',sans-serif"}}>🎯 Objectifs de ce module</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {m.objectives.map((obj,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8}}>
+              <div style={{width:22,height:22,borderRadius:6,background:pc+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:pc,fontWeight:800,flexShrink:0,marginTop:1}}>{i+1}</div>
+              <span style={{fontSize:13,color:"#3F3F46",lineHeight:1.6}}>{obj}</span>
+            </div>
+          ))}
+        </div>
+      </C>}
+
+      {/* Content blocks */}
+      {m.content?.length>0&&<div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:18}}>
+        {m.content.map((blk,i)=>{
+          const bc=BLOCK_COLORS[blk.type]||"#71717A";
+          const be=BLOCK_EMOJIS[blk.type]||"📝";
+          return <C key={i} style={{borderLeft:`4px solid ${bc}`,padding:0,overflow:"hidden"}}>
+            <div style={{padding:"12px 18px",background:bc+"08",borderBottom:`1px solid ${bc}20`,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:16}}>{be}</span>
+              <span style={{fontSize:14,fontWeight:800,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{blk.title}</span>
+              <div style={{flex:1}}/>
+              <CopyBtn text={blk.body}/>
+            </div>
+            <div style={{padding:"16px 18px",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"'Inter',sans-serif"}}>{blk.body}</div>
+          </C>;
+        })}
+      </div>}
+
+      {/* No content fallback */}
+      {!hasContent&&<C style={{textAlign:"center",padding:40,marginBottom:18}}>
+        <div style={{fontSize:32,marginBottom:8}}>📋</div>
+        <div style={{fontSize:14,fontWeight:700,color:"#71717A"}}>Ce module n'a pas encore de contenu détaillé</div>
+        <div style={{fontSize:12,color:"#A1A1AA",marginTop:4}}>Le formateur peut ajouter du contenu depuis l'éditeur</div>
+      </C>}
+
+      {/* Complete button */}
+      {isCurrent&&<div style={{background:pc+"08",borderRadius:14,border:`1px solid ${pc}35`,padding:18,marginBottom:14}}>
+        <div style={{fontSize:14,fontWeight:800,color:pc,marginBottom:10,fontFamily:"'Outfit',sans-serif"}}>Terminer ce module</div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,color:"#71717A",marginBottom:6}}>Auto-évaluation (0-100)</div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <input type="range" min={0} max={100} value={scoreVal} onChange={e=>setScoreVal(Number(e.target.value))} style={{flex:1,accentColor:pc}}/>
+            <div style={{width:46,height:46,borderRadius:"50%",background:pc+"18",border:`2px solid ${pc}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:17,color:pc,flexShrink:0,fontFamily:"'Outfit',sans-serif"}}>{scoreVal}</div>
+          </div>
+        </div>
+        <Btn color={pc} full onClick={()=>completeModule(m.id)} style={{padding:"13px",borderRadius:99,fontSize:14}}>Valider le module ✓</Btn>
+      </div>}
+
+      {isDone&&<C style={{background:"#F0FDF4",border:"1px solid #C0EAD3",textAlign:"center",padding:24}}>
+        <div style={{fontSize:28,marginBottom:6}}>🎉</div>
+        <div style={{fontSize:16,fontWeight:800,color:"#15803D",fontFamily:"'Outfit',sans-serif"}}>Module terminé {score?`— Score : ${score}%`:""}</div>
+        {openMod.idx<op.modules.length-1&&<Btn sm color="#16A34A" onClick={()=>setOpenMod({pk:openMod.pk,idx:openMod.idx+1})} style={{marginTop:10}}>Module suivant →</Btn>}
+      </C>}
+    </div>;
   }
 
   return <div>
@@ -47,15 +141,16 @@ function SalesFormation({formations, progress={}, setProgress, user}){
       const isCurrent=!isDone&&i===pill.modules.findIndex(x=>!isModDone(x.id));
       const isCompleting=completingMod===m.id;
       return <div key={m.id||i}>
-        <C style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",opacity:!isDone&&!isCurrent?.5:1,borderLeft:`4px solid ${isDone?pill.color:isCurrent?pill.color+"70":"#E4E4E7"}`}}>
+        <C style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",opacity:!isDone&&!isCurrent?.5:1,borderLeft:`4px solid ${isDone?pill.color:isCurrent?pill.color+"70":"#E4E4E7"}`,cursor:(isDone||isCurrent)?"pointer":"default"}} onClick={()=>(isDone||isCurrent)&&setOpenMod({pk:tab,idx:i})}>
           <div style={{width:34,height:34,borderRadius:10,background:isDone?pill.color+"18":"#F4F4F5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{isDone?"✅":isCurrent?"▶️":"🔒"}</div>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{m.title}</div>
             <div style={{fontSize:11,color:"#A1A1AA",marginTop:1}}>⏱ {m.duration}</div>
             {m.description&&<div style={{fontSize:11,color:"#71717A",marginTop:2,fontStyle:"italic"}}>{m.description}</div>}
+            {(m.content?.length>0)&&<div style={{display:"flex",gap:4,marginTop:4}}><Pill color={pill.color}>{m.content.length} sections</Pill>{m.objectives?.length>0&&<Pill color="#16A34A">{m.objectives.length} objectifs</Pill>}</div>}
           </div>
           {isDone&&score&&<Pill color="#16A34A">{score}%</Pill>}
-          {isCurrent&&!isCompleting&&<Btn sm color={pill.color} onClick={()=>{setCompletingMod(m.id);setShowScore(true);}}>Terminer ✓</Btn>}
+          {isCurrent&&!isCompleting&&<Btn sm color={pill.color} onClick={e=>{e.stopPropagation();setOpenMod({pk:tab,idx:i});}}>Commencer →</Btn>}
         </C>
         {isCompleting&&showScore&&<div style={{margin:"8px 0",padding:14,background:pill.color+"08",borderRadius:10,border:`1px solid ${pill.color}35`}}>
           <div style={{fontSize:12,fontWeight:700,color:pill.color,marginBottom:10,fontFamily:"'Outfit',sans-serif"}}>Valider le module</div>
