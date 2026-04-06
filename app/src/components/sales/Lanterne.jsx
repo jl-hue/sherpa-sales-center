@@ -108,6 +108,82 @@ function findNeuroMatch(profTyp, trouble) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// COMPATIBILITE MATIERES — 1 prof pour plusieurs matières ?
+// ═══════════════════════════════════════════════════════════════════
+const MATIERE_FAMILIES={
+  sciences:["Maths","Physique","Chimie","SVT","Informatique"],
+  lettres:["Français","Philosophie","Histoire-Géo"],
+  langues:["Anglais","Espagnol","Allemand"],
+  eco:["Économie"],
+};
+const COMPATIBLE_COMBOS=[
+  {mats:["Maths","Physique"],profil:"étudiant en école d'ingénieurs (X, Centrale, Mines, CentraleSupélec)",filiere:"prépa MP/PC",icon:"🔧"},
+  {mats:["Maths","Physique","Chimie"],profil:"étudiant en prépa PC ou école d'ingénieurs généraliste",filiere:"prépa PC",icon:"🔬"},
+  {mats:["Physique","Chimie"],profil:"étudiant en prépa PC ou école de chimie",filiere:"prépa PC / chimie",icon:"⚗️"},
+  {mats:["SVT","Chimie"],profil:"étudiant en prépa BCPST ou médecine",filiere:"prépa BCPST / PASS",icon:"🧬"},
+  {mats:["Maths","SVT"],profil:"étudiant issu de prépa BCPST (biologie + maths poussées)",filiere:"prépa BCPST",icon:"🌿"},
+  {mats:["SVT","Physique"],profil:"étudiant en prépa BCPST ou biophysique",filiere:"prépa BCPST",icon:"🔬"},
+  {mats:["Maths","Informatique"],profil:"étudiant en école d'ingénieurs informatique (EPITA, ENSIMAG, CentraleSupélec)",filiere:"prépa MP option info",icon:"💻"},
+  {mats:["Maths","Économie"],profil:"étudiant en école de commerce (HEC, ESSEC) ou prépa ECG",filiere:"prépa ECG",icon:"📊"},
+  {mats:["Français","Histoire-Géo"],profil:"étudiant en hypokhâgne/khâgne ou Sciences Po",filiere:"prépa A/L ou B/L",icon:"📚"},
+  {mats:["Français","Philosophie"],profil:"étudiant en khâgne (ENS Lettres)",filiere:"prépa A/L",icon:"📖"},
+  {mats:["Histoire-Géo","Philosophie"],profil:"étudiant en khâgne ou Sciences Po",filiere:"prépa A/L / Sciences Po",icon:"🏛️"},
+  {mats:["Anglais","Espagnol"],profil:"étudiant en LEA ou école de commerce internationale",filiere:"LEA / commerce",icon:"🌍"},
+  {mats:["Anglais","Allemand"],profil:"étudiant en LEA ou LLCER bilingue",filiere:"LEA",icon:"🌍"},
+  {mats:["Économie","Histoire-Géo"],profil:"étudiant en prépa B/L ou Sciences Po",filiere:"prépa B/L",icon:"🏛️"},
+  {mats:["Français","Anglais"],profil:"étudiant en LEA ou lettres bilingue",filiere:"LEA / LLCER",icon:"📝"},
+];
+
+function analyzeMatieresCompatibility(matieres, niveau) {
+  if (!matieres || matieres.length <= 1) return { compatible: true, type: "single" };
+
+  // Check which families each matiere belongs to
+  const families = new Set();
+  matieres.forEach(m => {
+    Object.entries(MATIERE_FAMILIES).forEach(([fam, list]) => {
+      if (list.includes(m)) families.add(fam);
+    });
+  });
+
+  // Find compatible combo
+  const sorted = [...matieres].sort();
+  let bestMatch = null;
+  let bestScore = 0;
+  for (const combo of COMPATIBLE_COMBOS) {
+    const comboSorted = [...combo.mats].sort();
+    // Check if all combo mats are in selected matieres
+    const matches = comboSorted.filter(m => sorted.includes(m)).length;
+    if (matches === comboSorted.length && matches >= 2 && matches > bestScore) {
+      bestMatch = combo;
+      bestScore = matches;
+    }
+  }
+
+  if (bestMatch) {
+    return { compatible: true, type: "combo", combo: bestMatch, allMats: matieres };
+  }
+
+  // Incompatible — different families
+  if (families.size > 1) {
+    return { compatible: false, type: "incompatible", families: [...families], mats: matieres };
+  }
+
+  // Same family but no specific combo
+  return { compatible: true, type: "same_family", families: [...families] };
+}
+
+function getIncompatibleScript(analysis, nom, niveau) {
+  const n = nom || "votre enfant";
+  const matsList = analysis.mats.join(" et ");
+  return `Je comprends que vous cherchiez un seul professeur pour ${matsList} — c'est naturel de vouloir simplifier.\n\nMais soyons honnêtes : un prof excellent en maths ne sera pas forcément bon en philo, et inversement. Ce sont des disciplines fondamentalement différentes qui demandent des compétences et des méthodes distinctes.\n\nCe que je vous recommande, c'est ce qu'on appelle une « prescription croisée » : un prof spécialisé par pôle. Concrètement :\n${analysis.mats.map((m,i) => `  ${i+1}. Un prof dédié en ${m} — sélectionné spécifiquement pour le niveau ${niveau} de ${n}`).join("\n")}\n\nPourquoi c'est mieux ?\n• Chaque prof est expert dans SA matière — pas « moyen partout »\n• ${n} progresse 2x plus vite avec un spécialiste qu'avec un généraliste\n• On sélectionne chaque prof en fonction du profil psychologique de ${n}\n• Le coût reste maîtrisé : 1h par matière par semaine, c'est souvent suffisant\n\nJe peux vous faire la prescription pour chaque matière séparément — comme ça vous verrez exactement quel profil on recommande pour chacune. On y va ?`;
+}
+
+function getComboScript(combo, nom, niveau) {
+  const n = nom || "votre enfant";
+  return `Excellente nouvelle — pour ${combo.mats.join(" et ")}, on a exactement le profil qu'il faut.\n\nJe vous recommande ${combo.profil}. Pourquoi ? Parce qu'en ${combo.filiere}, on étudie ces matières ensemble à un niveau très poussé.\n\nConcrètement, ce type de profil :\n• Maîtrise ${combo.mats.join(" ET ")} au niveau ${niveau} et au-delà\n• A traversé des concours où ces matières sont combinées — il connaît les passerelles entre elles\n• Peut aider ${n} à voir les liens entre les matières, pas juste les traiter séparément\n• Un seul interlocuteur = plus de cohérence dans la méthode de travail\n\nC'est un profil rare et très demandé — on en a en stock, mais je vous conseille de ne pas trop tarder.`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════
 function SalesLanterne({ stock, setMatchings, user }) {
@@ -129,6 +205,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
   // ── State: Parent profile ──────────────────────────────────────
   const [parentProfile, setParentProfile] = useState("");
+
+  // ── State: Nombre de profs ─────────────────────────────────────
+  const [nbProfs, setNbProfs] = useState("1"); // "1" or "multi"
 
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
@@ -163,6 +242,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setNeuroActive(false);
     setNeuroTrouble("");
     setParentProfile("");
+    setNbProfs("1");
   }
 
   const matchingSavedRef = useRef(false);
@@ -218,6 +298,25 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <Chips options={MATIERES} selected={matieres} onChange={setMatieres} color="#DA4F00" />
         </div>
       </C>
+
+      {/* Nombre de profs */}
+      {matieres.length>=2&&<C style={{ marginBottom: 12, borderLeft: `4px solid ${nbProfs==="1"?"#0B68B4":"#16A34A"}` }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+          👥 Nombre de professeurs
+          <span style={{ fontSize: 11, background: "#EFF6FF", color: "#0B68B4", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
+        </div>
+        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>La famille souhaite un seul prof pour toutes les matières, ou un par matière ?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+          {[["1","1️⃣","Un seul prof","Pour toutes les matières sélectionnées"],["multi","👥","Plusieurs profs","Un spécialiste par matière"]].map(([id,em,label,desc])=>{
+            const on=nbProfs===id;
+            return <button key={id} onClick={()=>setNbProfs(id)} style={{padding:"12px 14px",borderRadius:12,border:`2px solid ${on?"#0B68B4":"#E4E4E7"}`,background:on?"#EFF6FF":"#FAFAFA",textAlign:"left",cursor:"pointer",transition:"all .15s"}}>
+              <div style={{fontSize:18,marginBottom:4}}>{em}</div>
+              <div style={{fontSize:12,fontWeight:700,color:on?"#1E40AF":"#3F3F46",fontFamily:"'Outfit',sans-serif"}}>{label}</div>
+              <div style={{fontSize:11,color:"#A1A1AA",marginTop:2}}>{desc}</div>
+            </button>;
+          })}
+        </div>
+      </C>}
 
       {/* Profil psychologique */}
       <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
@@ -411,6 +510,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(chosenTyp, neuroTrouble) : null;
     const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
 
+    // Matières compatibility analysis
+    const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
+
     // Parent profile for script
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
@@ -516,6 +618,55 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </div>}
           </button>
         </div>
+
+        {/* ── ANALYSE MATIERES (si 1 prof + multi matières) ── */}
+        {matAnalysis && matAnalysis.type === "incompatible" && (
+          <C style={{ marginBottom: 14, background: "#FEF2F2", border: "2px solid #FCA5A5", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <Pill color="#E11D48">ALERTE — Matières incompatibles pour 1 prof</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} — Filières trop différentes</div>
+              </div>
+              <CopyBtn text={getIncompatibleScript(matAnalysis, nom, niveau)} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #E11D48" }}>
+              {getIncompatibleScript(matAnalysis, nom, niveau)}
+            </div>
+          </C>
+        )}
+
+        {matAnalysis && matAnalysis.type === "combo" && (
+          <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>{matAnalysis.combo.icon}</span>
+                  <Pill color="#16A34A">1 PROF POSSIBLE — Combo compatible</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} → {matAnalysis.combo.filiere}</div>
+              </div>
+              <CopyBtn text={getComboScript(matAnalysis.combo, nom, niveau)} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
+              {getComboScript(matAnalysis.combo, nom, niveau)}
+            </div>
+          </C>
+        )}
+
+        {matAnalysis && matAnalysis.type === "same_family" && (
+          <C style={{ marginBottom: 14, background: "#FFFBEB", border: "1px solid #FDE68A", padding: "12px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>✅</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Matières de la même famille — 1 prof possible</div>
+                <div style={{ fontSize: 11, color: "#71717A", marginTop: 2 }}>{matieres.join(" + ")} sont dans le même domaine. Un bon profil peut couvrir les deux.</div>
+              </div>
+            </div>
+          </C>
+        )}
 
         {/* ── BOUTON GENERER ── */}
         {!scriptGenerated && (
