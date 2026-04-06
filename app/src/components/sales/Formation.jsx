@@ -12,6 +12,7 @@ function SalesFormation({formations, progress={}, setProgress, user}){
   const [scoreVal,setScoreVal]=useState(80);
   const [completingMod,setCompletingMod]=useState(null);
   const [openMod,setOpenMod]=useState(null); // {pilierKey, idx} — reading a module
+  const [redoing,setRedoing]=useState(false);
 
   const userId = user?.id || "unknown";
   const userProgress = progress[userId] || {};
@@ -51,7 +52,7 @@ function SalesFormation({formations, progress={}, setProgress, user}){
     const isCurrent=!isDone;
 
     return <div>
-      <Btn sm outline color="#71717A" onClick={()=>setOpenMod(null)} style={{marginBottom:12}}>← Retour aux modules</Btn>
+      <Btn sm outline color="#71717A" onClick={()=>{setOpenMod(null);setRedoing(false);}} style={{marginBottom:12}}>← Retour aux modules</Btn>
 
       {/* Header */}
       <div style={{background:`linear-gradient(135deg,${pc},${pc}CC)`,borderRadius:16,padding:24,marginBottom:16}}>
@@ -119,11 +120,30 @@ function SalesFormation({formations, progress={}, setProgress, user}){
         <Btn color={pc} full onClick={()=>completeModule(m.id)} style={{padding:"13px",borderRadius:99,fontSize:14}}>Valider le module ✓</Btn>
       </div>}
 
-      {isDone&&<C style={{background:"#F0FDF4",border:"1px solid #C0EAD3",textAlign:"center",padding:24}}>
+      {isDone&&!redoing&&<C style={{background:"#F0FDF4",border:"1px solid #C0EAD3",textAlign:"center",padding:24}}>
         <div style={{fontSize:28,marginBottom:6}}>🎉</div>
         <div style={{fontSize:16,fontWeight:800,color:"#15803D",fontFamily:"'Outfit',sans-serif"}}>Module terminé {score?`— Score : ${score}%`:""}</div>
-        {openMod.idx<op.modules.length-1&&<Btn sm color="#16A34A" onClick={()=>setOpenMod({pk:openMod.pk,idx:openMod.idx+1})} style={{marginTop:10}}>Module suivant →</Btn>}
+        <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:12}}>
+          <Btn sm outline color="#DA4F00" onClick={()=>setRedoing(true)}>Refaire le module</Btn>
+          {openMod.idx<op.modules.length-1&&<Btn sm color="#16A34A" onClick={()=>{setRedoing(false);setOpenMod({pk:openMod.pk,idx:openMod.idx+1});}}>Module suivant →</Btn>}
+        </div>
       </C>}
+
+      {isDone&&redoing&&<div style={{background:"#DA4F00"+"08",borderRadius:14,border:"1px solid #FED7AA",padding:18,marginBottom:14}}>
+        <div style={{fontSize:14,fontWeight:800,color:"#DA4F00",marginBottom:4,fontFamily:"'Outfit',sans-serif"}}>Refaire ce module</div>
+        <div style={{fontSize:12,color:"#71717A",marginBottom:12}}>Ton ancien score ({score}%) sera remplacé par le nouveau.</div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,color:"#71717A",marginBottom:6}}>Nouveau score (0-100)</div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <input type="range" min={0} max={100} value={scoreVal} onChange={e=>setScoreVal(Number(e.target.value))} style={{flex:1,accentColor:"#DA4F00"}}/>
+            <div style={{width:46,height:46,borderRadius:"50%",background:"#DA4F00"+"18",border:"2px solid #DA4F00",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:17,color:"#DA4F00",flexShrink:0,fontFamily:"'Outfit',sans-serif"}}>{scoreVal}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <Btn color="#DA4F00" onClick={()=>{completeModule(m.id);setRedoing(false);}} style={{padding:"11px 20px",borderRadius:99}}>Valider le nouveau score ✓</Btn>
+          <Btn outline color="#71717A" onClick={()=>setRedoing(false)}>Annuler</Btn>
+        </div>
+      </div>}
     </div>;
   }
 
