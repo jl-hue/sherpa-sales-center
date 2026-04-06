@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
 import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
-import { getArgs } from '../../constants/argEngine';
+import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
 import MatriceNeuro from './MatriceNeuro';
 

@@ -49,6 +49,7 @@ export default function App(){
   const [matchings,  setMatchings]   = useState(INIT_MATCHINGS);
   const [formations, setFormations]  = useState(FORMATION_DEFAULT);
   const [extraUsers, setExtraUsers]  = useState([]);
+  const [progress, setProgress] = useState({});
 
   async function loadAll(){
     setLoading(true); setDbError(null);
@@ -75,6 +76,8 @@ export default function App(){
         const uRow=cfg.data.find(r=>r.key==="extra_users");
         if(fRow?.value) try{setFormations(JSON.parse(fRow.value));}catch(e){}
         if(uRow?.value) try{setExtraUsers(JSON.parse(uRow.value));}catch(e){}
+        const pRow=cfg.data.find(r=>r.key==="formation_progress");
+        if(pRow?.value) try{setProgress(JSON.parse(pRow.value));}catch(e){}
       }
       setDbReady(true);
     } catch(e){
@@ -97,7 +100,7 @@ export default function App(){
     setUser(null);setSpace(null);setPage(null);
     setDbReady(false);setDbError(null);
     setFeedbacks(INIT_FEEDBACKS);setMatchings(INIT_MATCHINGS);
-    setDemandes(INIT_DEMANDES);setRentree(INIT_RENTREE);setSuggestions(INIT_SUGGESTIONS);
+    setDemandes(INIT_DEMANDES);setRentree(INIT_RENTREE);setSuggestions(INIT_SUGGESTIONS);setProgress({});
   }
 
   useEffect(()=>{
@@ -159,6 +162,11 @@ export default function App(){
     try{await sb.from("config").upsert({key:"formations",value:JSON.stringify(next)},{onConflict:"key"});}
     catch(e){console.warn("Supabase write skipped:",e.message);}
   }
+  async function saveProgress(next){
+    setProgress(next);
+    try{await sb.from("config").upsert({key:"formation_progress",value:JSON.stringify(next)},{onConflict:"key"});}
+    catch(e){console.warn("Supabase write skipped:",e.message);}
+  }
   async function saveExtraUsers(fn){
     const next=typeof fn==="function"?fn(extraUsers):fn;
     setExtraUsers(next);
@@ -184,7 +192,7 @@ export default function App(){
     lanterne:  ()=><SalesLanterne stock={stock} setMatchings={addMatching} user={user}/>,
     scripts:   ()=><SalesScripts scripts={scripts}/>,
     objections:()=><SalesObjections objections={objections} setSuggestions={(s)=>addSuggestion(s)}/>,
-    formation: ()=><SalesFormation formations={formations}/>,
+    formation: ()=><SalesFormation formations={formations} progress={progress} setProgress={saveProgress} user={user}/>,
     feedback:  ()=><SalesFeedback feedbacks={myFeedbacks} setFeedbacks={addFeedback} setSuggestions={addSuggestion} user={user}/>,
     demandes:  ()=><SalesDemandes demandes={myDemandes} setDemandes={addDemande} user={user}/>,
     rentree:   ()=><SalesRentree rentree={myRentree} setRentree={addRentree} user={user}/>,
@@ -196,7 +204,7 @@ export default function App(){
     "m-progression":()=><ManagerProgression matchings={matchings}/>,
     "m-users":      ()=><ManagerUsers extraUsers={extraUsers} setExtraUsers={saveExtraUsers}/>,
     "f-scripts":    ()=><FormateurScripts scripts={scripts} setScripts={()=>{}}/>,
-    "f-formations": ()=><FormateurFormations formations={formations} setFormations={saveFormations}/>,
+    "f-formations": ()=><FormateurFormations formations={formations} setFormations={saveFormations} progress={progress} setProgress={saveProgress}/>,
     "f-stock":      ()=><FormateurStock stock={stock} setStock={updateStock}/>,
     "f-suggestions":()=><FormateurSuggestions suggestions={suggestions} setSuggestions={setSuggestions} updateStatut={updateSuggestionStatut} deleteSugg={deleteSuggestion}/>,
     "f-users":      ()=><FormateurUsers/>,
