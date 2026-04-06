@@ -165,12 +165,13 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setParentProfile("");
   }
 
-  async function generateScript() {
-    setScriptGenerated(true);
+  function generateScript() {
     const idealTyp = portrait[0].typ;
     const chosenTyp = activeOption === "A" ? idealTyp : chosenB;
     const followed = activeOption === "A";
-    await setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp, followed, niveau, psycho });
+    setScriptGenerated(true);
+    // Fire and forget — don't await to avoid re-render resetting state
+    setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp, followed, niveau, psycho }).catch(()=>{});
   }
 
   const accompLabel = accomp <= 3 ? "Douceur & Empathie" : accomp >= 7 ? "Fermete & Cadre" : "Equilibre";
