@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
 import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
@@ -165,13 +165,21 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setParentProfile("");
   }
 
+  const matchingSavedRef = useRef(false);
   function generateScript() {
-    const idealTyp = portrait[0].typ;
-    const chosenTyp = activeOption === "A" ? idealTyp : chosenB;
-    const followed = activeOption === "A";
     setScriptGenerated(true);
-    // Fire and forget — don't await to avoid re-render resetting state
-    setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp, followed, niveau, psycho }).catch(()=>{});
+    matchingSavedRef.current = false;
+  }
+  // Save matching only when leaving step 2 (reset)
+  function resetAndSave() {
+    if (!matchingSavedRef.current && portrait && scriptGenerated) {
+      matchingSavedRef.current = true;
+      const idealTyp = portrait[0].typ;
+      const chosenTyp = activeOption === "A" ? idealTyp : chosenB;
+      const followed = activeOption === "A";
+      setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp, followed, niveau, psycho });
+    }
+    reset();
   }
 
   const accompLabel = accomp <= 3 ? "Douceur & Empathie" : accomp >= 7 ? "Fermete & Cadre" : "Equilibre";
@@ -448,7 +456,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
               {parentProfile && <span style={{ color: "#D97706", fontWeight: 600 }}> · 🎭 {ppLabel}</span>}
             </p>
           </div>
-          <Btn onClick={reset} outline color="#71717A" sm>← Nouveau</Btn>
+          <Btn onClick={resetAndSave} outline color="#71717A" sm>← Nouveau</Btn>
         </div>
 
         {/* ── DUAL PATH ── */}
