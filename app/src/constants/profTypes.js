@@ -285,7 +285,7 @@ export const PARCOURSUP_HIERARCHY = {
     },
   },
 };
-export const MATIERES=["Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
+export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
 
 export const RULES={
   niveau:{"Primaire":{"Professeur EN":35,"Étudiant université":25,"AESH":15},"Collège":{"Professeur EN":25,"Étudiant université":25,"Étudiant grande école":10,"AESH":10},"Lycée général":{"Étudiant grande école":30,"Professeur certifié":25,"Étudiant université":15},"Lycée pro":{"Professeur EN":25,"Professeur certifié":20,"Formateur":20},"BTS / IUT":{"Étudiant université":30,"Professeur certifié":20,"Formateur":15},"Prépa":{"Étudiant grande école":45,"Professeur certifié":20},"Université":{"Étudiant grande école":35,"Étudiant université":25,"Professeur certifié":15}},
@@ -489,10 +489,12 @@ function getProfilForMatiere(matieres) {
 // Vérifie si la filière visée couvre les matières demandées
 function filiereCouvreMatieres(filiere, matieres) {
   if (!matieres || matieres.length === 0) return true;
+  // Filtrer "Soutien scolaire" et "Autre" (cas speciaux qui n'ont pas a etre check)
+  const matieresToCheck = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
+  if (matieresToCheck.length === 0) return true;
   const couvertes = FILIERE_MATIERES[filiere];
   if (!couvertes) return true; // Pas de mapping = on suppose OK
-  // Toutes les matieres demandees doivent etre dans la filiere
-  return matieres.every(m => couvertes.includes(m) || m === "Autre");
+  return matieresToCheck.every(m => couvertes.includes(m));
 }
 
 // Wrapper qui priorise la matiere demandee si elle n'est pas couverte par la filiere Parcoursup
@@ -516,6 +518,26 @@ function _getRecommendedHierarchyRaw(diag) {
 
   const has = (m) => matieres.includes(m);
   const hasAny = (...mats) => mats.some(m => matieres.includes(m));
+
+  // ── SOUTIEN SCOLAIRE (toutes matières) — priorité absolue ──
+  // Recommande un profil polyvalent capable de couvrir toutes les matieres
+  const isSoutienScolaire = matieres.includes("📚 Soutien scolaire (toutes matières)");
+  if (isSoutienScolaire) {
+    // Primaire / College : prof des ecoles ou etudiant universitaire polyvalent
+    if (niveau === "Primaire") {
+      return ["Professeur EN", "Professeur des écoles (1er degré)"];
+    }
+    if (niveau === "Collège") {
+      // College : Etudiant universitaire polyvalent (sciences ou lettres selon equilibre)
+      return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+    }
+    // Lycee : trop large pour 1 prof, mais on recommande un coach methodologie
+    if (niveau === "Lycée général" || niveau === "Lycée pro") {
+      return ["Formateur", "Coach scolaire / méthodologie"];
+    }
+    // Defaut : coach methodologie
+    return ["Formateur", "Coach scolaire / méthodologie"];
+  }
 
   // ── PRIMAIRE / COLLEGE (sauf 3e brevet) ──
   if (niveau === "Primaire" || (niveau === "Collège" && classe !== "3e")) {

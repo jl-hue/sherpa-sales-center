@@ -193,6 +193,10 @@ const NIVEAUX_COLLEGE = ["Primaire", "Collège"];
 const NIVEAUX_POLYVALENT = ["Primaire", "Collège", "Lycée pro"];
 
 function analyzeMatieresCompatibility(matieres, niveau) {
+  // Cas special : Soutien scolaire = 1 prof polyvalent toutes matieres
+  if (matieres && matieres.includes("📚 Soutien scolaire (toutes matières)")) {
+    return { compatible: true, type: "soutien_scolaire", mats: matieres, niveau };
+  }
   if (!matieres || matieres.length <= 1) return { compatible: true, type: "single" };
 
   if (NIVEAUX_POLYVALENT.includes(niveau)) {
@@ -881,6 +885,43 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </div>
           </C>
         )}
+
+        {/* SOUTIEN SCOLAIRE — toutes matieres */}
+        {matAnalysis && matAnalysis.type === "soutien_scolaire" && (()=>{
+          const isPrimaire = niveau === "Primaire";
+          const isCollege = niveau === "Collège";
+          const isLycee = niveau === "Lycée général" || niveau === "Lycée pro";
+          let recommandation = "";
+          let script = "";
+          if (isPrimaire) {
+            recommandation = "Professeur des écoles";
+            script = `Pour ${nom} en primaire, la meilleure approche c'est UN seul professeur des écoles qui couvre toutes les matières.\n\nPourquoi ?\n• En primaire, le programme est conçu pour être enseigné par UN seul prof — c'est le modèle de l'Éducation Nationale\n• ${nom} a besoin de stabilité et d'un seul interlocuteur pour construire un lien de confiance\n• Le prof voit l'enfant globalement : ses forces, ses fragilités, son rythme\n• Lecture, écriture, calcul, éveil — tout est lié à cet âge, un seul prof comprend les transferts d'apprentissage\n\nNotre recommandation : un professeur des écoles expérimenté qui adapte ses séances au niveau exact de ${nom}. Il peut aussi être un excellent étudiant en sciences de l'éducation ou en master MEEF.`;
+          } else if (isCollege) {
+            recommandation = "Étudiant universitaire polyvalent";
+            script = `Pour ${nom} au collège, on peut tout à fait trouver UN seul prof qui couvre toutes les matières — c'est même souvent la meilleure approche jusqu'à la 3ème.\n\nPourquoi ?\n• Le programme du collège reste suffisamment généraliste pour qu'un bon étudiant universitaire (L2-M2) maîtrise l'ensemble\n• ${nom} crée un vrai lien de confiance avec un interlocuteur unique\n• Les matières se renforcent mutuellement (rigueur en maths aide en français, méthode en histoire aide en SVT...)\n• Organisation simplifiée pour vous : un seul créneau, un seul suivi\n• Le prof connaît les forces ET les faiblesses de ${nom} dans toutes les matières\n\nNotre recommandation : un étudiant universitaire avec un bon niveau général (L3-M2 idéalement) ou un professeur de l'EN qui enseigne déjà à ce niveau.`;
+          } else if (isLycee) {
+            recommandation = "Coach scolaire / méthodologie";
+            script = `Pour ${nom} au lycée, je vais être transparent : trouver UN seul prof excellent dans TOUTES les matières est très compliqué à ce niveau. Le lycée exige des spécialistes par domaine.\n\nMais voici ce qu'on peut faire pour répondre à votre besoin :\n\n1. Un coach scolaire / méthodologie — il ne va pas enseigner les matières, il va apprendre à ${nom} à mieux travailler dans TOUTES les matières (organisation, méthode, gestion du stress, planification)\n\n2. Si besoin, on complète avec 1 ou 2 spécialistes sur les matières où ${nom} a le plus de difficultés (souvent maths + français suffisent)\n\nL'avantage : ${nom} gagne en autonomie et en méthode pour TOUTES ses matières, pas juste celles où on a un prof. C'est un investissement qui rayonne sur toute la scolarité.\n\nVoulez-vous qu'on commence par le coaching méthodologique ?`;
+          } else {
+            recommandation = "Coach scolaire / méthodologie";
+            script = `Pour un soutien scolaire global, on recommande un coach méthodologie qui travaille la méthode de travail (transversale à toutes les matières) plutôt qu'un prof spécialiste.`;
+          }
+          return <C style={{ marginBottom: 14, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>📚</span>
+                  <Pill color="#0B68B4">SOUTIEN SCOLAIRE — Toutes matières</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{niveau || "Tous niveaux"} → {recommandation}</div>
+              </div>
+              <CopyBtn text={script} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #0B68B4" }}>
+              {script}
+            </div>
+          </C>;
+        })()}
 
         {matAnalysis && matAnalysis.type === "same_family" && (
           <C style={{ marginBottom: 14, background: "#FFFBEB", border: "1px solid #FDE68A", padding: "12px 16px" }}>
