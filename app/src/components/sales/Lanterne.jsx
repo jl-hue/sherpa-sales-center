@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, getRecommendedHierarchy } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, getRecommendedHierarchy } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -18,7 +18,7 @@ const PARENT_PROFILES = [
 // ── Script Generation by Parent Profile ─────────────────────────
 // Construit une chaine de contexte academique precis pour personnaliser les scripts
 function buildAcademicContext(diag) {
-  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, prepaFiliere, univFiliere } = diag || {};
+  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere } = diag || {};
   const parts = [];
   if (niveau === "Collège" && classe) {
     parts.push(`en ${classe}`);
@@ -27,6 +27,7 @@ function buildAcademicContext(diag) {
     parts.push(`en ${classe}`);
     if (spes.length > 0) parts.push(`spés ${spes.join("/")}`);
     if (parcoursupCible) parts.push(`cible ${parcoursupCible}`);
+    if (parcoursupEcole) parts.push(`vise ${parcoursupEcole}`);
   } else if (niveau === "Lycée pro" && classe) {
     parts.push(`en ${classe}`);
   } else if (niveau === "Prépa" && prepaFiliere) {
@@ -287,7 +288,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [classe, setClasse] = useState("");
   const [brevetPrep, setBrevetPrep] = useState(false);
   const [spes, setSpes] = useState([]);
-  const [parcoursupCible, setParcoursupCible] = useState("");
+  const [parcoursupCategorie, setParcoursupCategorie] = useState(""); // ex: "Prépa scientifique"
+  const [parcoursupCible, setParcoursupCible] = useState(""); // ex: "MPSI / MP (Maths-Physique)"
+  const [parcoursupEcole, setParcoursupEcole] = useState(""); // ex: "Louis-le-Grand (Paris)"
   const [prepaFiliere, setPrepaFiliere] = useState("");
   const [univFiliere, setUnivFiliere] = useState("");
 
@@ -324,7 +327,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setClasse("");
     setBrevetPrep(false);
     setSpes([]);
+    setParcoursupCategorie("");
     setParcoursupCible("");
+    setParcoursupEcole("");
     setPrepaFiliere("");
     setUnivFiliere("");
   }
@@ -357,7 +362,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const args = getArgs(typ, psycho);
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
-    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, prepaFiliere, univFiliere };
+    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere };
     const introText = getIntroScript(pp, nom, psycho, diagCtx);
     const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie, diagCtx);
     const closingText = getClosingScript(pp, nom, label, diagCtx);
@@ -483,7 +488,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
     // ── Recommandation hierarchique LIVE (preview) ──
     const livePath = niveau ? getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCible, prepaFiliere, univFiliere,
+      niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
       matieres, psycho, objectif: objectifVie
     }) : null;
     let liveEmoji = "🎯", liveDesc = "", liveLabel = "";
@@ -553,11 +558,43 @@ function SalesLanterne({ stock, setMatchings, user }) {
               {classe === "Terminale" && (
                 <div style={{ marginTop: 14 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 6 }}>🎯 Cible Parcoursup</div>
-                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Quelles études supérieures vise l'élève ?</div>
-                  <select value={parcoursupCible} onChange={e => setParcoursupCible(e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Sélection en 3 étapes : catégorie → option → école précise</div>
+
+                  {/* Étape 1 : Catégorie */}
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#71717A", marginBottom: 5 }}>1. Type d'études</div>
+                  <select value={parcoursupCategorie} onChange={e => { setParcoursupCategorie(e.target.value); setParcoursupCible(""); setParcoursupEcole(""); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff", marginBottom: 10 }}>
                     <option value="">— Sélectionner —</option>
-                    {PARCOURSUP_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    {Object.entries(PARCOURSUP_HIERARCHY).map(([k, v]) => <option key={k} value={k}>{v.emoji} {k}</option>)}
                   </select>
+
+                  {/* Étape 2 : Option précise */}
+                  {parcoursupCategorie && PARCOURSUP_HIERARCHY[parcoursupCategorie] && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#71717A", marginBottom: 5 }}>2. Filière / Programme précis</div>
+                      <select value={parcoursupCible} onChange={e => { setParcoursupCible(e.target.value); setParcoursupEcole(""); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff", marginBottom: 10 }}>
+                        <option value="">— Sélectionner —</option>
+                        {Object.entries(PARCOURSUP_HIERARCHY[parcoursupCategorie].options).map(([k, v]) => <option key={k} value={k}>{v.emoji} {k}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Étape 3 : École précise */}
+                  {parcoursupCible && PARCOURSUP_HIERARCHY[parcoursupCategorie]?.options[parcoursupCible] && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#71717A", marginBottom: 5 }}>3. École / Établissement ciblé <span style={{ color: "#A1A1AA" }}>(optionnel)</span></div>
+                      <select value={parcoursupEcole} onChange={e => setParcoursupEcole(e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+                        <option value="">— Sélectionner (optionnel) —</option>
+                        {PARCOURSUP_HIERARCHY[parcoursupCategorie].options[parcoursupCible].ecoles.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Récapitulatif */}
+                  {parcoursupCible && (
+                    <div style={{ marginTop: 10, padding: "8px 12px", background: "#F0FDF4", borderRadius: 8, border: "1px solid #C0EAD3", fontSize: 11, color: "#15803D" }}>
+                      🎯 <strong>{parcoursupCategorie}</strong> › {parcoursupCible}{parcoursupEcole && ` › ${parcoursupEcole}`}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -897,7 +934,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
     // ── Recommandation hiérarchique précise ──
     const recommendedPath = getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCible, prepaFiliere, univFiliere,
+      niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
       matieres, psycho, objectif: objectifVie
     });
     // Récupère l'emoji + description du nœud final

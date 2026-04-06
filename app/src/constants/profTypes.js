@@ -34,6 +34,7 @@ export const SPE_PREMIERE=[
   "Arts","Bio-écologie","EPPCS","Maths complémentaires","Maths expertes",
 ];
 
+// Liste plate (legacy, utilisée par l'ancien select)
 export const PARCOURSUP_OPTIONS=[
   "Prépa MPSI / MP (Maths-Physique)",
   "Prépa PCSI / PC (Physique-Chimie)",
@@ -53,6 +54,237 @@ export const PARCOURSUP_OPTIONS=[
   "BTS / BUT",
   "Pas encore décidé",
 ];
+
+// Hiérarchie complète Parcoursup avec écoles cibles précises
+export const PARCOURSUP_HIERARCHY = {
+  "Prépa scientifique": {
+    emoji: "🔬",
+    options: {
+      "MPSI / MP (Maths-Physique)": {
+        emoji: "📐",
+        ecoles: ["Louis-le-Grand (Paris)", "Henri-IV (Paris)", "Sainte-Geneviève (Versailles)", "Stanislas (Paris)", "Hoche (Versailles)", "Saint-Louis (Paris)", "Janson-de-Sailly (Paris)", "Massena (Nice)", "Du Parc (Lyon)", "Fermat (Toulouse)", "Pierre de Fermat (Toulouse)", "Autre"],
+      },
+      "PCSI / PC (Physique-Chimie)": {
+        emoji: "⚗️",
+        ecoles: ["Louis-le-Grand (Paris)", "Henri-IV (Paris)", "Sainte-Geneviève (Versailles)", "Stanislas (Paris)", "Saint-Louis (Paris)", "Du Parc (Lyon)", "Fermat (Toulouse)", "Hoche (Versailles)", "Autre"],
+      },
+      "PTSI / PT (Physique-Techno)": {
+        emoji: "⚙️",
+        ecoles: ["Chaptal (Paris)", "Roosevelt (Reims)", "Vaucanson (Grenoble)", "La Martinière Monplaisir (Lyon)", "Autre"],
+      },
+      "BCPST (Bio-Chimie-Physique)": {
+        emoji: "🧬",
+        ecoles: ["Henri-IV (Paris)", "Saint-Louis (Paris)", "Hoche (Versailles)", "Pierre de Fermat (Toulouse)", "Du Parc (Lyon)", "Janson-de-Sailly (Paris)", "Lakanal (Sceaux)", "Autre"],
+      },
+      "MPI (Maths-Physique-Informatique)": {
+        emoji: "💻",
+        ecoles: ["Louis-le-Grand (Paris)", "Henri-IV (Paris)", "Stanislas (Paris)", "Sainte-Geneviève (Versailles)", "Autre"],
+      },
+      "TSI (Techno-Sciences-Industrielles)": {
+        emoji: "🏭",
+        ecoles: ["Chaptal (Paris)", "La Martinière Diderot (Lyon)", "Livet (Nantes)", "Autre"],
+      },
+    },
+  },
+  "Prépa éco / commerce": {
+    emoji: "💼",
+    options: {
+      "ECG voie Maths Appro + ESH": {
+        emoji: "📊",
+        ecoles: ["Ipésup (Paris)", "Saint-Louis (Paris)", "Notre-Dame du Grandchamp (Versailles)", "Stanislas (Paris)", "Sainte-Geneviève (Versailles)", "Du Parc (Lyon)", "Autre"],
+      },
+      "ECG voie Maths Appliquées + HGGMC": {
+        emoji: "📈",
+        ecoles: ["Ipésup (Paris)", "Notre-Dame du Grandchamp", "Stanislas (Paris)", "Saint-Louis (Paris)", "Autre"],
+      },
+      "ECT (Bac STMG)": {
+        emoji: "💰",
+        ecoles: ["Lycée Albert de Mun (Paris)", "Lycée Saint-Louis-de-Gonzague (Paris)", "Autre"],
+      },
+    },
+  },
+  "Prépa littéraire": {
+    emoji: "📚",
+    options: {
+      "Khâgne A/L (Hypokhâgne)": {
+        emoji: "📖",
+        ecoles: ["Henri-IV (Paris)", "Louis-le-Grand (Paris)", "Janson-de-Sailly (Paris)", "Fénelon (Paris)", "Du Parc (Lyon)", "Pierre de Fermat (Toulouse)", "Lakanal (Sceaux)", "Autre"],
+      },
+      "Khâgne B/L (Lettres-Sciences sociales)": {
+        emoji: "🏛️",
+        ecoles: ["Henri-IV (Paris)", "Lakanal (Sceaux)", "Du Parc (Lyon)", "Janson-de-Sailly (Paris)", "Autre"],
+      },
+      "Chartes (Archives-Paléographie)": {
+        emoji: "📜",
+        ecoles: ["Henri-IV (Paris)", "Louis-le-Grand (Paris)", "Autre"],
+      },
+    },
+  },
+  "École d'ingénieurs post-bac": {
+    emoji: "🔧",
+    options: {
+      "Réseau INSA (Lyon, Toulouse, Rennes, Rouen, Strasbourg)": {
+        emoji: "🏛️",
+        ecoles: ["INSA Lyon", "INSA Toulouse", "INSA Rennes", "INSA Rouen", "INSA Strasbourg", "INSA Centre Val de Loire", "INSA Hauts-de-France"],
+      },
+      "UTC / UTT / UTBM": {
+        emoji: "⚙️",
+        ecoles: ["UTC Compiègne", "UTT Troyes", "UTBM Belfort-Montbéliard"],
+      },
+      "Réseau Polytech": {
+        emoji: "🔬",
+        ecoles: ["Polytech Paris-Saclay", "Polytech Sorbonne", "Polytech Lyon", "Polytech Nice", "Polytech Marseille", "Polytech Nantes", "Polytech Grenoble", "Autre"],
+      },
+      "Concours Avenir / Puissance Alpha / Geipi": {
+        emoji: "🏅",
+        ecoles: ["ESILV (Paris-La Défense)", "ECE (Paris)", "EPF (Sceaux)", "ESIEE (Paris)", "ESTP (Cachan)", "Autre"],
+      },
+      "Prépa intégrée Polytechnique (Cycle Bachelor)": {
+        emoji: "🎯",
+        ecoles: ["X Bachelor (Polytechnique)", "Autre"],
+      },
+    },
+  },
+  "École de commerce post-bac": {
+    emoji: "🏢",
+    options: {
+      "Concours SESAME": {
+        emoji: "🌍",
+        ecoles: ["KEDGE BBA", "EDHEC BBA (Lille)", "EM Strasbourg BBA", "EM Normandie BBA", "ESSEC BBA", "Autre"],
+      },
+      "Concours ACCÈS": {
+        emoji: "🎓",
+        ecoles: ["ESSCA (Angers)", "IÉSEG (Lille/Paris)", "ESDES (Lyon)"],
+      },
+      "Concours ECRICOME / PASS": {
+        emoji: "💼",
+        ecoles: ["NEOMA BS", "KEDGE BS", "Rennes School of Business", "Autre"],
+      },
+      "Programmes Bachelor": {
+        emoji: "📋",
+        ecoles: ["EBS Paris", "ESCE Paris", "ICN BS", "Autre"],
+      },
+    },
+  },
+  "Sciences Po / IEP": {
+    emoji: "🌍",
+    options: {
+      "Sciences Po Paris": {
+        emoji: "🇫🇷",
+        ecoles: ["Sciences Po Paris (campus Paris)", "Sciences Po Reims", "Sciences Po Le Havre", "Sciences Po Menton", "Sciences Po Nancy", "Sciences Po Poitiers", "Sciences Po Dijon"],
+      },
+      "Réseau ScPo (concours commun)": {
+        emoji: "📍",
+        ecoles: ["Sciences Po Lille", "Sciences Po Lyon", "Sciences Po Toulouse", "Sciences Po Aix", "Sciences Po Rennes", "Sciences Po Strasbourg", "Sciences Po Saint-Germain-en-Laye"],
+      },
+      "Sciences Po Bordeaux": { emoji: "🍷", ecoles: ["Sciences Po Bordeaux"] },
+      "Sciences Po Grenoble": { emoji: "🏔️", ecoles: ["Sciences Po Grenoble"] },
+    },
+  },
+  "Médecine / Santé": {
+    emoji: "⚕️",
+    options: {
+      "PASS (Parcours Accès Santé Spécifique)": {
+        emoji: "🩺",
+        ecoles: ["Sorbonne Université (Paris)", "Université Paris-Cité", "Université Paris-Saclay", "Lyon 1", "Aix-Marseille", "Bordeaux", "Lille", "Toulouse Paul Sabatier", "Strasbourg", "Autre"],
+      },
+      "LAS (Licence Accès Santé)": {
+        emoji: "🧬",
+        ecoles: ["LAS Sciences de la Vie", "LAS Psycho", "LAS Sciences", "LAS Droit", "LAS STAPS", "LAS Lettres", "Autre"],
+      },
+      "Études d'Orthophonie / Ergo / Kiné": {
+        emoji: "💆",
+        ecoles: ["IFMK (Kiné)", "Centre de formation orthophonie", "École d'ergothérapie", "Autre"],
+      },
+      "Concours infirmier (IFSI hors Parcoursup)": {
+        emoji: "💉",
+        ecoles: ["IFSI Paris", "IFSI Lyon", "Autre IFSI"],
+      },
+    },
+  },
+  "Université": {
+    emoji: "🎒",
+    options: {
+      "Licence Sciences (Maths, Physique, Info, Chimie)": {
+        emoji: "🔬",
+        ecoles: ["Sorbonne Université", "Paris-Saclay", "Université Paris-Cité", "Lyon 1 (Claude Bernard)", "Aix-Marseille Université", "Toulouse III", "Autre"],
+      },
+      "Licence SVT / Biologie": {
+        emoji: "🌱",
+        ecoles: ["Sorbonne Université", "Paris-Saclay", "Lyon 1", "Autre"],
+      },
+      "Licence Lettres / Philo": {
+        emoji: "📖",
+        ecoles: ["Sorbonne Université (Paris IV)", "Paris-Nanterre", "Lyon 2 (Lumière)", "Autre"],
+      },
+      "Licence Histoire / Géographie": {
+        emoji: "🗺️",
+        ecoles: ["Sorbonne Université", "Paris 1 Panthéon-Sorbonne", "Paris-Nanterre", "Autre"],
+      },
+      "Licence Droit": {
+        emoji: "⚖️",
+        ecoles: ["Paris 1 Panthéon-Sorbonne", "Paris 2 Assas", "Paris-Saclay", "Lyon 3", "Aix-Marseille", "Autre"],
+      },
+      "Licence Économie / Gestion / AES": {
+        emoji: "💰",
+        ecoles: ["Paris 1", "Paris-Dauphine", "Paris-Saclay", "Lyon 2", "Autre"],
+      },
+      "Licence LEA / LLCER (Langues)": {
+        emoji: "🌐",
+        ecoles: ["Sorbonne Nouvelle (Paris 3)", "INALCO (Paris)", "Paris-Nanterre", "Autre"],
+      },
+      "Licence Psychologie": {
+        emoji: "🧠",
+        ecoles: ["Paris-Cité", "Paris-Nanterre", "Lyon 2", "Autre"],
+      },
+      "STAPS (Sport)": {
+        emoji: "🏃",
+        ecoles: ["Paris-Saclay", "Paris-Cité", "Lyon 1", "Autre"],
+      },
+    },
+  },
+  "BTS / BUT (DUT)": {
+    emoji: "🛠️",
+    options: {
+      "BUT Informatique": { emoji: "💻", ecoles: ["IUT Orsay", "IUT Lyon 1", "IUT Toulouse 3", "Autre"] },
+      "BUT Gestion / GEA": { emoji: "📊", ecoles: ["IUT Sceaux", "IUT Paris-Rives de Seine", "Autre"] },
+      "BUT Mesures Physiques": { emoji: "📏", ecoles: ["IUT Orsay", "IUT Lyon 1", "Autre"] },
+      "BTS Commerce International": { emoji: "🌍", ecoles: ["Lycée privé/public BTS CI", "Autre"] },
+      "BTS Comptabilité-Gestion": { emoji: "💰", ecoles: ["Lycée privé/public BTS CG", "Autre"] },
+      "BTS Tourisme / Hôtellerie": { emoji: "🏨", ecoles: ["Lycée hôtelier", "Autre"] },
+      "Autre BTS / BUT": { emoji: "📋", ecoles: ["À préciser"] },
+    },
+  },
+  "École spécialisée": {
+    emoji: "🎨",
+    options: {
+      "École d'art / design (Beaux-Arts, ENSAD)": {
+        emoji: "🎨",
+        ecoles: ["ENSAD (Paris)", "ENSBA (Beaux-Arts Paris)", "Boulle (Paris)", "Olivier de Serres (Paris)", "Estienne (Paris)", "Autre"],
+      },
+      "École d'architecture (ENSA)": {
+        emoji: "🏛️",
+        ecoles: ["ENSA Paris-Belleville", "ENSA Paris-Val de Seine", "ENSA Versailles", "ENSA Lyon", "Autre"],
+      },
+      "École de cinéma / audiovisuel": {
+        emoji: "🎬",
+        ecoles: ["La Fémis (Paris)", "Louis Lumière (Saint-Denis)", "ESRA", "Autre"],
+      },
+      "Conservatoire (musique, danse, théâtre)": {
+        emoji: "🎭",
+        ecoles: ["CNSMD Paris", "CNSMD Lyon", "Conservatoire régional", "Autre"],
+      },
+    },
+  },
+  "Pas encore décidé / Autre": {
+    emoji: "❓",
+    options: {
+      "Année de césure / réorientation": { emoji: "🛤️", ecoles: ["—"] },
+      "Études à l'étranger": { emoji: "🌍", ecoles: ["UK", "USA", "Canada", "Belgique", "Suisse", "Autre"] },
+      "Pas encore décidé": { emoji: "🤔", ecoles: ["—"] },
+    },
+  },
+};
 export const MATIERES=["Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
 
 export const RULES={
