@@ -134,8 +134,17 @@ const COMPATIBLE_COMBOS=[
   {mats:["Français","Anglais"],profil:"étudiant en LEA ou lettres bilingue",filiere:"LEA / LLCER",icon:"📝"},
 ];
 
+const NIVEAUX_COLLEGE = ["Primaire", "Collège"];
+// Niveaux où un seul prof peut couvrir toutes les matières (jusqu'à la 3e)
+const NIVEAUX_POLYVALENT = ["Primaire", "Collège", "Lycée pro"];
+
 function analyzeMatieresCompatibility(matieres, niveau) {
   if (!matieres || matieres.length <= 1) return { compatible: true, type: "single" };
+
+  // Primaire / Collège / Lycée pro → un seul prof peut tout faire
+  if (NIVEAUX_POLYVALENT.includes(niveau)) {
+    return { compatible: true, type: "college_polyvalent", mats: matieres, niveau };
+  }
 
   // Check which families each matiere belongs to
   const families = new Set();
@@ -151,7 +160,6 @@ function analyzeMatieresCompatibility(matieres, niveau) {
   let bestScore = 0;
   for (const combo of COMPATIBLE_COMBOS) {
     const comboSorted = [...combo.mats].sort();
-    // Check if all combo mats are in selected matieres
     const matches = comboSorted.filter(m => sorted.includes(m)).length;
     if (matches === comboSorted.length && matches >= 2 && matches > bestScore) {
       bestMatch = combo;
@@ -667,6 +675,28 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </div>
           </C>
         )}
+
+        {/* College / Primaire — 1 prof polyvalent */}
+        {matAnalysis && matAnalysis.type === "college_polyvalent" && (()=>{
+          const n = nom;
+          const matsList = matieres.join(", ");
+          const polyScript = `Bonne nouvelle — au niveau ${niveau}, un seul professeur peut tout à fait accompagner ${n} en ${matsList}.\n\nPourquoi ? Parce qu'au collège, le programme reste suffisamment généraliste pour qu'un bon étudiant universitaire ou un professeur de l'Éducation Nationale maîtrise l'ensemble des matières.\n\nCe que je vous recommande :\n• Un étudiant universitaire polyvalent (L2-M1) qui a un bon niveau général — il pourra travailler toutes les matières avec ${n} dans la même séance\n• Ou un professeur de l'Éducation Nationale qui enseigne déjà à ce niveau et connaît parfaitement les attendus du programme\n\nL'avantage d'un seul prof pour ${n} :\n• Un seul interlocuteur = ${n} crée un vrai lien de confiance\n• Le prof voit les connexions entre les matières (ex : la rigueur en maths aide en français)\n• Organisation simplifiée pour vous — un seul créneau, un seul suivi\n• Le prof connaît les forces ET les faiblesses de ${n} dans toutes les matières\n\nC'est d'ailleurs ce qu'on recommande jusqu'à la 3ème — un prof polyvalent qui suit l'élève globalement est souvent plus efficace que plusieurs spécialistes à ce niveau.`;
+          return <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>✅</span>
+                  <Pill color="#16A34A">1 PROF POLYVALENT — {niveau}</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matsList} — Un seul prof peut tout couvrir à ce niveau</div>
+              </div>
+              <CopyBtn text={polyScript} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
+              {polyScript}
+            </div>
+          </C>;
+        })()}
 
         {/* ── BOUTON GENERER ── */}
         {!scriptGenerated && (
