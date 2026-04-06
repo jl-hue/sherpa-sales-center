@@ -414,6 +414,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
   // ── State: Guide d'argumentation (Step 2) ──────────────────────
   const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
   const [profProposePath, setProfProposePath] = useState([]); // selection en cascade dans PROF_HIERARCHY
+  const [expandedRank, setExpandedRank] = useState(null); // index du top 3 deplie
 
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
@@ -1347,8 +1348,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
           const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
           const neuroWarn = (neuroActive && neuroTrouble) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom, classe) : null;
 
+          const isExpanded = expandedRank === idx;
           return (
-            <C key={typ} style={{ marginBottom: 14, border: `2px solid ${border}`, background: idx === 0 ? bg : "#fff", padding: "18px 20px" }}>
+            <C key={typ} style={{ marginBottom: 14, border: `2px solid ${border}`, background: idx === 0 ? bg : "#fff", padding: "18px 20px", cursor: "pointer" }} onClick={() => setExpandedRank(isExpanded ? null : idx)}>
               {/* Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1364,7 +1366,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
                     <div style={{ fontSize: 12, color, fontWeight: 600 }}>↳ {refined}</div>
                   </div>
                 </div>
-                <CopyBtn text={fullScript} />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
+                  <CopyBtn text={fullScript} />
+                  <span style={{ fontSize: 18, color, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
+                </div>
               </div>
 
               {/* Score bar */}
@@ -1376,34 +1381,46 @@ function SalesLanterne({ stock, setMatchings, user }) {
               </div>
 
               {/* Stock status */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: isExpanded ? 14 : 0 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: dispo ? "#16A34A" : "#E11D48" }} />
                 <span style={{ fontSize: 11, fontWeight: 600, color: dispo ? "#15803D" : "#B91C1C" }}>
                   {dispo ? `✓ Disponible en stock (${nb})` : `✗ Stock indisponible (${nb})`}
                 </span>
               </div>
 
-              {/* 4 Argument mini-cards */}
-              {renderArgCards(args)}
+              {/* Indication clic si replie */}
+              {!isExpanded && (
+                <div style={{ marginTop: 10, fontSize: 11, color: "#A1A1AA", textAlign: "center", fontStyle: "italic" }}>
+                  Clique pour voir les 4 arguments de prescription
+                </div>
+              )}
 
-              {/* Neuro section */}
-              {renderNeuroSection(typ)}
+              {/* Contenu deplie */}
+              {isExpanded && (
+                <div onClick={e => e.stopPropagation()}>
+                  {/* 4 Argument mini-cards */}
+                  {renderArgCards(args)}
 
-              {/* Neuro niveau warning */}
-              {neuroWarn && (
-                <div style={{ marginTop: 10 }}>
-                  <C style={{ background: "#FFFBEB", border: "2px solid #FDE68A", padding: "12px 14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14 }}>⚠️</span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: "#D97706", fontFamily: "'Outfit',sans-serif" }}>{neuroWarn.title}</span>
-                      </div>
-                      <CopyBtn text={neuroWarn.script} />
+                  {/* Neuro section */}
+                  {renderNeuroSection(typ)}
+
+                  {/* Neuro niveau warning */}
+                  {neuroWarn && (
+                    <div style={{ marginTop: 10 }}>
+                      <C style={{ background: "#FFFBEB", border: "2px solid #FDE68A", padding: "12px 14px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 14 }}>⚠️</span>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: "#D97706", fontFamily: "'Outfit',sans-serif" }}>{neuroWarn.title}</span>
+                          </div>
+                          <CopyBtn text={neuroWarn.script} />
+                        </div>
+                        <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.7, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "10px 12px", borderLeft: "3px solid #D97706", maxHeight: 200, overflow: "auto" }}>
+                          {neuroWarn.script}
+                        </div>
+                      </C>
                     </div>
-                    <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.7, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "10px 12px", borderLeft: "3px solid #D97706", maxHeight: 200, overflow: "auto" }}>
-                      {neuroWarn.script}
-                    </div>
-                  </C>
+                  )}
                 </div>
               )}
             </C>
