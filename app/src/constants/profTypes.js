@@ -56,7 +56,7 @@ export const PARCOURSUP_OPTIONS=[
 export const MATIERES=["Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
 
 export const RULES={
-  niveau:{"Primaire":{"Professeur EN":35,"Étudiant université":20},"Collège":{"Professeur EN":25,"Étudiant université":20,"Étudiant grande école":10},"Lycée général":{"Étudiant grande école":30,"Professeur certifié":20},"Lycée pro":{"Professeur EN":25,"Formateur":20},"BTS / IUT":{"Étudiant université":30,"Professeur certifié":20},"Prépa":{"Étudiant grande école":45},"Université":{"Étudiant grande école":35,"Étudiant université":25}},
+  niveau:{"Primaire":{"Professeur EN":35,"Étudiant université":25,"AESH":15},"Collège":{"Professeur EN":25,"Étudiant université":25,"Étudiant grande école":10,"AESH":10},"Lycée général":{"Étudiant grande école":30,"Professeur certifié":25,"Étudiant université":15},"Lycée pro":{"Professeur EN":25,"Professeur certifié":20,"Formateur":20},"BTS / IUT":{"Étudiant université":30,"Professeur certifié":20,"Formateur":15},"Prépa":{"Étudiant grande école":45,"Professeur certifié":20},"Université":{"Étudiant grande école":35,"Étudiant université":25,"Professeur certifié":15}},
   psycho:{"Introverti / Réservé":{"Étudiant université":35,"Étudiant grande école":15},"Décrocheur / Démotivé":{"Étudiant université":45,"Étudiant grande école":10},"Compétiteur / Haut Potentiel":{"Étudiant grande école":55,"Professeur certifié":20},"Stressé / Anxieux":{"Étudiant université":30,"Étudiant grande école":20,"AESH":10}},
   objectif_vie:{"Remise à niveau":{"Professeur EN":45,"Étudiant université":25},"Réussite concours":{"Étudiant grande école":55,"Professeur certifié":25},"Méthodologie pure":{"Formateur":45,"Étudiant grande école":20},"Excellence académique":{"Étudiant grande école":50,"Professeur certifié":25}},
   accomp_douceur:{"Étudiant université":30,"AESH":25,"Étudiant grande école":10},
@@ -219,13 +219,27 @@ export function getRecommendedHierarchy(diag) {
 
   // ── PRIMAIRE / COLLEGE (sauf 3e brevet) ──
   if (niveau === "Primaire" || (niveau === "Collège" && classe !== "3e")) {
+    // Selon matière dominante
+    if (hasAny("Français", "Histoire-Géo", "Philosophie")) {
+      return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+    }
+    if (hasAny("Anglais", "Espagnol", "Allemand")) {
+      return ["Étudiant université", "Lettres & Sciences humaines", "LEA / LLCER (langues)"];
+    }
+    if (hasAny("SVT", "Chimie") && !has("Maths")) {
+      return ["Étudiant université", "Sciences (maths, physique, info)", "SVT / Biologie"];
+    }
+    // Cas general (maths, physique, ou plusieurs matieres) -> prof polyvalent universite sciences
     return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
   }
 
   // ── 3E + BREVET ──
   if (niveau === "Collège" && classe === "3e" && brevetPrep) {
-    if (hasAny("Français", "Histoire-Géo")) {
+    if (hasAny("Français", "Histoire-Géo", "Philosophie")) {
       return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+    }
+    if (hasAny("Anglais", "Espagnol", "Allemand")) {
+      return ["Étudiant université", "Lettres & Sciences humaines", "LEA / LLCER (langues)"];
     }
     return ["Professeur EN", "Professeur certifié (CAPES)"];
   }
@@ -278,7 +292,7 @@ export function getRecommendedHierarchy(diag) {
       if (ps.includes("ECG") || ps.includes("Éco-Commerce")) {
         return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
       }
-      if (ps.includes("Khâgne A/L") || ps.includes("Lettres)")) {
+      if (ps.includes("Khâgne A/L")) {
         return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
       }
       if (ps.includes("Khâgne B/L")) {
@@ -314,14 +328,19 @@ export function getRecommendedHierarchy(diag) {
         return ["Étudiant université", "Sciences (maths, physique, info)", "Informatique / BUT info"];
       }
       // Defaut Terminale selon spés
+      if (spes.includes("Maths") && spes.includes("Physique-Chimie")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+      if (spes.includes("Maths") && spes.includes("SVT")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa BCPST (Bio-Chimie)"];
+      if (spes.includes("Maths") && spes.includes("SES")) return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+      if (spes.includes("HLP (Humanités-Lettres-Philo)") || spes.includes("HGGSP")) return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
+      if (spes.includes("LLCE Anglais") || spes.includes("LLCE Espagnol")) return ["Étudiant université", "Lettres & Sciences humaines", "LEA / LLCER (langues)"];
       if (spes.includes("Maths")) return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
-      return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+      return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
     }
   }
 
   // ── LYCEE PRO ──
   if (niveau === "Lycée pro") {
-    return ["Professeur EN", "Professeur certifié (CAPES)"];
+    return ["Professeur certifié", "CAPLP (lycée pro)"];
   }
 
   // ── BTS / BUT ──

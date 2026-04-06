@@ -16,20 +16,61 @@ const PARENT_PROFILES = [
 ];
 
 // ── Script Generation by Parent Profile ─────────────────────────
-function getIntroScript(parentProfile, nom, psycho) {
+// Construit une chaine de contexte academique precis pour personnaliser les scripts
+function buildAcademicContext(diag) {
+  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, prepaFiliere, univFiliere } = diag || {};
+  const parts = [];
+  if (niveau === "Collège" && classe) {
+    parts.push(`en ${classe}`);
+    if (classe === "3e" && brevetPrep) parts.push(`prépare le brevet`);
+  } else if (niveau === "Lycée général" && classe) {
+    parts.push(`en ${classe}`);
+    if (spes.length > 0) parts.push(`spés ${spes.join("/")}`);
+    if (parcoursupCible) parts.push(`cible ${parcoursupCible}`);
+  } else if (niveau === "Lycée pro" && classe) {
+    parts.push(`en ${classe}`);
+  } else if (niveau === "Prépa" && prepaFiliere) {
+    parts.push(`en prépa ${prepaFiliere}`);
+  } else if (niveau === "Université") {
+    if (classe) parts.push(`en ${classe}`);
+    if (univFiliere) parts.push(univFiliere);
+  } else if (niveau) {
+    parts.push(`en ${niveau}`);
+  }
+  return parts.length > 0 ? parts.join(", ") : niveau || "";
+}
+
+function getIntroScript(parentProfile, nom, psycho, diag) {
   const n = nom || "votre enfant";
+  const ctx = buildAcademicContext(diag);
+  const ctxStr = ctx ? ` (${ctx})` : "";
   const intros = {
-    stresse: `Bonjour, je vous appelle suite a votre demande pour ${n}. Avant toute chose, je veux vous rassurer : vous avez fait le bon choix en nous contactant. Chez Sherpas, on ne laisse personne sans solution. Je vais prendre le temps de bien comprendre la situation de ${n} pour vous proposer exactement le bon accompagnement — pas un profil generique, mais quelqu'un de specifiquement adapte. Vous n'etes pas seul dans cette demarche.`,
-    rationnel: `Bonjour, je vous contacte suite a votre inscription. Je vais etre concret et factuel : je vais analyser le profil de ${n} en croisant 4 criteres — niveau scolaire, profil psychologique, objectif de vie et besoin d'accompagnement — pour determiner le type de professeur le plus adapte. Notre algorithme de matching a un taux de satisfaction de 94% sur les 3 premiers mois. Commençons par les faits.`,
-    presse: `Bonjour, je vais aller droit au but. J'ai analyse votre demande pour ${n}. En 5 minutes, je vais vous presenter le profil ideal, vous expliquer pourquoi, et on peut demarrer des cette semaine si le match vous convient. On y va ?`,
-    negociateur: `Bonjour, merci d'avoir choisi Sherpas pour ${n}. Je sais que vous comparez probablement plusieurs solutions — et c'est normal. Ce que je vais vous montrer, c'est pourquoi notre approche est differente : on ne vend pas des heures de cours, on prescrit un profil de prof sur mesure. Le ROI est mesurable des le premier mois. Laissez-moi vous expliquer.`,
-    indecis: `Bonjour, je vous appelle pour ${n}. Je comprends que ce n'est pas forcement facile de savoir par ou commencer — beaucoup de parents nous disent la meme chose. C'est justement pour ca qu'on est la : je vais vous guider etape par etape. On va d'abord comprendre la situation ensemble, et ensuite je vous proposerai une premiere seance decouverte sans engagement. Ça vous va ?`,
+    stresse: `Bonjour, je vous appelle suite à votre demande pour ${n}${ctxStr}. Avant toute chose, je veux vous rassurer : vous avez fait le bon choix en nous contactant. Chez Sherpas, on ne laisse personne sans solution. Je vais prendre le temps de bien comprendre la situation de ${n} pour vous proposer exactement le bon accompagnement — pas un profil générique, mais quelqu'un de spécifiquement adapté à son niveau et à ses besoins. Vous n'êtes pas seul dans cette démarche.`,
+    rationnel: `Bonjour, je vous contacte suite à votre inscription pour ${n}${ctxStr}. Je vais être concret et factuel : je vais analyser le profil de ${n} en croisant 4 critères — niveau scolaire précis, profil psychologique, objectif de vie et besoin d'accompagnement — pour déterminer le type de professeur le plus adapté. Notre algorithme de matching a un taux de satisfaction de 94% sur les 3 premiers mois. Commençons par les faits.`,
+    presse: `Bonjour, je vais aller droit au but. J'ai analysé votre demande pour ${n}${ctxStr}. En 5 minutes, je vais vous présenter le profil idéal, vous expliquer pourquoi, et on peut démarrer dès cette semaine si le match vous convient. On y va ?`,
+    negociateur: `Bonjour, merci d'avoir choisi Sherpas pour ${n}${ctxStr}. Je sais que vous comparez probablement plusieurs solutions — et c'est normal. Ce que je vais vous montrer, c'est pourquoi notre approche est différente : on ne vend pas des heures de cours, on prescrit un profil de prof sur mesure adapté précisément au contexte de ${n}. Le ROI est mesurable dès le premier mois. Laissez-moi vous expliquer.`,
+    indecis: `Bonjour, je vous appelle pour ${n}${ctxStr}. Je comprends que ce n'est pas forcément facile de savoir par où commencer — beaucoup de parents nous disent la même chose. C'est justement pour ça qu'on est là : je vais vous guider étape par étape. On va d'abord comprendre la situation de ${n} ensemble, et ensuite je vous proposerai une première séance découverte sans engagement. Ça vous va ?`,
   };
   return intros[parentProfile] || intros.rationnel;
 }
 
-function getSpinQuestions(parentProfile, nom, psycho, objectifVie) {
+function getSpinQuestions(parentProfile, nom, psycho, objectifVie, diag) {
   const n = nom || "votre enfant";
+  const ctx = buildAcademicContext(diag);
+  const niveau = diag?.niveau;
+  const classe = diag?.classe;
+  const parcoursupCible = diag?.parcoursupCible;
+  // Question contextuelle additionnelle selon le niveau
+  let contextQ = null;
+  if (niveau === "Lycée général" && classe === "Terminale" && !parcoursupCible) {
+    contextQ = `CONTEXTE PARCOURSUP : "${n} est en Terminale — quelle orientation post-bac vise-t-il/elle exactement ? Prépa, école post-bac, université, médecine ?"`;
+  } else if (niveau === "Lycée général" && classe === "Première") {
+    contextQ = `CONTEXTE SPÉS : "Quelles spécialités ${n} a choisies en Première, et pense-t-il/elle les garder en Terminale ?"`;
+  } else if (niveau === "Collège" && classe === "3e" && diag?.brevetPrep) {
+    contextQ = `CONTEXTE BREVET : "${n} prépare le DNB — quels sont les sujets/matières où vous sentez le plus de tension ?"`;
+  } else if (niveau === "Prépa") {
+    contextQ = `CONTEXTE PRÉPA : "${n} est en prépa ${diag?.prepaFiliere || ""} — quels sont les concours visés et l'année ?"`;
+  }
   const questions = {
     stresse: [
       `SITUATION : "Pouvez-vous me decrire ce qui vous inquiete le plus pour ${n} en ce moment ?"`,
@@ -62,17 +103,20 @@ function getSpinQuestions(parentProfile, nom, psycho, objectifVie) {
       `NEED-PAYOFF : "Et si on commençait par une seule seance decouverte pour voir si le courant passe avec le prof ? Zero engagement, juste un test. Ça vous rassurerait ?"`,
     ],
   };
-  return questions[parentProfile] || questions.rationnel;
+  const base = questions[parentProfile] || questions.rationnel;
+  return contextQ ? [contextQ, ...base] : base;
 }
 
-function getClosingScript(parentProfile, nom, chosenLabel) {
+function getClosingScript(parentProfile, nom, chosenLabel, diag) {
   const n = nom || "votre enfant";
+  const ctx = buildAcademicContext(diag);
+  const ctxStr = ctx ? ` (${ctx})` : "";
   const closings = {
-    stresse: `Pour recapituler : on a identifie un profil "${chosenLabel}" qui va d'abord creer un environnement securisant pour ${n}. Notre equipe pedagogique supervise chaque match. Si jamais le premier prof ne convient pas, on change immediatement — c'est garanti. La premiere seance est un test : zero risque pour vous. Je peux bloquer un creneau des maintenant pour que ${n} commence dans les meilleures conditions. Vous serez accompagne de bout en bout.`,
-    rationnel: `En synthese : le profil "${chosenLabel}" est statistiquement le plus adapte au profil de ${n} selon nos 4 criteres de matching. Taux de reussite sur des profils similaires : 94%. Je vous envoie un recap par email avec les details de la prescription. Premiere seance planifiable sous 48h. Souhaitez-vous qu'on fixe un creneau ?`,
-    presse: `Voila le plan : profil "${chosenLabel}", premiere seance possible des cette semaine. Je bloque le creneau maintenant et vous recevez la confirmation dans l'heure. On avance ?`,
-    negociateur: `Le profil "${chosenLabel}" est notre meilleure prescription pour ${n}. Comparativement aux cours en agence (2 a 3x plus cher) ou aux plateformes sans matching (50% d'abandon au bout de 2 mois), notre approche est la plus efficiente. Premiere seance decouverte incluse. Je vous propose de tester et de mesurer les resultats vous-meme. Deal ?`,
-    indecis: `Je resume pour que ce soit clair : on a un profil "${chosenLabel}" qui semble vraiment coller a ce dont ${n} a besoin. 87% des parents dans votre situation sont satisfaits des le premier mois. Mais je ne vous demande pas de vous engager maintenant — juste de tester UNE seance. Si ca ne convient pas, zero frais, zero obligation. Et si ca plait a ${n}, on continue. Un pas a la fois. Ça vous va ?`,
+    stresse: `Pour récapituler : pour ${n}${ctxStr}, on a identifié un profil "${chosenLabel}" qui va d'abord créer un environnement sécurisant. Notre équipe pédagogique supervise chaque match. Si jamais le premier prof ne convient pas, on change immédiatement — c'est garanti. La première séance est un test : zéro risque pour vous. Je peux bloquer un créneau dès maintenant pour que ${n} commence dans les meilleures conditions. Vous serez accompagné de bout en bout.`,
+    rationnel: `En synthèse : pour ${n}${ctxStr}, le profil "${chosenLabel}" est statistiquement le plus adapté selon nos 4 critères de matching. Taux de réussite sur des profils similaires : 94%. Je vous envoie un récap par email avec les détails de la prescription. Première séance planifiable sous 48h. Souhaitez-vous qu'on fixe un créneau ?`,
+    presse: `Voilà le plan : pour ${n}${ctxStr}, profil "${chosenLabel}", première séance possible dès cette semaine. Je bloque le créneau maintenant et vous recevez la confirmation dans l'heure. On avance ?`,
+    negociateur: `Le profil "${chosenLabel}" est notre meilleure prescription pour ${n}${ctxStr}. Comparativement aux cours en agence (2 à 3x plus cher) ou aux plateformes sans matching (50% d'abandon au bout de 2 mois), notre approche est la plus efficiente. Première séance découverte incluse. Je vous propose de tester et de mesurer les résultats vous-même. Deal ?`,
+    indecis: `Je résume pour que ce soit clair : pour ${n}${ctxStr}, on a un profil "${chosenLabel}" qui semble vraiment coller à ce dont ${n} a besoin. 87% des parents dans votre situation sont satisfaits dès le premier mois. Mais je ne vous demande pas de vous engager maintenant — juste de tester UNE séance. Si ça ne convient pas, zéro frais, zéro obligation. Et si ça plaît à ${n}, on continue. Un pas à la fois. Ça vous va ?`,
   };
   return closings[parentProfile] || closings.rationnel;
 }
@@ -106,13 +150,14 @@ function findNeuroMatch(profTyp, trouble) {
 
 // ── NEURO + NIVEAU : alerte post-college ────────────────────────
 const NIVEAUX_NEURO_OK = ["Primaire", "Collège"];
-function getNeuroNiveauWarning(niveau, trouble, nom) {
+function getNeuroNiveauWarning(niveau, trouble, nom, classe) {
   const n = nom || "votre enfant";
   if (NIVEAUX_NEURO_OK.includes(niveau)) return null;
+  const ctxClasse = classe ? ` (${classe})` : "";
   return {
     warning: true,
-    title: `Profil neuroatypique + ${niveau} — Accompagnement specialise limite`,
-    script: `Je vais être transparent avec vous : à partir du lycée, accompagner un élève ${trouble} avec un professeur vraiment spécialisé devient beaucoup plus difficile.\n\nPourquoi ?\n• Au collège, les AESH, psychologues et profs en psychopédagogie peuvent couvrir le programme tout en adaptant leur pédagogie au trouble de ${n}\n• À partir du lycée, le niveau académique monte — il faut un prof qui maîtrise la matière ET qui comprenne le ${trouble}. Ce double profil est rare.\n\nCe que je vous recommande concrètement :\n\n1. Un prof spécialiste de la matière (notre prescription Lanterne) qui va assurer le niveau académique\n2. En parallèle, un suivi avec un professionnel spécialisé ${trouble} (orthophoniste, psychomotricien, neuropsychologue) pour l'accompagnement du trouble\n\nNotre prof ne remplace pas le spécialiste — mais on va le briefer sur le profil de ${n} pour qu'il adapte sa pédagogie au maximum :\n• Consignes plus courtes et plus claires\n• Supports visuels si besoin\n• Rythme adapté avec des pauses\n• Pas de double tâche (écouter + écrire en même temps)\n\nL'idéal, c'est que le prof et le spécialiste ${trouble} communiquent — et ça, on peut le faciliter.\n\nOn part sur cette approche ?`
+    title: `${trouble} + ${niveau}${ctxClasse} — Approche mixte recommandée`,
+    script: `Soyons précis sur l'enjeu : à partir du ${niveau.toLowerCase()}${ctxClasse}, on peut TOUT À FAIT trouver un prof adapté pour ${n}, mais l'approche change.\n\nAu collège, on a des profils spécialisés (AESH, prof en psychopédagogie) qui couvrent à la fois le programme et l'accompagnement du ${trouble}.\n\nÀ partir du lycée, le niveau académique monte — il faut souvent COMBINER deux choses :\n\n1. Un prof spécialiste de la matière (notre prescription Lanterne ci-dessus) qui assure le niveau académique\n2. Si le ${trouble} est marqué : un suivi parallèle avec un professionnel adapté (orthophoniste, neuropsychologue, coach DYS/TDAH)\n\nLA BONNE NOUVELLE : nos profs sont briefés sur le profil de chaque élève. Pour ${n}, le prof saura :\n• Découper les consignes en étapes courtes et claires\n• Proposer des supports visuels et des schémas\n• Adapter le rythme avec des pauses régulières\n• Éviter les doubles tâches (écouter + écrire en même temps)\n• Reformuler systématiquement ce qui n'est pas compris\n\nDans nos profils, le PROF EN PSYCHOPÉDAGOGIE est particulièrement adapté — c'est le profil qui combine le mieux maîtrise du programme + sensibilité aux profils atypiques.\n\nEt si nécessaire, on peut faciliter la communication entre notre prof et le spécialiste qui suit ${n}. Ça vous parle ?`
   };
 }
 
@@ -312,9 +357,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const args = getArgs(typ, psycho);
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
-    const introText = getIntroScript(pp, nom, psycho);
-    const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie);
-    const closingText = getClosingScript(pp, nom, label);
+    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, prepaFiliere, univFiliere };
+    const introText = getIntroScript(pp, nom, psycho, diagCtx);
+    const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie, diagCtx);
+    const closingText = getClosingScript(pp, nom, label, diagCtx);
     const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
 
     return [
@@ -883,7 +929,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           // Neuro
           const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
           const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
-          const neuroWarn = (neuroActive && neuroTrouble) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom) : null;
+          const neuroWarn = (neuroActive && neuroTrouble) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom, classe) : null;
 
           return (
             <C key={typ} style={{ marginBottom: 14, border: `2px solid ${border}`, background: idx === 0 ? bg : "#fff", padding: "18px 20px" }}>

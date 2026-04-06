@@ -84,6 +84,18 @@ export const ARG_ENGINE={
       bridge:"Il va adapter chaque exercice au mode de fonctionnement de [Prénom]. Un élève réservé a souvent un mode d'apprentissage différent — et ce profil sait le détecter et l'utiliser.",
       rebound:"Certains parents pensent que l'AESH c'est 'pour les cas difficiles'. C'est pour les profils atypiques qui ont besoin d'une pédagogie sur-mesure. Et ça fait toute la différence.",
     },
+    "Décrocheur / Démotivé":{
+      hook:"Un AESH connaît les mécanismes du décrochage de l'intérieur. Il accompagne des élèves dans cette situation au quotidien — il sait remobiliser sans braquer, et créer un cadre où [Prénom] reprend doucement pied.",
+      trust:"Sa force, c'est l'expérience terrain. Il a déjà aidé des dizaines d'élèves à sortir du décrochage. Il connaît les pièges, les phrases qui marchent, et celles qui font reculer.",
+      bridge:"Il va commencer par recréer un lien à l'apprentissage avant de viser les contenus. Pour un décrocheur, l'objectif numéro 1 c'est de réenclencher la machine — ce profil sait précisément comment faire.",
+      rebound:"On pourrait penser qu'un AESH n'est pas assez 'académique' pour faire progresser. Mais pour un décrocheur, le déblocage relationnel passe AVANT le contenu. C'est la première étape indispensable.",
+    },
+    "Compétiteur / Haut Potentiel":{
+      hook:"Soyons honnêtes : un AESH n'est pas le profil naturel pour un Compétiteur ou un HPI. Sa force c'est l'accompagnement, pas la stimulation intellectuelle.",
+      trust:"Cela dit, si [Prénom] cumule un haut potentiel ET un besoin d'accompagnement (HPI + DYS, HPI + TDAH...), alors l'AESH devient un vrai atout pour le côté accompagnement.",
+      bridge:"Dans ce cas, l'AESH ne va pas challenger sur le contenu, mais il va débloquer les freins comportementaux qui empêchent [Prénom] d'exploiter son potentiel.",
+      rebound:"Pour un HPI sans autre trouble, ce profil est sous-dimensionné. Je préfère vous orienter vers un Étudiant grande école qui pourra vraiment le challenger intellectuellement.",
+    },
     "Stressé / Anxieux":{
       hook:"Un AESH formé à l'accompagnement des élèves à besoins spécifiques sait exactement comment désamorcer l'anxiété avant qu'elle ne paralyse. Il intervient avant la crise, pas après.",
       trust:"Sa formation lui donne les protocoles anti-anxiété reconnus par l'Éducation Nationale. Ce n'est pas de l'improvisation — c'est une approche scientifiquement validée.",
@@ -123,6 +135,24 @@ export const ARG_ENGINE={
       trust:"Sa formation orientée méthodes lui donne des outils que les enseignants classiques n'ont pas. Il sait comment créer de l'engagement chez quelqu'un qui a décroché.",
       bridge:"Il va partir des projets et des intérêts de [Prénom] pour raccrocher les notions scolaires à des réalités concrètes. Un décrocheur reprend vie quand il voit à quoi ça sert.",
       rebound:"Un décrocheur a parfois besoin d'une figure différente — ni parent, ni prof. Ce formateur est ce tiers de confiance qui peut parler sans les codes de l'institution scolaire.",
+    },
+    "Stressé / Anxieux":{
+      hook:"Un formateur en méthodes de travail va donner à [Prénom] des outils concrets pour gérer son stress : planification, mémorisation, gestion du temps. Ce sont des compétences qui changent une vie scolaire.",
+      trust:"Sa spécialité c'est la méthode — pas le contenu pur. Pour un anxieux, c'est exactement ce qui manque : une structure claire, des routines rassurantes, des techniques éprouvées.",
+      bridge:"Il va apprendre à [Prénom] à transformer le chaos des révisions en plan d'action. Quand on sait quoi faire et dans quel ordre, l'anxiété diminue automatiquement.",
+      rebound:"Certains parents pensent qu'un anxieux a juste besoin d'être rassuré. Mais sans méthode, le stress revient à chaque évaluation. Le formateur s'attaque à la cause, pas au symptôme.",
+    },
+    "Introverti / Réservé":{
+      hook:"Un formateur ne fait pas cours comme un prof — il accompagne [Prénom] dans la construction de SA méthode. Pour un élève réservé, c'est un format moins intimidant qu'un face-à-face académique.",
+      trust:"Sa posture de coach plutôt que de prof crée un espace de dialogue plus libre. [Prénom] osera poser des questions qu'il n'oserait jamais poser à un enseignant classique.",
+      bridge:"Il va découvrir avec [Prénom] son mode d'apprentissage personnel et bâtir une méthode sur-mesure. L'élève réservé devient acteur de sa progression, plutôt que spectateur.",
+      rebound:"Un réservé a besoin de se sentir compétent. Avec un formateur, il développe ses propres techniques — et cette autonomie est ce qui débloque souvent la confiance en soi.",
+    },
+    "Compétiteur / Haut Potentiel":{
+      hook:"Un compétiteur ou un HPI s'ennuie souvent parce que sa méthode de travail est inefficace : il sait, mais il perd du temps. Le formateur va lui faire gagner ce temps.",
+      trust:"Pour un HPI, la méthode de travail est souvent le maillon faible. Sa force c'est la compréhension, pas l'organisation. Le formateur attaque précisément ce gap.",
+      bridge:"Il va apprendre à [Prénom] des techniques avancées : prise de notes Cornell, mind-mapping, planification stratégique. Ce sont des outils qu'utilisent les élèves de prépa et grandes écoles.",
+      rebound:"Un compétiteur peut penser qu'il n'a pas besoin de méthode. Mais c'est précisément ce qui fait la différence aux concours : ceux qui maîtrisent la méthode gagnent les places.",
     },
     default:{
       hook:"Un formateur professionnel va apporter à [Prénom] des outils de méthode et d'organisation qu'aucun cours classique ne lui aurait enseignés.",
