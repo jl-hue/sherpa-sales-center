@@ -170,6 +170,7 @@ function SalesFormation({formations, progress={}, setProgress, user}){
             {(m.content?.length>0)&&<div style={{display:"flex",gap:4,marginTop:4}}><Pill color={pill.color}>{m.content.length} sections</Pill>{m.objectives?.length>0&&<Pill color="#16A34A">{m.objectives.length} objectifs</Pill>}</div>}
           </div>
           {isDone&&score&&<Pill color="#16A34A">{score}%</Pill>}
+          {isDone&&<Btn sm outline color="#DA4F00" onClick={e=>{e.stopPropagation();setOpenMod({pk:tab,idx:i});}}>Revoir</Btn>}
           {isCurrent&&!isCompleting&&<Btn sm color={pill.color} onClick={e=>{e.stopPropagation();setOpenMod({pk:tab,idx:i});}}>Commencer →</Btn>}
         </C>
         {isCompleting&&showScore&&<div style={{margin:"8px 0",padding:14,background:pill.color+"08",borderRadius:10,border:`1px solid ${pill.color}35`}}>
