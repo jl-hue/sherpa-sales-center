@@ -791,12 +791,31 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const nom = prenom || "l'eleve";
 
     // ── Recommandation hierarchique LIVE (preview) ──
-    const livePath = niveau ? getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
-      matieres, psycho, objectif: objectifVie
-    }) : null;
-    let liveEmoji = "🎯", liveDesc = "", liveLabel = "";
-    if (livePath) {
+    // Si neuro actif + trouble selectionne : prend le meilleur profil neuro de la matrice
+    let livePath = null;
+    let liveEmoji = "🎯", liveDesc = "", liveLabel = "", liveBadge = null;
+    if (neuroActive && neuroTrouble) {
+      const matrixEntries = NEURO_MATRIX
+        .filter(e => e.trouble === neuroTrouble)
+        .sort((a, b) => {
+          const score = { ideal: 100, acceptable: 60, deconseille: 20 };
+          return (score[b.badge] || 0) - (score[a.badge] || 0);
+        });
+      const best = matrixEntries[0];
+      if (best) {
+        livePath = ["🧠 Profil neuro", best.prof];
+        liveEmoji = best.badge === "ideal" ? "✅" : best.badge === "acceptable" ? "⚠️" : "❌";
+        liveLabel = best.prof;
+        liveDesc = `Spécialiste ${neuroTrouble} — ${best.badge === "ideal" ? "Profil idéal" : best.badge === "acceptable" ? "Acceptable" : "Déconseillé"}`;
+        liveBadge = best.badge;
+      }
+    } else if (niveau) {
+      livePath = getRecommendedHierarchy({
+        niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
+        matieres, psycho, objectif: objectifVie
+      });
+    }
+    if (livePath && !neuroActive) {
       let node = PROF_HIERARCHY;
       for (let i = 0; i < livePath.length; i++) {
         const k = livePath[i];
