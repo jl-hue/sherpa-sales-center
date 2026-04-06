@@ -242,24 +242,42 @@ const NEURO_BADGE = {
   deconseille: { label: "Deconseille", bg: "#FEE2E2", color: "#991B1B", border: "#FCA5A5" },
 };
 
-// ── Map PROF_TYPES to NEURO_PROFS ───────────────────────────────
+// ── Map PROF_TYPES (Sherpas) → NEURO_PROFS (matrice) ─────────────
+// Mappage strictement aligné sur la matrice fournie
 const PROF_TO_NEURO = {
+  // Étudiants : pas de formation pédagogique spécifique -> proche d'un Étudiant en Psycho
   "Étudiant grande école": "Étudiant en Psychologie",
   "Étudiant université": "Étudiant en Psychologie",
+  // Professeur EN classique = enseignant titulaire
   "Professeur EN": "Professeur EN classique",
-  "AESH": "AESH / AVS",
   "Professeur certifié": "Professeur EN classique",
+  // AESH = AESH / AVS dans la matrice
+  "AESH": "AESH / AVS",
+  // Formateur = profil méthodologie/pédagogie -> Prof EN Psychopédagogie
   "Formateur": "Prof EN Psychopédagogie",
 };
 
 function findNeuroMatch(profTyp, trouble) {
+  // 1. Match direct (cas où le profTyp est déjà un NEURO_PROFS)
   let entry = NEURO_MATRIX.find(r => r.prof === profTyp && r.trouble === trouble);
   if (entry) return entry;
+  // 2. Mapping Sherpas -> matrice neuro
   const mapped = PROF_TO_NEURO[profTyp];
   if (mapped) {
     entry = NEURO_MATRIX.find(r => r.prof === mapped && r.trouble === trouble);
+    if (entry) return entry;
   }
-  return entry || null;
+  // 3. Match partiel sur le nom (ex: "Psychologue", "Psychopédagogie", etc.)
+  if (profTyp) {
+    const lower = profTyp.toLowerCase();
+    if (lower.includes("psychologue")) entry = NEURO_MATRIX.find(r => r.prof === "Psychologue" && r.trouble === trouble);
+    else if (lower.includes("psychopédagogie") || lower.includes("psychopedagogie")) entry = NEURO_MATRIX.find(r => r.prof === "Prof EN Psychopédagogie" && r.trouble === trouble);
+    else if (lower.includes("aesh") || lower.includes("avs")) entry = NEURO_MATRIX.find(r => r.prof === "AESH / AVS" && r.trouble === trouble);
+    else if (lower.includes("étudiant en psycho") || lower.includes("etudiant en psycho")) entry = NEURO_MATRIX.find(r => r.prof === "Étudiant en Psychologie" && r.trouble === trouble);
+    else if (lower.includes("certifié") || lower.includes("certifie") || lower.includes("agrégé") || lower.includes("agrege") || lower.includes("capes")) entry = NEURO_MATRIX.find(r => r.prof === "Professeur EN classique" && r.trouble === trouble);
+    if (entry) return entry;
+  }
+  return null;
 }
 
 // ── NEURO + NIVEAU : alerte post-college ────────────────────────
@@ -1346,7 +1364,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
           // Neuro
           const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
           const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
-          const neuroWarn = (neuroActive && neuroTrouble) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom, classe) : null;
+          // Le warning niveau ne s'affiche QUE si la matrice n'a pas deja un match "ideal"
+          const neuroWarn = (neuroActive && neuroTrouble && (!neuroEntry || neuroEntry.badge !== "ideal")) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom, classe) : null;
 
           const isExpanded = expandedRank === idx;
           return (
