@@ -40,110 +40,200 @@ function SalesFormation({formations, progress={}, setProgress, user}){
     setScoreVal(80);
   }
 
-  // ═══ MODULE READER (full content view) ═══
+  // ═══ MODULE READER — STEP-BY-STEP INTERACTIVE ═══
+  const [step,setStep]=useState(0);
+  const [quizAnswers,setQuizAnswers]=useState({});  // {stepIdx: {qIdx: selectedChoice}}
+  const [quizValidated,setQuizValidated]=useState({}); // {stepIdx: true}
+  const [quizFeedback,setQuizFeedback]=useState(null); // {stepIdx, qIdx, correct, explanation}
+  const [totalCorrect,setTotalCorrect]=useState(0);
+  const [totalQuestions,setTotalQuestions]=useState(0);
+  const [finished,setFinished]=useState(false);
+
+  function resetModuleState(){setStep(0);setQuizAnswers({});setQuizValidated({});setQuizFeedback(null);setTotalCorrect(0);setTotalQuestions(0);setFinished(false);}
+
   if(openMod){
     const op=F[openMod.pk];
     const m=op?.modules[openMod.idx];
     if(!m) { setOpenMod(null); return null; }
     const pc=op.color||"#16A34A";
     const isDone=isModDone(m.id);
-    const score=getModScore(m.id);
-    const hasContent=m.content?.length>0||m.objectives?.length>0;
-    const isCurrent=!isDone;
+    const prevScore=getModScore(m.id);
+    const hasContent=m.content?.length>0;
+    const steps=m.content||[];
+    const totalSteps=steps.length;
+    const blk=steps[step];
 
+    // Count all quiz questions in module
+    const allQuizCount=steps.reduce((s,b)=>(s+(b.quiz?.length||0)),0);
+
+    function selectAnswer(qIdx,choiceIdx){
+      if(quizValidated[step]) return;
+      setQuizAnswers(p=>({...p,[step]:{...(p[step]||{}),[qIdx]:choiceIdx}}));
+      setQuizFeedback(null);
+    }
+
+    function validateQuiz(){
+      if(!blk?.quiz) return;
+      const answers=quizAnswers[step]||{};
+      let correct=0;
+      for(let i=0;i<blk.quiz.length;i++){
+        if(answers[i]===blk.quiz[i].correctIndex) correct++;
+      }
+      const allAnswered=blk.quiz.every((_,i)=>answers[i]!==undefined);
+      if(!allAnswered){setQuizFeedback({msg:"Réponds à toutes les questions avant de valider.",error:true});return;}
+      const allCorrect=correct===blk.quiz.length;
+      if(!allCorrect){
+        const wrongIdx=blk.quiz.findIndex((q,i)=>answers[i]!==q.correctIndex);
+        setQuizFeedback({msg:`${correct}/${blk.quiz.length} bonnes réponses. Corrige les erreurs pour continuer.`,error:true,wrongIdx});
+        return;
+      }
+      setQuizValidated(p=>({...p,[step]:true}));
+      setTotalCorrect(p=>p+correct);
+      setTotalQuestions(p=>p+blk.quiz.length);
+      setQuizFeedback({msg:`${correct}/${blk.quiz.length} — Parfait ! Tu peux continuer.`,error:false});
+    }
+
+    function nextStep(){
+      if(blk?.quiz&&!quizValidated[step]) return;
+      setQuizFeedback(null);
+      if(step<totalSteps-1){setStep(step+1);}
+      else {
+        // Last step — finish
+        const finalCorrect=totalCorrect+(quizValidated[step]?0:0);
+        const finalTotal=totalQuestions;
+        const finalScore=finalTotal>0?Math.round((finalCorrect/finalTotal)*100):100;
+        setScoreVal(finalScore);
+        setFinished(true);
+      }
+    }
+
+    function finishModule(){
+      completeModule(m.id);
+      setFinished(false);
+      resetModuleState();
+    }
+
+    // ── FINISHED SCREEN ──
+    if(finished){
+      const finalScore=allQuizCount>0?Math.round((totalCorrect/allQuizCount)*100):100;
+      return <div>
+        <div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:64,marginBottom:16}}>{finalScore>=80?"🏆":finalScore>=60?"👏":"📚"}</div>
+          <h1 style={{fontSize:28,fontWeight:900,color:"#18181B",fontFamily:"'Outfit',sans-serif",marginBottom:8}}>Module terminé !</h1>
+          <div style={{fontSize:15,color:"#71717A",marginBottom:24}}>{m.title}</div>
+          <div style={{display:"inline-flex",alignItems:"center",gap:16,background:"#F0FDF4",border:"2px solid #C0EAD3",borderRadius:16,padding:"20px 40px",marginBottom:24}}>
+            <div>
+              <div style={{fontSize:11,color:"#71717A",fontFamily:"'Outfit',sans-serif",textTransform:"uppercase",letterSpacing:".08em"}}>Score final</div>
+              <div style={{fontSize:48,fontWeight:900,color:finalScore>=80?"#16A34A":finalScore>=60?"#DA4F00":"#E11D48",fontFamily:"'Outfit',sans-serif"}}>{finalScore}%</div>
+            </div>
+            <div style={{width:1,height:50,background:"#C0EAD3"}}/>
+            <div>
+              <div style={{fontSize:11,color:"#71717A",fontFamily:"'Outfit',sans-serif",textTransform:"uppercase",letterSpacing:".08em"}}>Bonnes réponses</div>
+              <div style={{fontSize:28,fontWeight:900,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{totalCorrect}/{allQuizCount}</div>
+            </div>
+          </div>
+          <div style={{fontSize:14,color:finalScore>=80?"#15803D":"#DA4F00",fontWeight:700,marginBottom:24}}>{finalScore>=80?"Excellent travail ! Tu maîtrises les fondamentaux.":finalScore>=60?"Bon travail, mais revois les points où tu as hésité.":"Il faut revoir ce module — n'hésite pas à le refaire."}</div>
+          <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+            <Btn outline color="#DA4F00" onClick={()=>{setFinished(false);resetModuleState();}}>Refaire le module</Btn>
+            <Btn color="#16A34A" onClick={()=>{setScoreVal(finalScore);finishModule();}}>Enregistrer mon score ({finalScore}%)</Btn>
+          </div>
+          {prevScore&&<div style={{fontSize:12,color:"#A1A1AA",marginTop:12}}>Score précédent : {prevScore}%</div>}
+        </div>
+      </div>;
+    }
+
+    // ── STEP-BY-STEP VIEW ──
     return <div>
-      <Btn sm outline color="#71717A" onClick={()=>{setOpenMod(null);setRedoing(false);}} style={{marginBottom:12}}>← Retour aux modules</Btn>
+      <Btn sm outline color="#71717A" onClick={()=>{setOpenMod(null);setRedoing(false);resetModuleState();}} style={{marginBottom:12}}>← Retour aux modules</Btn>
 
       {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${pc},${pc}CC)`,borderRadius:16,padding:24,marginBottom:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+      <div style={{background:`linear-gradient(135deg,${pc},${pc}CC)`,borderRadius:16,padding:20,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div>
-            <div style={{display:"flex",gap:8,marginBottom:8}}>
-              <Pill color="#fff" bg="rgba(255,255,255,.2)">{op.icon} {op.title}</Pill>
-              {isDone&&<Pill color="#fff" bg="rgba(255,255,255,.25)">Terminé {score?`— ${score}%`:""}</Pill>}
-            </div>
-            <h1 style={{fontSize:22,fontWeight:900,color:"#fff",fontFamily:"'Outfit',sans-serif",margin:"0 0 6px"}}>{m.title}</h1>
-            <div style={{fontSize:13,color:"rgba(255,255,255,.8)"}}>{m.description}</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:6}}>⏱ {m.duration} · Module {openMod.idx+1}/{op.modules.length}</div>
+            <Pill color="#fff" bg="rgba(255,255,255,.2)">{op.icon} {op.title}</Pill>
+            <h1 style={{fontSize:18,fontWeight:900,color:"#fff",fontFamily:"'Outfit',sans-serif",margin:"6px 0 0"}}>{m.title}</h1>
           </div>
-          <div style={{fontSize:48}}>{isDone?"✅":"📖"}</div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:24,fontWeight:900,color:"#fff",fontFamily:"'Outfit',sans-serif"}}>{step+1}/{totalSteps}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>étapes</div>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div style={{height:6,background:"rgba(255,255,255,.2)",borderRadius:99}}>
+          <div style={{height:6,background:"#fff",borderRadius:99,width:`${((step+1)/totalSteps)*100}%`,transition:"width .3s"}}/>
         </div>
       </div>
 
-      {/* Objectives */}
-      {m.objectives?.length>0&&<C style={{marginBottom:14,borderLeft:`4px solid ${pc}`}}>
-        <div style={{fontSize:14,fontWeight:800,color:"#18181B",marginBottom:12,fontFamily:"'Outfit',sans-serif"}}>🎯 Objectifs de ce module</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      {/* Objectives (only on step 0) */}
+      {step===0&&m.objectives?.length>0&&<C style={{marginBottom:14,borderLeft:`4px solid ${pc}`}}>
+        <div style={{fontSize:14,fontWeight:800,color:"#18181B",marginBottom:10,fontFamily:"'Outfit',sans-serif"}}>🎯 Objectifs</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {m.objectives.map((obj,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8}}>
-              <div style={{width:22,height:22,borderRadius:6,background:pc+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:pc,fontWeight:800,flexShrink:0,marginTop:1}}>{i+1}</div>
-              <span style={{fontSize:13,color:"#3F3F46",lineHeight:1.6}}>{obj}</span>
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{color:pc,fontWeight:700,fontSize:12}}>✓</span>
+              <span style={{fontSize:12,color:"#3F3F46"}}>{obj}</span>
             </div>
           ))}
         </div>
       </C>}
 
-      {/* Content blocks */}
-      {m.content?.length>0&&<div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:18}}>
-        {m.content.map((blk,i)=>{
-          const bc=BLOCK_COLORS[blk.type]||"#71717A";
-          const be=BLOCK_EMOJIS[blk.type]||"📝";
-          return <C key={i} style={{borderLeft:`4px solid ${bc}`,padding:0,overflow:"hidden"}}>
-            <div style={{padding:"12px 18px",background:bc+"08",borderBottom:`1px solid ${bc}20`,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:16}}>{be}</span>
-              <span style={{fontSize:14,fontWeight:800,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{blk.title}</span>
-              <div style={{flex:1}}/>
-              <CopyBtn text={blk.body}/>
-            </div>
-            <div style={{padding:"16px 18px",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"'Inter',sans-serif"}}>{blk.body}</div>
-          </C>;
-        })}
-      </div>}
+      {/* Current block content */}
+      {blk&&(()=>{
+        const bc=BLOCK_COLORS[blk.type]||"#71717A";
+        const be=BLOCK_EMOJIS[blk.type]||"📝";
+        return <C style={{borderLeft:`4px solid ${bc}`,padding:0,overflow:"hidden",marginBottom:14}}>
+          <div style={{padding:"12px 18px",background:bc+"08",borderBottom:`1px solid ${bc}20`,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>{be}</span>
+            <span style={{fontSize:14,fontWeight:800,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{blk.title}</span>
+            <div style={{flex:1}}/>
+            <Pill color={bc}>{step+1}/{totalSteps}</Pill>
+          </div>
+          <div style={{padding:"16px 18px",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"'Inter',sans-serif"}}>{blk.body}</div>
+        </C>;
+      })()}
 
-      {/* No content fallback */}
-      {!hasContent&&<C style={{textAlign:"center",padding:40,marginBottom:18}}>
-        <div style={{fontSize:32,marginBottom:8}}>📋</div>
-        <div style={{fontSize:14,fontWeight:700,color:"#71717A"}}>Ce module n'a pas encore de contenu détaillé</div>
-        <div style={{fontSize:12,color:"#A1A1AA",marginTop:4}}>Le formateur peut ajouter du contenu depuis l'éditeur</div>
+      {/* Quiz section */}
+      {blk?.quiz&&<C style={{marginBottom:14,border:`2px solid #7C3AED35`,background:"#F5F3FF"}}>
+        <div style={{fontSize:14,fontWeight:800,color:"#7C3AED",marginBottom:14,fontFamily:"'Outfit',sans-serif"}}>❓ Quiz — Vérifie tes connaissances</div>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          {blk.quiz.map((q,qIdx)=>{
+            const selected=(quizAnswers[step]||{})[qIdx];
+            const validated=quizValidated[step];
+            const isCorrect=selected===q.correctIndex;
+            return <div key={qIdx} style={{padding:14,borderRadius:10,background:"#fff",border:`1px solid ${validated?(isCorrect?"#C0EAD3":"#FCA5A5"):"#E4E4E7"}`}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#18181B",marginBottom:10,fontFamily:"'Outfit',sans-serif"}}>{qIdx+1}. {q.question}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {q.choices.map((c,cIdx)=>{
+                  const isSel=selected===cIdx;
+                  const showCorrect=validated&&cIdx===q.correctIndex;
+                  const showWrong=validated&&isSel&&!isCorrect;
+                  return <button key={cIdx} onClick={()=>selectAnswer(qIdx,cIdx)} disabled={validated} style={{padding:"10px 14px",borderRadius:8,border:`2px solid ${showCorrect?"#16A34A":showWrong?"#E11D48":isSel?pc:"#E4E4E7"}`,background:showCorrect?"#F0FDF4":showWrong?"#FEF2F2":isSel?pc+"10":"#FAFAFA",textAlign:"left",cursor:validated?"default":"pointer",fontSize:12,color:showCorrect?"#15803D":showWrong?"#991B1B":"#3F3F46",fontWeight:isSel||showCorrect?700:400,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${showCorrect?"#16A34A":showWrong?"#E11D48":isSel?pc:"#D4D4D8"}`,background:isSel?(showCorrect?"#16A34A":showWrong?"#E11D48":pc):"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {isSel&&<div style={{width:8,height:8,borderRadius:"50%",background:"#fff"}}/>}
+                    </div>
+                    {c}
+                  </button>;
+                })}
+              </div>
+              {validated&&<div style={{marginTop:8,fontSize:11,color:isCorrect?"#15803D":"#991B1B",fontStyle:"italic",padding:"6px 10px",borderRadius:6,background:isCorrect?"#F0FDF4":"#FEF2F2"}}>{isCorrect?"✓ Correct":"✗ Incorrect"}{q.explanation&&` — ${q.explanation}`}</div>}
+            </div>;
+          })}
+        </div>
+
+        {/* Quiz feedback */}
+        {quizFeedback&&<div style={{marginTop:12,padding:"10px 14px",borderRadius:8,background:quizFeedback.error?"#FEF2F2":"#F0FDF4",border:`1px solid ${quizFeedback.error?"#FCA5A5":"#C0EAD3"}`,fontSize:12,fontWeight:600,color:quizFeedback.error?"#991B1B":"#15803D"}}>{quizFeedback.msg}</div>}
+
+        {!quizValidated[step]&&<Btn color="#7C3AED" full onClick={validateQuiz} style={{marginTop:14,padding:"12px",borderRadius:99,fontSize:13}}>Valider mes réponses</Btn>}
       </C>}
 
-      {/* Complete button */}
-      {isCurrent&&<div style={{background:pc+"08",borderRadius:14,border:`1px solid ${pc}35`,padding:18,marginBottom:14}}>
-        <div style={{fontSize:14,fontWeight:800,color:pc,marginBottom:10,fontFamily:"'Outfit',sans-serif"}}>Terminer ce module</div>
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:11,color:"#71717A",marginBottom:6}}>Auto-évaluation (0-100)</div>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <input type="range" min={0} max={100} value={scoreVal} onChange={e=>setScoreVal(Number(e.target.value))} style={{flex:1,accentColor:pc}}/>
-            <div style={{width:46,height:46,borderRadius:"50%",background:pc+"18",border:`2px solid ${pc}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:17,color:pc,flexShrink:0,fontFamily:"'Outfit',sans-serif"}}>{scoreVal}</div>
-          </div>
-        </div>
-        <Btn color={pc} full onClick={()=>completeModule(m.id)} style={{padding:"13px",borderRadius:99,fontSize:14}}>Valider le module ✓</Btn>
-      </div>}
-
-      {isDone&&!redoing&&<C style={{background:"#F0FDF4",border:"1px solid #C0EAD3",textAlign:"center",padding:24}}>
-        <div style={{fontSize:28,marginBottom:6}}>🎉</div>
-        <div style={{fontSize:16,fontWeight:800,color:"#15803D",fontFamily:"'Outfit',sans-serif"}}>Module terminé {score?`— Score : ${score}%`:""}</div>
-        <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:12}}>
-          <Btn sm outline color="#DA4F00" onClick={()=>setRedoing(true)}>Refaire le module</Btn>
-          {openMod.idx<op.modules.length-1&&<Btn sm color="#16A34A" onClick={()=>{setRedoing(false);setOpenMod({pk:openMod.pk,idx:openMod.idx+1});}}>Module suivant →</Btn>}
-        </div>
-      </C>}
-
-      {isDone&&redoing&&<div style={{background:"#DA4F00"+"08",borderRadius:14,border:"1px solid #FED7AA",padding:18,marginBottom:14}}>
-        <div style={{fontSize:14,fontWeight:800,color:"#DA4F00",marginBottom:4,fontFamily:"'Outfit',sans-serif"}}>Refaire ce module</div>
-        <div style={{fontSize:12,color:"#71717A",marginBottom:12}}>Ton ancien score ({score}%) sera remplacé par le nouveau.</div>
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:11,color:"#71717A",marginBottom:6}}>Nouveau score (0-100)</div>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <input type="range" min={0} max={100} value={scoreVal} onChange={e=>setScoreVal(Number(e.target.value))} style={{flex:1,accentColor:"#DA4F00"}}/>
-            <div style={{width:46,height:46,borderRadius:"50%",background:"#DA4F00"+"18",border:"2px solid #DA4F00",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:17,color:"#DA4F00",flexShrink:0,fontFamily:"'Outfit',sans-serif"}}>{scoreVal}</div>
-          </div>
-        </div>
+      {/* Navigation */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>{step>0&&<Btn sm outline color="#71717A" onClick={()=>{setStep(step-1);setQuizFeedback(null);}}>← Étape précédente</Btn>}</div>
         <div style={{display:"flex",gap:8}}>
-          <Btn color="#DA4F00" onClick={()=>{completeModule(m.id);setRedoing(false);}} style={{padding:"11px 20px",borderRadius:99}}>Valider le nouveau score ✓</Btn>
-          <Btn outline color="#71717A" onClick={()=>setRedoing(false)}>Annuler</Btn>
+          {step<totalSteps-1&&<Btn color={pc} onClick={nextStep} disabled={blk?.quiz&&!quizValidated[step]} style={{padding:"10px 24px",borderRadius:99}}>{blk?.quiz&&!quizValidated[step]?"Valide le quiz d'abord":"Étape suivante →"}</Btn>}
+          {step===totalSteps-1&&<Btn color="#16A34A" onClick={nextStep} disabled={blk?.quiz&&!quizValidated[step]} style={{padding:"10px 24px",borderRadius:99}}>{blk?.quiz&&!quizValidated[step]?"Valide le quiz d'abord":"Terminer le module →"}</Btn>}
         </div>
-      </div>}
+      </div>
     </div>;
   }
 
