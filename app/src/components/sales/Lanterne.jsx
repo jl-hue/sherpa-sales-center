@@ -488,7 +488,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
     // ── Recommandation hierarchique LIVE (preview) ──
     const livePath = niveau ? getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
+      niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
       matieres, psycho, objectif: objectifVie
     }) : null;
     let liveEmoji = "🎯", liveDesc = "", liveLabel = "";
@@ -934,7 +934,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
     // ── Recommandation hiérarchique précise ──
     const recommendedPath = getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
+      niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
       matieres, psycho, objectif: objectifVie
     });
     // Récupère l'emoji + description du nœud final
