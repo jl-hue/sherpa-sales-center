@@ -10,13 +10,15 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
   const [editPilier,setEditPilier]=useState(null);
   const [showNewMod,setShowNewMod]=useState(false);
   const [showNewPilier,setShowNewPilier]=useState(false);
-  const [viewMode,setViewMode]=useState("edit"); // "edit" or "progress"
+  const [viewMode,setViewMode]=useState("edit"); // "edit", "progress", or "toolbox"
 
   const [mTitle,setMTitle]=useState("");const [mDur,setMDur]=useState("");const [mDesc,setMDesc]=useState("");
   const [pTitle,setPTitle]=useState("");const [pIcon,setPIcon]=useState("");const [pColor,setPColor]=useState("#16A34A");
   const [npTitle,setNpTitle]=useState("");const [npIcon,setNpIcon]=useState("📚");const [npColor,setNpColor]=useState("#7C3AED");
 
   const COLORS=["#16A34A","#0B68B4","#DA4F00","#7C3AED","#E11D48","#0891B2"];
+
+  const [copiedSnippet,setCopiedSnippet]=useState(null);
 
   function save(next){setFormations({...next});}
 
@@ -89,16 +91,59 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
     setProgress(next);
   }
 
+  /* ── Toolbox helpers ── */
+  const MODULE_TEMPLATES=[
+    {emoji:"\uD83D\uDCD6",title:"Module th\u00e9orique",duration:"45 min",description:"Cours magistral avec supports visuels et exemples concrets"},
+    {emoji:"\uD83E\uDDEA",title:"Quiz d'\u00e9valuation",duration:"20 min",description:"QCM et questions ouvertes pour valider les acquis"},
+    {emoji:"\uD83C\uDFAD",title:"Roleplay / Simulation",duration:"60 min",description:"Mise en situation r\u00e9elle avec feedback personnalis\u00e9"},
+    {emoji:"\uD83D\uDD27",title:"Atelier pratique",duration:"50 min",description:"Exercices guid\u00e9s en conditions r\u00e9elles"},
+    {emoji:"\uD83D\uDCCB",title:"\u00c9tude de cas",duration:"40 min",description:"Analyse d\u2019une situation concr\u00e8te avec discussion"},
+    {emoji:"\uD83D\uDCAC",title:"D\u00e9brief collectif",duration:"30 min",description:"Retour d\u2019exp\u00e9rience et partage de bonnes pratiques"},
+  ];
+
+  const CONTENT_BLOCKS=[
+    {emoji:"\uD83D\uDCDD",label:"Texte",desc:"Contenu th\u00e9orique, d\u00e9finitions, explications",snippet:"\n\n\uD83D\uDCDD TEXTE\n[Contenu th\u00e9orique ici...]"},
+    {emoji:"\uD83C\uDFAC",label:"Vid\u00e9o",desc:"Lien vers une vid\u00e9o de d\u00e9monstration",snippet:"\n\n\uD83C\uDFAC VID\u00c9O\nLien : [URL de la vid\u00e9o]\nDur\u00e9e : ___ min"},
+    {emoji:"\u2753",label:"Quiz",desc:"Questions pour tester la compr\u00e9hension",snippet:"\n\n\u2753 QUIZ\n- Question 1 ?\n- Question 2 ?"},
+    {emoji:"\u270F\uFE0F",label:"Exercice",desc:"Pratique guid\u00e9e avec consignes",snippet:"\n\n\u270F\uFE0F EXERCICE\nConsigne : [D\u00e9crire l\u2019exercice]\nDur\u00e9e : ___ min\nLivrable attendu : ___"},
+    {emoji:"\u2705",label:"Checklist",desc:"Liste de points \u00e0 valider",snippet:"\n\n\u2705 CHECKLIST\n- [ ] Point 1\n- [ ] Point 2\n- [ ] Point 3"},
+    {emoji:"\uD83D\uDD17",label:"Lien externe",desc:"Ressource compl\u00e9mentaire en ligne",snippet:"\n\n\uD83D\uDD17 LIEN EXTERNE\nTitre : ___\nURL : [lien]\nDescription : ___"},
+  ];
+
+  const RESOURCES=[
+    {emoji:"\uD83D\uDCDE",label:"Scripts d\u2019appel",desc:"4 phases : Introduction, D\u00e9couverte, Pitch, Closing"},
+    {emoji:"\uD83D\uDEE1\uFE0F",label:"Fiches objections",desc:"5 objections avec reformulation, argument et rebond"},
+    {emoji:"\uD83E\uDDE0",label:"Matrice Neuroatypiques",desc:"25 combinaisons prof \u00d7 trouble avec arguments"},
+    {emoji:"\uD83D\uDD26",label:"Moteur Lanterne V5",desc:"Algorithme Dual Path + g\u00e9n\u00e9rateur d\u2019arguments"},
+    {emoji:"\uD83E\uDDE9",label:"Profils psychologiques",desc:"4 profils : Introverti, D\u00e9crocheur, Comp\u00e9titeur, Stress\u00e9"},
+  ];
+
+  function insertTemplate(tpl){
+    const pk=pilier;
+    if(!F[pk]) return;
+    const next={...F};
+    const newMod={id:Date.now(),title:`${tpl.emoji} ${tpl.title}`,duration:tpl.duration,done:false,description:tpl.description};
+    next[pk]={...next[pk],modules:[...next[pk].modules,newMod]};
+    save(next);
+  }
+
+  function copySnippet(snippet,idx){
+    navigator.clipboard.writeText(snippet).then(()=>{
+      setCopiedSnippet(idx);
+      setTimeout(()=>setCopiedSnippet(null),1500);
+    });
+  }
+
   const pill=F[pilier]||Object.values(F)[0];
   const allModules=Object.values(F).flatMap(p=>p.modules);
   const salesUsers=USERS.filter(u=>u.role==="sales");
 
   return <div>
-    <ST emoji="🎓" sub="Gérez les formations et suivez la progression de l'équipe.">Éditeur Formations</ST>
+    <ST emoji="\uD83C\uDF93" sub="G\u00e9rez les formations et suivez la progression de l\u2019\u00e9quipe.">Éditeur Formations</ST>
 
     {/* Mode toggle */}
     <div style={{display:"flex",gap:8,marginBottom:16}}>
-      {[["edit","✏️ Éditeur","Créer et modifier les formations"],["progress","📊 Suivi équipe","Voir la progression des Sales"]].map(([id,label,sub])=>(
+      {[["edit","\u270F\uFE0F \u00c9diteur","Cr\u00e9er et modifier les formations"],["progress","\uD83D\uDCCA Suivi \u00e9quipe","Voir la progression des Sales"],["toolbox","\uD83E\uDDF0 Bo\u00eete \u00e0 outils","Templates, blocs et ressources"]].map(([id,label,sub])=>(
         <button key={id} onClick={()=>setViewMode(id)} style={{flex:1,padding:"10px 14px",borderRadius:12,border:`2px solid ${viewMode===id?"#DA4F00":"#E4E4E7"}`,background:viewMode===id?"#FFF7F0":"#fff",cursor:"pointer",textAlign:"left",transition:"all .15s"}}>
           <div style={{fontSize:13,fontWeight:800,color:viewMode===id?"#DA4F00":"#18181B",fontFamily:"'Outfit',sans-serif"}}>{label}</div>
           <div style={{fontSize:11,color:"#71717A",marginTop:2}}>{sub}</div>
@@ -258,6 +303,80 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
           </C>;
         })}
       </div>
+    </div>}
+
+    {/* ═══ TOOLBOX MODE ═══ */}
+    {viewMode==="toolbox"&&<div>
+
+      {/* Pilier tabs (same as other modes so templates insert into the right pilier) */}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        {Object.entries(F).map(([k,v])=>(
+          <button key={k} onClick={()=>setPilier(k)} style={{padding:"7px 14px",borderRadius:99,border:`2px solid ${pilier===k?v.color:"#E4E4E7"}`,background:pilier===k?v.color:"#fff",color:pilier===k?"#fff":"#71717A",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>{v.icon} {v.title}</button>
+        ))}
+      </div>
+
+      {/* ── Section 1: Templates de modules ── */}
+      <C style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>📦 Templates de modules</div>
+            <div style={{fontSize:11,color:"#71717A",marginTop:2}}>Ins\u00e9rer un module pr\u00e9-configur\u00e9 dans <span style={{fontWeight:700,color:pill?.color}}>{pill?.icon} {pill?.title}</span></div>
+          </div>
+          <Pill color={pill?.color||"#DA4F00"}>{pill?.modules?.length||0} modules</Pill>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {MODULE_TEMPLATES.map((tpl,i)=>(
+            <div key={i} style={{padding:14,borderRadius:10,border:"1px solid #E4E4E7",background:"#FAFAFA",display:"flex",gap:12,alignItems:"flex-start",transition:"all .15s"}}>
+              <div style={{width:40,height:40,borderRadius:10,background:"#fff",border:"1px solid #E4E4E7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{tpl.emoji}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{tpl.title}</div>
+                <div style={{fontSize:11,color:"#71717A",marginTop:2}}>\u23F1 {tpl.duration}</div>
+                <div style={{fontSize:11,color:"#A1A1AA",marginTop:3,lineHeight:1.4}}>{tpl.description}</div>
+              </div>
+              <button onClick={()=>insertTemplate(tpl)} title={`Ajouter dans ${pill?.title}`} style={{width:32,height:32,borderRadius:8,border:"1px solid #C0EAD3",background:"#F0FDF4",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,color:"#16A34A",flexShrink:0,transition:"all .15s"}}>+</button>
+            </div>
+          ))}
+        </div>
+      </C>
+
+      {/* ── Section 2: Blocs de contenu ── */}
+      <C style={{marginBottom:14}}>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>📝 Blocs de contenu</div>
+          <div style={{fontSize:11,color:"#71717A",marginTop:2}}>Snippets \u00e0 copier puis coller dans la description d\u2019un module</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          {CONTENT_BLOCKS.map((blk,i)=>(
+            <div key={i} style={{padding:12,borderRadius:10,border:"1px solid #E4E4E7",background:"#FAFAFA",textAlign:"center",transition:"all .15s"}}>
+              <div style={{fontSize:24,marginBottom:6}}>{blk.emoji}</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{blk.label}</div>
+              <div style={{fontSize:10,color:"#A1A1AA",marginTop:3,lineHeight:1.3,minHeight:26}}>{blk.desc}</div>
+              <button onClick={()=>copySnippet(blk.snippet,i)} style={{marginTop:8,padding:"5px 14px",borderRadius:7,border:`1px solid ${copiedSnippet===i?"#16A34A":"#E4E4E7"}`,background:copiedSnippet===i?"#F0FDF4":"#fff",cursor:"pointer",fontSize:11,fontWeight:600,color:copiedSnippet===i?"#16A34A":"#71717A",fontFamily:"'Outfit',sans-serif",transition:"all .15s"}}>{copiedSnippet===i?"\u2713 Copi\u00e9 !":"Copier"}</button>
+            </div>
+          ))}
+        </div>
+      </C>
+
+      {/* ── Section 3: Bibliothèque de ressources ── */}
+      <C>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>📚 Biblioth\u00e8que de ressources</div>
+          <div style={{fontSize:11,color:"#71717A",marginTop:2}}>Contenu existant dans l\u2019app, r\u00e9utilisable dans vos formations</div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {RESOURCES.map((res,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:10,border:"1px solid #E4E4E7",background:"#FAFAFA"}}>
+              <div style={{width:38,height:38,borderRadius:10,background:"#fff",border:"1px solid #E4E4E7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{res.emoji}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#18181B",fontFamily:"'Outfit',sans-serif"}}>{res.label}</div>
+                <div style={{fontSize:11,color:"#A1A1AA",marginTop:2}}>{res.desc}</div>
+              </div>
+              <Pill color="#7C3AED">R\u00e9f\u00e9rence</Pill>
+            </div>
+          ))}
+        </div>
+      </C>
+
     </div>}
   </div>;
 }
