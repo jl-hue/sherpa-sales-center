@@ -50,9 +50,36 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
   function addObjective(){if(!newObjText.trim())return;setDmObjectives(p=>[...p,newObjText.trim()]);setNewObjText("");}
   function removeObjective(idx){setDmObjectives(p=>p.filter((_,i)=>i!==idx));}
   function addContentBlock(type){
-    const defaults={text:{type:"text",title:"Nouvelle section",body:""},quiz:{type:"quiz",title:"Quiz",body:"1. Question ?\n   a) ...\n   b) ...\n   → Réponse : "},exercise:{type:"exercise",title:"Exercice",body:"Consigne : ...\nDurée : ... min\nLivrable : ..."},checklist:{type:"checklist",title:"Points clés",body:"- [ ] Point 1\n- [ ] Point 2\n- [ ] Point 3"},link:{type:"link",title:"Ressources",body:"📎 Lien : ...\n📎 Lien : ..."}};
+    const defaults={
+      text:{type:"text",title:"Nouvelle section",body:""},
+      quiz:{type:"quiz",title:"Quiz",body:"",quiz:[{question:"",choices:["","",""],correctIndex:0,explanation:""}]},
+      exercise:{type:"exercise",title:"Exercice",body:"Consigne : ...\nDurée : ... min\nLivrable : ..."},
+      checklist:{type:"checklist",title:"Points clés",body:"- [ ] Point 1\n- [ ] Point 2\n- [ ] Point 3"},
+      link:{type:"link",title:"Ressources",body:"📎 Lien : ...\n📎 Lien : ..."},
+      video:{type:"video",title:"Vidéo",body:"",url:""},
+      pdf:{type:"pdf",title:"Document PDF",body:"",url:""},
+    };
     setDmContent(p=>[...p,defaults[type]||defaults.text]);
   }
+  function addQuizQuestion(blockIdx){
+    setDmContent(p=>p.map((c,i)=>i===blockIdx?{...c,quiz:[...(c.quiz||[]),{question:"",choices:["","",""],correctIndex:0,explanation:""}]}:c));
+  }
+  function updateQuizQuestion(blockIdx,qIdx,field,val){
+    setDmContent(p=>p.map((c,i)=>{if(i!==blockIdx)return c;const q=[...(c.quiz||[])];q[qIdx]={...q[qIdx],[field]:val};return{...c,quiz:q};}));
+  }
+  function updateQuizChoice(blockIdx,qIdx,cIdx,val){
+    setDmContent(p=>p.map((c,i)=>{if(i!==blockIdx)return c;const q=[...(c.quiz||[])];const ch=[...q[qIdx].choices];ch[cIdx]=val;q[qIdx]={...q[qIdx],choices:ch};return{...c,quiz:q};}));
+  }
+  function addQuizChoice(blockIdx,qIdx){
+    setDmContent(p=>p.map((c,i)=>{if(i!==blockIdx)return c;const q=[...(c.quiz||[])];q[qIdx]={...q[qIdx],choices:[...q[qIdx].choices,""]};return{...c,quiz:q};}));
+  }
+  function removeQuizChoice(blockIdx,qIdx,cIdx){
+    setDmContent(p=>p.map((c,i)=>{if(i!==blockIdx)return c;const q=[...(c.quiz||[])];const ch=q[qIdx].choices.filter((_,ci)=>ci!==cIdx);const ci=q[qIdx].correctIndex>=cIdx&&q[qIdx].correctIndex>0?q[qIdx].correctIndex-1:q[qIdx].correctIndex;q[qIdx]={...q[qIdx],choices:ch,correctIndex:Math.min(ci,ch.length-1)};return{...c,quiz:q};}));
+  }
+  function removeQuizQuestion(blockIdx,qIdx){
+    setDmContent(p=>p.map((c,i)=>i===blockIdx?{...c,quiz:(c.quiz||[]).filter((_,qi)=>qi!==qIdx)}:c));
+  }
+  function getYouTubeId(url){const m=url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
   function updateContentBlock(idx,field,val){setDmContent(p=>p.map((c,i)=>i===idx?{...c,[field]:val}:c));}
   function removeContentBlock(idx){setDmContent(p=>p.filter((_,i)=>i!==idx));}
   function moveContentBlock(idx,dir){
@@ -177,8 +204,8 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
   const allModules=Object.values(F).flatMap(p=>p.modules);
   const salesUsers=USERS.filter(u=>u.role==="sales");
 
-  const BLOCK_TYPES=[{id:"text",emoji:"📝",label:"Texte"},{id:"quiz",emoji:"❓",label:"Quiz"},{id:"exercise",emoji:"✏️",label:"Exercice"},{id:"checklist",emoji:"✅",label:"Checklist"},{id:"link",emoji:"🔗",label:"Liens"}];
-  const BLOCK_COLORS={text:"#0B68B4",quiz:"#7C3AED",exercise:"#DA4F00",checklist:"#16A34A",link:"#6B7280"};
+  const BLOCK_TYPES=[{id:"text",emoji:"📝",label:"Texte"},{id:"video",emoji:"🎬",label:"Vidéo"},{id:"pdf",emoji:"📄",label:"PDF"},{id:"quiz",emoji:"❓",label:"Quiz"},{id:"exercise",emoji:"✏️",label:"Exercice"},{id:"checklist",emoji:"✅",label:"Checklist"},{id:"link",emoji:"🔗",label:"Liens"}];
+  const BLOCK_COLORS={text:"#0B68B4",video:"#E11D48",pdf:"#D97706",quiz:"#7C3AED",exercise:"#DA4F00",checklist:"#16A34A",link:"#6B7280"};
 
   // ═══ DETAIL MODULE EDITOR (full screen) ═══
   if(detailMod){
@@ -255,7 +282,57 @@ function FormateurFormations({formations,setFormations,progress={},setProgress})
               {/* Block body */}
               <div style={{padding:14}}>
                 <div style={{marginBottom:8}}><input value={blk.title} onChange={e=>updateContentBlock(i,"title",e.target.value)} placeholder="Titre de la section" style={{width:"100%",fontSize:13,fontWeight:700,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",boxSizing:"border-box",fontFamily:"'Outfit',sans-serif"}}/></div>
-                <textarea value={blk.body} onChange={e=>updateContentBlock(i,"body",e.target.value)} rows={blk.body?.split("\n").length>6?Math.min(blk.body.split("\n").length+1,20):6} style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"10px 12px",fontFamily:"'Inter',sans-serif",resize:"vertical",boxSizing:"border-box",lineHeight:1.7}}/>
+
+                {/* Video block */}
+                {blk.type==="video"&&<div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>URL YouTube</div>
+                  <input value={blk.url||""} onChange={e=>updateContentBlock(i,"url",e.target.value)} placeholder="https://www.youtube.com/watch?v=..." style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",boxSizing:"border-box",fontFamily:"'Inter',sans-serif",marginBottom:8}}/>
+                  {getYouTubeId(blk.url)&&<div style={{borderRadius:10,overflow:"hidden",marginBottom:8}}><iframe width="100%" height="280" src={`https://www.youtube.com/embed/${getYouTubeId(blk.url)}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{borderRadius:10}}/></div>}
+                  {blk.url&&!getYouTubeId(blk.url)&&<div style={{fontSize:11,color:"#E11D48",marginBottom:8}}>URL YouTube invalide</div>}
+                  <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>Description (optionnel)</div>
+                  <textarea value={blk.body||""} onChange={e=>updateContentBlock(i,"body",e.target.value)} rows={2} placeholder="Ce que montre cette vidéo..." style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",fontFamily:"'Inter',sans-serif",resize:"vertical",boxSizing:"border-box"}}/>
+                </div>}
+
+                {/* PDF block */}
+                {blk.type==="pdf"&&<div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>URL du PDF</div>
+                  <input value={blk.url||""} onChange={e=>updateContentBlock(i,"url",e.target.value)} placeholder="https://example.com/presentation.pdf" style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",boxSizing:"border-box",fontFamily:"'Inter',sans-serif",marginBottom:8}}/>
+                  {blk.url&&<div style={{borderRadius:10,overflow:"hidden",border:"1px solid #E4E4E7",marginBottom:8}}>
+                    <iframe src={blk.url} width="100%" height="400" style={{border:"none",borderRadius:10}}/>
+                  </div>}
+                  <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:5}}>Description (optionnel)</div>
+                  <textarea value={blk.body||""} onChange={e=>updateContentBlock(i,"body",e.target.value)} rows={2} placeholder="Ce que contient ce document..." style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"8px 12px",fontFamily:"'Inter',sans-serif",resize:"vertical",boxSizing:"border-box"}}/>
+                </div>}
+
+                {/* Quiz block — visual editor */}
+                {blk.type==="quiz"&&<div>
+                  {(blk.quiz||[]).map((q,qIdx)=>(
+                    <div key={qIdx} style={{padding:14,borderRadius:10,border:"1px solid #DDD6FE",background:"#F5F3FF",marginBottom:10}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <span style={{fontSize:12,fontWeight:800,color:"#7C3AED",fontFamily:"'Outfit',sans-serif"}}>Question {qIdx+1}</span>
+                        <button onClick={()=>removeQuizQuestion(i,qIdx)} style={{border:"none",background:"none",cursor:"pointer",fontSize:12,color:"#E11D48"}}>Supprimer</button>
+                      </div>
+                      <input value={q.question} onChange={e=>updateQuizQuestion(i,qIdx,"question",e.target.value)} placeholder="Écris ta question ici..." style={{width:"100%",fontSize:13,fontWeight:600,border:"1px solid #DDD6FE",borderRadius:8,padding:"9px 12px",boxSizing:"border-box",fontFamily:"'Inter',sans-serif",marginBottom:8}}/>
+                      <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:6}}>Choix de réponses (coche la bonne)</div>
+                      {q.choices.map((c,cIdx)=>(
+                        <div key={cIdx} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                          <button onClick={()=>updateQuizQuestion(i,qIdx,"correctIndex",cIdx)} style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${q.correctIndex===cIdx?"#16A34A":"#D4D4D8"}`,background:q.correctIndex===cIdx?"#16A34A":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{q.correctIndex===cIdx&&<div style={{width:8,height:8,borderRadius:"50%",background:"#fff"}}/>}</button>
+                          <input value={c} onChange={e=>updateQuizChoice(i,qIdx,cIdx,e.target.value)} placeholder={`Choix ${cIdx+1}`} style={{flex:1,fontSize:12,border:"1px solid #E4E4E7",borderRadius:6,padding:"6px 10px",fontFamily:"'Inter',sans-serif"}}/>
+                          {q.choices.length>2&&<button onClick={()=>removeQuizChoice(i,qIdx,cIdx)} style={{border:"none",background:"none",cursor:"pointer",fontSize:11,color:"#E11D48"}}>x</button>}
+                        </div>
+                      ))}
+                      <button onClick={()=>addQuizChoice(i,qIdx)} style={{fontSize:11,color:"#7C3AED",background:"none",border:"none",cursor:"pointer",fontWeight:600,marginTop:2}}>+ Ajouter un choix</button>
+                      <div style={{marginTop:8}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:4}}>Explication (affichée après réponse)</div>
+                        <input value={q.explanation||""} onChange={e=>updateQuizQuestion(i,qIdx,"explanation",e.target.value)} placeholder="Pourquoi c'est la bonne réponse..." style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:6,padding:"6px 10px",boxSizing:"border-box",fontFamily:"'Inter',sans-serif"}}/>
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={()=>addQuizQuestion(i)} style={{width:"100%",padding:10,borderRadius:8,border:"2px dashed #DDD6FE",background:"#F5F3FF",cursor:"pointer",fontSize:12,fontWeight:700,color:"#7C3AED",fontFamily:"'Outfit',sans-serif"}}>+ Ajouter une question</button>
+                </div>}
+
+                {/* Text, exercise, checklist, link — textarea */}
+                {!["quiz","video","pdf"].includes(blk.type)&&<textarea value={blk.body} onChange={e=>updateContentBlock(i,"body",e.target.value)} rows={blk.body?.split("\n").length>6?Math.min(blk.body.split("\n").length+1,20):6} style={{width:"100%",fontSize:12,border:"1px solid #E4E4E7",borderRadius:8,padding:"10px 12px",fontFamily:"'Inter',sans-serif",resize:"vertical",boxSizing:"border-box",lineHeight:1.7}}/>}
               </div>
             </div>;
           })}

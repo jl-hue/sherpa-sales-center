@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { ST, GC, C, Pill, Btn, CopyBtn } from '../ui';
 import { FORMATION_DEFAULT } from '../../constants/data';
 
-const BLOCK_COLORS={text:"#0B68B4",quiz:"#7C3AED",exercise:"#DA4F00",checklist:"#16A34A",link:"#6B7280"};
-const BLOCK_EMOJIS={text:"📝",quiz:"❓",exercise:"✏️",checklist:"✅",link:"🔗"};
+const BLOCK_COLORS={text:"#0B68B4",video:"#E11D48",pdf:"#D97706",quiz:"#7C3AED",exercise:"#DA4F00",checklist:"#16A34A",link:"#6B7280"};
+const BLOCK_EMOJIS={text:"📝",video:"🎬",pdf:"📄",quiz:"❓",exercise:"✏️",checklist:"✅",link:"🔗"};
+function getYouTubeId(url){const m=url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
 
 function SalesFormation({formations, progress={}, setProgress, user}){
   const F = formations && Object.keys(formations).length > 0 ? formations : FORMATION_DEFAULT;
@@ -188,7 +189,12 @@ function SalesFormation({formations, progress={}, setProgress, user}){
             <div style={{flex:1}}/>
             <Pill color={bc}>{step+1}/{totalSteps}</Pill>
           </div>
-          <div style={{padding:"16px 18px",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"'Inter',sans-serif"}}>{blk.body}</div>
+          {/* Video embed */}
+          {blk.type==="video"&&blk.url&&getYouTubeId(blk.url)&&<div style={{padding:"16px 18px"}}><div style={{borderRadius:10,overflow:"hidden"}}><iframe width="100%" height="360" src={`https://www.youtube.com/embed/${getYouTubeId(blk.url)}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{borderRadius:10}}/></div>{blk.body&&<div style={{padding:"12px 0 0",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{blk.body}</div>}</div>}
+          {/* PDF embed */}
+          {blk.type==="pdf"&&blk.url&&<div style={{padding:"16px 18px"}}><div style={{borderRadius:10,overflow:"hidden",border:"1px solid #E4E4E7"}}><iframe src={blk.url} width="100%" height="500" style={{border:"none"}}/></div>{blk.body&&<div style={{padding:"12px 0 0",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{blk.body}</div>}</div>}
+          {/* Text/other content */}
+          {!["video","pdf"].includes(blk.type)&&blk.body&&<div style={{padding:"16px 18px",fontSize:13,color:"#3F3F46",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"'Inter',sans-serif"}}>{blk.body}</div>}
         </C>;
       })()}
 
