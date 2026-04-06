@@ -109,9 +109,11 @@ function getSpinQuestions(parentProfile, nom, psycho, objectifVie, diag) {
 }
 
 // ── Guide d'argumentation par profil parent ─────────────────────
-function getArgumentationGuide(parentProfile, nom, profPropose, diag) {
+function getArgumentationGuide(parentProfile, nom, profPropose, diag, profProfilLabel) {
   const n = nom || "votre enfant";
-  const p = profPropose || "ce profil";
+  // Combinaison label hierarchique + precisions texte
+  const profCombined = [profProfilLabel, profPropose].filter(Boolean).join(" — ");
+  const p = profCombined || "ce profil";
   const ctx = buildAcademicContext(diag);
   const ctxStr = ctx ? ` (${ctx})` : "";
 
@@ -411,6 +413,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
   // ── State: Guide d'argumentation (Step 2) ──────────────────────
   const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
+  const [profProposePath, setProfProposePath] = useState([]); // selection en cascade dans PROF_HIERARCHY
 
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
@@ -451,6 +454,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setPrepaFiliere("");
     setUnivFiliere("");
     setProfProposeNom("");
+    setProfProposePath([]);
   }
 
   const matchingSavedRef = useRef(false);
@@ -1190,7 +1194,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
         {/* ── GUIDE D'ARGUMENTATION ── */}
         {(()=>{
           const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere };
-          const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx);
+          const profProfilLabel = profProposePath.length > 0 ? profProposePath[profProposePath.length - 1] : "";
+          const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx, profProfilLabel);
           return <C style={{ marginBottom: 16, background: "#FFFBEB", border: "2px solid #FCD34D", padding: "18px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 22 }}>🎤</span>
@@ -1200,11 +1205,70 @@ function SalesLanterne({ stock, setMatchings, user }) {
               </div>
             </div>
 
-            {/* Champ : Prof proposé */}
+            {/* SELECTEUR HIERARCHIQUE PROF PROPOSE */}
             <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #FDE68A" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>👨‍🏫 Professeur que je vais proposer</div>
-              <input value={profProposeNom} onChange={e => setProfProposeNom(e.target.value)} placeholder="Ex : Martin, étudiant en Prépa MP à Louis-le-Grand" style={{ width: "100%", fontSize: 13, border: "1px solid #FDE68A", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
-              <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 4 }}>Renseigne le nom + profil pour personnaliser les arguments ci-dessous</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>👨‍🏫 Profil du professeur proposé</div>
+
+              {/* Breadcrumb */}
+              {profProposePath.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, padding: "6px 10px", background: "#FFFBEB", borderRadius: 8, border: "1px solid #FDE68A", flexWrap: "wrap" }}>
+                  <button onClick={() => setProfProposePath([])} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#D97706", fontWeight: 700 }}>↺ Reset</button>
+                  {profProposePath.map((p, i) => (
+                    <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ color: "#A1A1AA", fontSize: 11 }}>›</span>
+                      <button onClick={() => setProfProposePath(profProposePath.slice(0, i + 1))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#92400E", fontWeight: 600, fontFamily: "'Outfit',sans-serif" }}>{p}</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Cascade */}
+              {(()=>{
+                let currentLevel = PROF_HIERARCHY;
+                for (const key of profProposePath) {
+                  if (currentLevel[key]?.children) currentLevel = currentLevel[key].children;
+                  else return null;
+                }
+                const entries = Object.entries(currentLevel || {});
+                if (entries.length === 0) return null;
+                return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {entries.map(([key, val]) => {
+                    const hasChildren = val.children && Object.keys(val.children).length > 0;
+                    return (
+                      <button key={key} onClick={() => setProfProposePath([...profProposePath, key])} style={{ padding: "9px 12px", borderRadius: 9, border: "1px solid #FDE68A", background: "#FFFBEB", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 14 }}>{val.emoji || "📌"}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif", flex: 1 }}>{key}</span>
+                          {hasChildren && <span style={{ fontSize: 12, color: "#A1A1AA" }}>›</span>}
+                        </div>
+                        {val.description && <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 3, marginLeft: 20 }}>{val.description}</div>}
+                      </button>
+                    );
+                  })}
+                </div>;
+              })()}
+
+              {/* Selection finale */}
+              {profProposePath.length >= 2 && (()=>{
+                const last = profProposePath[profProposePath.length - 1];
+                let node = PROF_HIERARCHY;
+                for (let i = 0; i < profProposePath.length - 1; i++) node = node[profProposePath[i]]?.children || {};
+                const finalNode = node[last];
+                return <div style={{ marginTop: 10, padding: "10px 12px", background: "#F0FDF4", borderRadius: 8, border: "1px solid #C0EAD3" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 16 }}>{finalNode?.emoji || "✓"}</span>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>{last}</div>
+                  </div>
+                  {finalNode?.description && <div style={{ fontSize: 11, color: "#71717A", marginTop: 3, marginLeft: 22 }}>{finalNode.description}</div>}
+                </div>;
+              })()}
+            </div>
+
+            {/* Champ : Prénom + détails du prof */}
+            <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #FDE68A" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>📝 Prénom + précisions (optionnel)</div>
+              <input value={profProposeNom} onChange={e => setProfProposeNom(e.target.value)} placeholder="Ex : Martin, à Louis-le-Grand, 22 ans, expérience tutorat" style={{ width: "100%", fontSize: 13, border: "1px solid #FDE68A", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
+              <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 4 }}>Détails complémentaires pour personnaliser les arguments</div>
             </div>
 
             {/* Questions à poser */}
