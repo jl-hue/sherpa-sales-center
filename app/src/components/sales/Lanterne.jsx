@@ -973,6 +973,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
 
+    // ── Analyse compatibilite matieres (visible aussi en Step 2) ──
+    const matAnalysisStep2 = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
+
     // ── Recommandation hiérarchique précise ──
     const recommendedPath = getRecommendedHierarchy({
       niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
@@ -1011,6 +1014,43 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </p>
           </div>
         </div>
+
+        {/* ── ALERTES MATIERES INCOMPATIBLES (Step 2) ── */}
+        {matAnalysisStep2 && matAnalysisStep2.type === "incompatible" && (
+          <C style={{ marginBottom: 14, background: "#FEF2F2", border: "2px solid #FCA5A5", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <Pill color="#E11D48">ALERTE — Matières incompatibles pour 1 prof</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} — Filières trop différentes</div>
+              </div>
+              <CopyBtn text={getIncompatibleScript(matAnalysisStep2, nom, niveau)} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #E11D48" }}>
+              {getIncompatibleScript(matAnalysisStep2, nom, niveau)}
+            </div>
+          </C>
+        )}
+
+        {matAnalysisStep2 && matAnalysisStep2.type === "combo" && (
+          <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>{matAnalysisStep2.combo.icon}</span>
+                  <Pill color="#16A34A">1 PROF POSSIBLE — Combo compatible</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} → {matAnalysisStep2.combo.filiere}</div>
+              </div>
+              <CopyBtn text={getComboScript(matAnalysisStep2.combo, nom, niveau)} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
+              {getComboScript(matAnalysisStep2.combo, nom, niveau)}
+            </div>
+          </C>
+        )}
 
         {/* RECOMMANDATION HIERARCHIQUE PRECISE */}
         <C style={{ marginBottom: 16, background: "linear-gradient(135deg,#16A34A,#62E58E)", border: "none", padding: "20px 22px", color: "#fff" }}>
