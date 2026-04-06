@@ -104,20 +104,20 @@ function findNeuroMatch(profTyp, trouble) {
   return entry || null;
 }
 
-// ── NEURO + NIVEAU : alerte post-collège ────────────────────────
+// ── NEURO + NIVEAU : alerte post-college ────────────────────────
 const NIVEAUX_NEURO_OK = ["Primaire", "Collège"];
 function getNeuroNiveauWarning(niveau, trouble, nom) {
   const n = nom || "votre enfant";
   if (NIVEAUX_NEURO_OK.includes(niveau)) return null;
   return {
     warning: true,
-    title: `Profil neuroatypique + ${niveau} — Accompagnement spécialisé limité`,
+    title: `Profil neuroatypique + ${niveau} — Accompagnement specialise limite`,
     script: `Je vais être transparent avec vous : à partir du lycée, accompagner un élève ${trouble} avec un professeur vraiment spécialisé devient beaucoup plus difficile.\n\nPourquoi ?\n• Au collège, les AESH, psychologues et profs en psychopédagogie peuvent couvrir le programme tout en adaptant leur pédagogie au trouble de ${n}\n• À partir du lycée, le niveau académique monte — il faut un prof qui maîtrise la matière ET qui comprenne le ${trouble}. Ce double profil est rare.\n\nCe que je vous recommande concrètement :\n\n1. Un prof spécialiste de la matière (notre prescription Lanterne) qui va assurer le niveau académique\n2. En parallèle, un suivi avec un professionnel spécialisé ${trouble} (orthophoniste, psychomotricien, neuropsychologue) pour l'accompagnement du trouble\n\nNotre prof ne remplace pas le spécialiste — mais on va le briefer sur le profil de ${n} pour qu'il adapte sa pédagogie au maximum :\n• Consignes plus courtes et plus claires\n• Supports visuels si besoin\n• Rythme adapté avec des pauses\n• Pas de double tâche (écouter + écrire en même temps)\n\nL'idéal, c'est que le prof et le spécialiste ${trouble} communiquent — et ça, on peut le faciliter.\n\nOn part sur cette approche ?`
   };
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// COMPATIBILITE MATIERES — 1 prof pour plusieurs matières ?
+// COMPATIBILITE MATIERES — 1 prof pour plusieurs matieres ?
 // ═══════════════════════════════════════════════════════════════════
 const MATIERE_FAMILIES={
   sciences:["Maths","Physique","Chimie","SVT","Informatique"],
@@ -144,18 +144,15 @@ const COMPATIBLE_COMBOS=[
 ];
 
 const NIVEAUX_COLLEGE = ["Primaire", "Collège"];
-// Niveaux où un seul prof peut couvrir toutes les matières (jusqu'à la 3e)
 const NIVEAUX_POLYVALENT = ["Primaire", "Collège", "Lycée pro"];
 
 function analyzeMatieresCompatibility(matieres, niveau) {
   if (!matieres || matieres.length <= 1) return { compatible: true, type: "single" };
 
-  // Primaire / Collège / Lycée pro → un seul prof peut tout faire
   if (NIVEAUX_POLYVALENT.includes(niveau)) {
     return { compatible: true, type: "college_polyvalent", mats: matieres, niveau };
   }
 
-  // Check which families each matiere belongs to
   const families = new Set();
   matieres.forEach(m => {
     Object.entries(MATIERE_FAMILIES).forEach(([fam, list]) => {
@@ -163,7 +160,6 @@ function analyzeMatieresCompatibility(matieres, niveau) {
     });
   });
 
-  // Find compatible combo
   const sorted = [...matieres].sort();
   let bestMatch = null;
   let bestScore = 0;
@@ -180,12 +176,10 @@ function analyzeMatieresCompatibility(matieres, niveau) {
     return { compatible: true, type: "combo", combo: bestMatch, allMats: matieres };
   }
 
-  // Incompatible — different families
   if (families.size > 1) {
     return { compatible: false, type: "incompatible", families: [...families], mats: matieres };
   }
 
-  // Same family but no specific combo
   return { compatible: true, type: "same_family", families: [...families] };
 }
 
@@ -198,6 +192,24 @@ function getIncompatibleScript(analysis, nom, niveau) {
 function getComboScript(combo, nom, niveau) {
   const n = nom || "votre enfant";
   return `Excellente nouvelle — pour ${combo.mats.join(" et ")}, on a exactement le profil qu'il faut.\n\nJe vous recommande ${combo.profil}. Pourquoi ? Parce qu'en ${combo.filiere}, on étudie ces matières ensemble à un niveau très poussé.\n\nConcrètement, ce type de profil :\n• Maîtrise ${combo.mats.join(" ET ")} au niveau ${niveau} et au-delà\n• A traversé des concours où ces matières sont combinées — il connaît les passerelles entre elles\n• Peut aider ${n} à voir les liens entre les matières, pas juste les traiter séparément\n• Un seul interlocuteur = plus de cohérence dans la méthode de travail\n\nC'est un profil rare et très demandé — on en a en stock, mais je vous conseille de ne pas trop tarder.`;
+}
+
+// ── Rebond Script for Step 3 ────────────────────────────────────
+function getRebondScript(idealTyp, chosenTyp, psycho, nom, niveau) {
+  const n = nom || "votre enfant";
+  const idealLabel = getLabel(idealTyp, psycho);
+  const chosenLabel = getLabel(chosenTyp, psycho);
+  const chosenArgs = getArgs(chosenTyp, psycho);
+
+  let advantages = "";
+  if (chosenArgs) {
+    advantages = [
+      chosenArgs.hook ? `• ${chosenArgs.hook}` : null,
+      chosenArgs.bridge ? `• ${chosenArgs.bridge}` : null,
+    ].filter(Boolean).join("\n");
+  }
+
+  return `La famille s'attendait a un profil "${idealLabel}" — c'est ce que notre algorithme recommandait en premier.\n\nMais vous proposez un profil "${chosenLabel}", et c'est tout a fait defendable. Voici comment presenter ce choix :\n\n1. RECONNAITRE L'ATTENTE\n"Je comprends — notre analyse pointait vers un profil ${idealLabel} pour ${n}. C'est effectivement un excellent choix sur le papier."\n\n2. TRANSITION VERS LE PROFIL PROPOSE\n"Cela dit, le profil ${chosenLabel} qu'on a en stock presente des avantages specifiques que je veux vous montrer :"\n\n${advantages || `• Ce profil a une approche pedagogique differente qui peut tres bien fonctionner pour ${n}\n• La disponibilite immediate est un vrai plus — commencer vite, c'est souvent plus important que le profil parfait`}\n\n3. BENEFICE CONCRET POUR L'ENFANT\n"Pour ${n} concretement, un profil ${chosenLabel} va :\n• Pouvoir demarrer rapidement — chaque semaine compte dans la progression\n• Apporter ${psycho === "Introverti / Réservé" ? "un cadre rassurant et une approche patiente" : psycho === "Décrocheur / Démotivé" ? "une dynamique nouvelle et motivante" : psycho === "Compétiteur / Haut Potentiel" ? "un niveau d'exigence adapte au potentiel" : "un accompagnement adapte au profil"} de ${n}\n• Etre supervise par notre equipe — si le match ne fonctionne pas, on ajuste immediatement"\n\n4. CLOSING\n"Le plus important, c'est de commencer. Un bon prof disponible maintenant vaut mieux qu'un prof parfait dans 3 semaines. Et avec notre suivi, on s'assure que ça fonctionne des la premiere seance. On y va ?"`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -224,13 +236,11 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [parentProfile, setParentProfile] = useState("");
 
   // ── State: Nombre de profs ─────────────────────────────────────
-  const [nbProfs, setNbProfs] = useState("1"); // "1" or "multi"
+  const [nbProfs, setNbProfs] = useState("1");
 
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
-  const [chosenB, setChosenB] = useState("");
-  const [activeOption, setActiveOption] = useState("A");
-  const [scriptGenerated, setScriptGenerated] = useState(false);
+  const [chosenRebond, setChosenRebond] = useState("");
 
   const stockMap = Object.fromEntries(stock.map(s => [s.typ, s]));
   const canAnalyze = niveau && psycho && objectifVie;
@@ -238,17 +248,13 @@ function SalesLanterne({ stock, setMatchings, user }) {
   function analyze() {
     const p = computeV5(niveau, psycho, objectifVie, accomp);
     setPortrait(p);
-    setChosenB(stock.find(s => s.dispo)?.typ || PROF_TYPES[0]);
     setStep(2);
-    setScriptGenerated(false);
   }
 
   function reset() {
     setStep(1);
     setPortrait(null);
-    setChosenB("");
-    setActiveOption("A");
-    setScriptGenerated(false);
+    setChosenRebond("");
     setPrenom("");
     setNiveau("");
     setMatieres([]);
@@ -263,286 +269,42 @@ function SalesLanterne({ stock, setMatchings, user }) {
   }
 
   const matchingSavedRef = useRef(false);
-  function generateScript() {
-    setScriptGenerated(true);
-    matchingSavedRef.current = false;
-  }
-  // Save matching only when leaving step 2 (reset)
+
   function resetAndSave() {
-    if (!matchingSavedRef.current && portrait && scriptGenerated) {
+    if (!matchingSavedRef.current && portrait) {
       matchingSavedRef.current = true;
       const idealTyp = portrait[0].typ;
-      const chosenTyp = activeOption === "A" ? idealTyp : chosenB;
-      const followed = activeOption === "A";
-      setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp, followed, niveau, psycho });
+      setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp: idealTyp, followed: true, niveau, psycho });
     }
     reset();
+    matchingSavedRef.current = false;
   }
 
   const accompLabel = accomp <= 3 ? "Douceur & Empathie" : accomp >= 7 ? "Fermete & Cadre" : "Equilibre";
   const accompColor = accomp <= 3 ? "#16A34A" : accomp >= 7 ? "#DA4F00" : "#0B68B4";
 
   function injectPrenom(text) {
+    if (!text) return "";
     return text.replace(/\[Prénom\]/g, prenom || "votre enfant").replace(/\[nom\]/g, prenom || "votre enfant");
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 1: FORM
-  // ═══════════════════════════════════════════════════════════════
-  if (step === 1) return (
-    <div>
-      <ST emoji="🔦" sub="Le cerveau strategique de l'application — prescription, neuro & argumentation dynamique.">Lanterne Match V5</ST>
-
-      {/* Prenom */}
-      <C style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>
-          👤 Prenom de l'eleve <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel, personnalise les scripts)</span>
-        </div>
-        <input value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Ex : Lucas, Emma, Thomas..."
-          style={{ width: "100%", fontSize: 14, border: "1px solid #E4E4E7", borderRadius: 10, padding: "10px 14px", boxSizing: "border-box", fontFamily: "'Outfit',sans-serif", fontWeight: 600, color: "#18181B" }} />
-      </C>
-
-      {/* Diagnostic academique */}
-      <C style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 16, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📚 Diagnostic academique</div>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Niveau scolaire <span style={{ color: "#E11D48" }}>*</span></div>
-          <Chips options={NIVEAUX} selected={niveau} onChange={setNiveau} color="#16A34A" single={true} />
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
-          <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
-          <Chips options={MATIERES} selected={matieres} onChange={setMatieres} color="#DA4F00" />
-        </div>
-      </C>
-
-      {/* Nombre de profs */}
-      {matieres.length>=2&&<C style={{ marginBottom: 12, borderLeft: `4px solid ${nbProfs==="1"?"#0B68B4":"#16A34A"}` }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-          👥 Nombre de professeurs
-          <span style={{ fontSize: 11, background: "#EFF6FF", color: "#0B68B4", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>La famille souhaite un seul prof pour toutes les matières, ou un par matière ?</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-          {[["1","1️⃣","Un seul prof","Pour toutes les matières sélectionnées"],["multi","👥","Plusieurs profs","Un spécialiste par matière"]].map(([id,em,label,desc])=>{
-            const on=nbProfs===id;
-            return <button key={id} onClick={()=>setNbProfs(id)} style={{padding:"12px 14px",borderRadius:12,border:`2px solid ${on?"#0B68B4":"#E4E4E7"}`,background:on?"#EFF6FF":"#FAFAFA",textAlign:"left",cursor:"pointer",transition:"all .15s"}}>
-              <div style={{fontSize:18,marginBottom:4}}>{em}</div>
-              <div style={{fontSize:12,fontWeight:700,color:on?"#1E40AF":"#3F3F46",fontFamily:"'Outfit',sans-serif"}}>{label}</div>
-              <div style={{fontSize:11,color:"#A1A1AA",marginTop:2}}>{desc}</div>
-            </button>;
-          })}
-        </div>
-      </C>}
-
-      {/* Profil psychologique */}
-      <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-          🧠 Profil Psychologique <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>La personnalite de l'eleve determine le profil de prof ideal</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-          {PSYCH_PROFILES.map(p => {
-            const on = psycho === p;
-            const emoji = { "Introverti / Réservé": "🤫", "Décrocheur / Démotivé": "😮‍💨", "Compétiteur / Haut Potentiel": "🔥", "Stressé / Anxieux": "😰" }[p] || "👤";
-            return (
-              <button key={p} onClick={() => setPsycho(on ? "" : p)}
-                style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#16A34A" : "#E4E4E7"}`, background: on ? "#E1FFED" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
-                <div style={{ fontSize: 18, marginBottom: 4 }}>{emoji}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#16A34A" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p}</div>
-              </button>
-            );
-          })}
-        </div>
-      </C>
-
-      {/* Neuroatypique toggle */}
-      <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: neuroActive ? 12 : 0 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-              🧩 Neuroatypique
-              <span style={{ fontSize: 11, background: neuroActive ? "#F5F3FF" : "#F4F4F5", color: neuroActive ? "#7C3AED" : "#71717A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>
-                {neuroActive ? "ACTIF" : "OFF"}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>L'eleve a un profil neuroatypique</div>
-          </div>
-          <button onClick={() => { setNeuroActive(!neuroActive); if (neuroActive) setNeuroTrouble(""); }}
-            style={{
-              width: 48, height: 26, borderRadius: 99, border: "none", cursor: "pointer", position: "relative",
-              background: neuroActive ? "#7C3AED" : "#D4D4D8", transition: "background .2s",
-            }}>
-            <div style={{
-              width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3,
-              left: neuroActive ? 25 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)",
-            }} />
-          </button>
-        </div>
-
-        {neuroActive && (
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Type de trouble <span style={{ color: "#E11D48" }}>*</span></div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {NEURO_TROUBLES.map(t => {
-                const on = neuroTrouble === t;
-                const tc = NEURO_COLORS[t] || "#6B7280";
-                return (
-                  <button key={t} onClick={() => setNeuroTrouble(on ? "" : t)}
-                    style={{
-                      padding: "8px 14px", borderRadius: 99, border: `2px solid ${on ? tc : "#E4E4E7"}`,
-                      background: on ? tc + "15" : "#FAFAFA", cursor: "pointer", transition: "all .15s",
-                      display: "flex", alignItems: "center", gap: 6,
-                    }}>
-                    <span style={{ fontSize: 15 }}>{NEURO_EMOJIS[t] || "🔷"}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: on ? tc : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{t}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </C>
-
-      {/* Besoin d'accompagnement */}
-      <C style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-          ⚖️ Besoin d'accompagnement <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Positionnez le curseur selon le besoin de l'eleve</div>
-        <input type="range" min={0} max={10} value={accomp} onChange={e => setAccomp(Number(e.target.value))}
-          style={{ width: "100%", accentColor: accompColor, background: `linear-gradient(to right, #16A34A ${accomp * 10}%, #E4E4E7 ${accomp * 10}%)` }} />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 700 }}>🫶 Douceur / Empathie</span>
-          <Pill color={accompColor}>{accompLabel}</Pill>
-          <span style={{ fontSize: 12, color: "#DA4F00", fontWeight: 700 }}>💪 Fermete / Cadre</span>
-        </div>
-      </C>
-
-      {/* Objectif de vie */}
-      <C style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-          🎯 Objectif de vie <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Qu'est-ce que cette famille veut vraiment accomplir ?</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-          {[
-            ["Remise à niveau", "🔄", "Rattraper le niveau de la classe"],
-            ["Réussite concours", "🏆", "Integrer une grande ecole ou un programme selectif"],
-            ["Méthodologie pure", "🗂️", "Apprendre a apprendre"],
-            ["Excellence académique", "⭐", "Etre le meilleur dans sa matiere"],
-          ].map(([o, em, desc]) => {
-            const on = objectifVie === o;
-            return (
-              <button key={o} onClick={() => setObjectifVie(on ? "" : o)}
-                style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#0B68B4" : "#E4E4E7"}`, background: on ? "#EFF6FF" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
-                <div style={{ fontSize: 18, marginBottom: 4 }}>{em}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#1E40AF" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{o}</div>
-                <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{desc}</div>
-              </button>
-            );
-          })}
-        </div>
-      </C>
-
-      {/* Souhait parent */}
-      <C style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>
-          👨‍👩‍👧 Souhait du parent <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 10 }}>Quel type de prof demande-t-il ? (influence l'option B)</div>
-        <Chips options={["Pas d'avis", ...PROF_TYPES]} selected={souhaitParent} onChange={setSouhaitParent} color="#DA4F00" single={true} />
-      </C>
-
-      {/* Profil du parent */}
-      <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-          🎭 Profil du parent
-          <span style={{ fontSize: 11, background: "#FFFBEB", color: "#D97706", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Adapte l'introduction, les questions SPIN et le closing du script</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-          {PARENT_PROFILES.map(p => {
-            const on = parentProfile === p.id;
-            return (
-              <button key={p.id} onClick={() => setParentProfile(on ? "" : p.id)}
-                style={{
-                  padding: "12px 14px", borderRadius: 12,
-                  border: `2px solid ${on ? "#D97706" : "#E4E4E7"}`,
-                  background: on ? "#FFFBEB" : "#FAFAFA",
-                  textAlign: "left", cursor: "pointer", transition: "all .15s",
-                }}>
-                <div style={{ fontSize: 18, marginBottom: 4 }}>{p.emoji}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#92400E" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p.label}</div>
-                <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{p.desc}</div>
-              </button>
-            );
-          })}
-        </div>
-      </C>
-
-      {/* Stock */}
-      <C style={{ marginBottom: 14, background: "#F0FDF4", border: "1px solid #C0EAD3", padding: "12px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-          <Logo size={15} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>Stock plateforme Sherpas (temps reel)</span>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-          {stock.map(s => (
-            <span key={s.typ} style={{
-              fontSize: 11, padding: "3px 10px", borderRadius: 99,
-              background: s.dispo ? "#D1FAE5" : "#FEE2E2",
-              color: s.dispo ? "#15803D" : "#B91C1C", fontWeight: 600,
-              border: `1px solid ${s.dispo ? "#86EFAC" : "#FCA5A5"}`,
-            }}>
-              {s.dispo ? "✓" : "✗"} {s.typ} ({s.nb})
-            </span>
-          ))}
-        </div>
-      </C>
-
-      {!canAnalyze && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Remplis niveau, profil psychologique et objectif de vie pour continuer</div>}
-      <Btn onClick={analyze} disabled={!canAnalyze} full color="#16A34A" style={{ padding: "13px", borderRadius: 99, fontSize: 15 }}>
-        🔦 Allumer la Lanterne V5 →
-      </Btn>
-    </div>
-  );
-
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 2: RESULTS — Dual Path + Full Script
-  // ═══════════════════════════════════════════════════════════════
-  if (step === 2 && portrait) {
-    const idealTyp = portrait[0].typ;
-    const idealLabel = getLabel(idealTyp, psycho);
-    const idealRefined = refine(idealTyp, matieres);
-    const idealDispo = stockMap[idealTyp]?.dispo;
-
-    const chosenTyp = activeOption === "A" ? idealTyp : chosenB;
-    const chosenLabel = getLabel(chosenTyp, psycho);
-    const chosenRefined = refine(chosenTyp, matieres);
-    const args = getArgs(chosenTyp, psycho);
+  // ── Helper: Build full script for a given prof type ────────────
+  function buildFullScript(typ) {
     const nom = prenom || "l'eleve";
-
-    // Neuro match
-    const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(chosenTyp, neuroTrouble) : null;
-    const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
-
-    // Matières compatibility analysis
-    const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
-
-    // Parent profile for script
+    const label = getLabel(typ, psycho);
+    const refined = refine(typ, matieres);
+    const args = getArgs(typ, psycho);
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
-
-    // Build full script text
     const introText = getIntroScript(pp, nom, psycho);
     const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie);
-    const closingText = getClosingScript(pp, nom, chosenLabel);
+    const closingText = getClosingScript(pp, nom, label);
+    const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
 
-    const fullScript = [
-      `═══ SCRIPT COMPLET — ${chosenLabel} ═══`,
+    return [
+      `═══ SCRIPT COMPLET — ${label} ═══`,
       `Eleve : ${nom} | Psycho : ${psycho} | Objectif : ${objectifVie} | Parent : ${ppLabel}`,
-      `Profil : ${chosenRefined}`,
+      `Profil : ${refined}`,
       neuroActive && neuroTrouble ? `Neuro : ${neuroTrouble}` : null,
       ``,
       `── SECTION 1 : INTRODUCTION ──`,
@@ -563,97 +325,332 @@ function SalesLanterne({ stock, setMatchings, user }) {
       `── SECTION ${neuroEntry ? "5" : "4"} : CLOSING ──`,
       closingText,
     ].filter(Boolean).join("\n");
+  }
+
+  // ── Helper: Render the 4 argument mini-cards ──────────────────
+  function renderArgCards(args) {
+    if (!args) return (
+      <C style={{ marginBottom: 10, background: "#FFF7F0", border: "1px solid #FED7AA", textAlign: "center", padding: 24 }}>
+        <div style={{ fontSize: 20, marginBottom: 8 }}>🔧</div>
+        <div style={{ fontSize: 14, color: "#92400E", fontWeight: 600 }}>Arguments en cours d'enrichissement pour ce profil</div>
+        <div style={{ fontSize: 12, color: "#71717A", marginTop: 4 }}>Ce profil sera disponible dans la prochaine mise a jour.</div>
+      </C>
+    );
+    const cards = [
+      { icon: "🪝", label: "HOOK", desc: "Pourquoi ce profil matche", text: args.hook, color: "#16A34A", bg: "#F0FDF4", border: "#C0EAD3" },
+      { icon: "🏆", label: "TRUST", desc: "Rassure le parent", text: args.trust, color: "#0B68B4", bg: "#EFF6FF", border: "#BFDBFE" },
+      { icon: "🌉", label: "BRIDGE", desc: "Benefice eleve", text: args.bridge, color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+      { icon: "↩️", label: "REBOUND", desc: "Contre l'objection", text: args.rebound, color: "#DA4F00", bg: "#FFF7F0", border: "#FED7AA" },
+    ];
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {cards.map(({ icon, label, desc, text, color, bg, border }) => (
+          <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "10px 12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 13 }}>{icon}</span>
+                <span style={{ fontSize: 10, fontWeight: 800, color, fontFamily: "'Outfit',sans-serif", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
+              </div>
+              <CopyBtn text={injectPrenom(text)} />
+            </div>
+            <div style={{ fontSize: 11, color: "#71717A", marginBottom: 3 }}>{desc}</div>
+            <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.6, fontStyle: "italic", borderLeft: `3px solid ${color}`, paddingLeft: 10 }}>
+              "{injectPrenom(text)}"
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ── Helper: Render neuro section for a given prof type ────────
+  function renderNeuroSection(typ) {
+    if (!neuroActive || !neuroTrouble) return null;
+    const neuroEntry = findNeuroMatch(typ, neuroTrouble);
+    const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
+    const nom = prenom || "l'eleve";
+
+    return (
+      <div style={{ marginTop: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+          <span style={{ fontSize: 14 }}>{NEURO_EMOJIS[neuroTrouble] || "🧩"}</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>NEURO — {neuroTrouble}</span>
+        </div>
+        {neuroEntry ? (
+          <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ marginBottom: 8 }}>
+              <span style={{
+                fontSize: 11, padding: "3px 10px", borderRadius: 99,
+                background: neuroBadge.bg, color: neuroBadge.color,
+                border: `1px solid ${neuroBadge.border}`, fontWeight: 700,
+              }}>
+                {neuroEntry.badge === "ideal" ? "✅" : neuroEntry.badge === "acceptable" ? "⚠️" : "❌"} {neuroBadge.label}
+              </span>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>📋 Realite</div>
+              <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.6, background: "rgba(255,255,255,.6)", borderRadius: 8, padding: "8px 10px", borderLeft: "3px solid #7C3AED" }}>
+                {neuroEntry.realite}
+              </div>
+            </div>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>📞 En appel</div>
+                <CopyBtn text={neuroEntry.appel} />
+              </div>
+              <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.6, fontStyle: "italic", background: "rgba(255,255,255,.6)", borderRadius: 8, padding: "8px 10px", borderLeft: "3px solid #7C3AED" }}>
+                {neuroEntry.appel}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: "12px 14px", textAlign: "center", color: "#71717A", fontSize: 12 }}>
+            Aucune combinaison trouvee dans la matrice neuro pour ce profil x {neuroTrouble}.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 1: DIAGNOSTIC FORM
+  // ═══════════════════════════════════════════════════════════════
+  if (step === 1) {
+    const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
+    const nom = prenom || "l'eleve";
 
     return (
       <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontSize: 21, fontWeight: 900, color: "#18181B", margin: "0 0 2px", fontFamily: "'Outfit',sans-serif" }}>🔦 Resultat Lanterne V5</h1>
-            <p style={{ color: "#71717A", fontSize: 13 }}>
-              Dual Path · {nom} · {psycho} · {objectifVie}
-              {neuroActive && neuroTrouble && <span style={{ color: "#7C3AED", fontWeight: 600 }}> · 🧩 {neuroTrouble}</span>}
-              {parentProfile && <span style={{ color: "#D97706", fontWeight: 600 }}> · 🎭 {ppLabel}</span>}
-            </p>
+        <ST emoji="🔦" sub="Le cerveau strategique de l'application — prescription, neuro & argumentation dynamique.">Lanterne Match V5</ST>
+
+        {/* Prenom */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>
+            👤 Prenom de l'eleve <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel, personnalise les scripts)</span>
           </div>
-          <Btn onClick={resetAndSave} outline color="#71717A" sm>← Nouveau</Btn>
-        </div>
+          <input value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Ex : Lucas, Emma, Thomas..."
+            style={{ width: "100%", fontSize: 14, border: "1px solid #E4E4E7", borderRadius: 10, padding: "10px 14px", boxSizing: "border-box", fontFamily: "'Outfit',sans-serif", fontWeight: 600, color: "#18181B" }} />
+        </C>
 
-        {/* ── DUAL PATH ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-          {/* OPTION A — Ideal Sherpas */}
-          <button onClick={() => setActiveOption("A")}
-            style={{ borderRadius: 16, border: `2px solid ${activeOption === "A" ? "#16A34A" : "#E4E4E7"}`, background: activeOption === "A" ? "#F0FDF4" : "#fff", padding: 18, textAlign: "left", cursor: "pointer", transition: "all .2s", position: "relative" }}>
-            {activeOption === "A" && <div style={{ position: "absolute", top: 10, right: 10, width: 22, height: 22, borderRadius: "50%", background: "#16A34A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 800 }}>✓</div>}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <div style={{ fontSize: 18 }}>✦</div>
-              <Pill color="#16A34A" bg="#E1FFED">OPTION A — L'Ideal Sherpas</Pill>
-            </div>
-            <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 4, fontFamily: "'Outfit',sans-serif", textTransform: "uppercase", letterSpacing: ".06em" }}>Algorithme Matrice</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", lineHeight: 1.3, fontFamily: "'Outfit',sans-serif", marginBottom: 4 }}>{idealLabel}</div>
-            <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, marginBottom: 10 }}>↳ {idealRefined}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 10 }}>
-              {portrait.slice(0, 3).map(({ typ, score }, i) => (
-                <div key={typ} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 90, fontSize: 10, color: "#71717A", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{typ}</div>
-                  <div style={{ flex: 1, height: 4, background: "#E4E4E7", borderRadius: 99 }}>
-                    <div style={{ height: 4, background: i === 0 ? "#16A34A" : "#C0EAD3", borderRadius: 99, width: `${portrait[0].score > 0 ? (score / portrait[0].score) * 100 : 0}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: idealDispo ? "#16A34A" : "#E11D48" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: idealDispo ? "#15803D" : "#B91C1C" }}>
-                {idealDispo ? `✓ Disponible en stock (${stockMap[idealTyp]?.nb})` : "✗ Stock indisponible"}
-              </span>
-            </div>
-          </button>
+        {/* Diagnostic academique */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 16, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📚 Diagnostic academique</div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Niveau scolaire <span style={{ color: "#E11D48" }}>*</span></div>
+            <Chips options={NIVEAUX} selected={niveau} onChange={setNiveau} color="#16A34A" single={true} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
+            <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
+            <Chips options={MATIERES} selected={matieres} onChange={setMatieres} color="#DA4F00" />
+          </div>
+        </C>
 
-          {/* OPTION B — Choix Sales */}
-          <button onClick={() => setActiveOption("B")}
-            style={{ borderRadius: 16, border: `2px solid ${activeOption === "B" ? "#0B68B4" : "#E4E4E7"}`, background: activeOption === "B" ? "#EFF6FF" : "#fff", padding: 18, textAlign: "left", cursor: "pointer", transition: "all .2s", position: "relative" }}>
-            {activeOption === "B" && <div style={{ position: "absolute", top: 10, right: 10, width: 22, height: 22, borderRadius: "50%", background: "#0B68B4", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 800 }}>✓</div>}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <div style={{ fontSize: 18 }}>🎛️</div>
-              <Pill color="#0B68B4" bg="#DBEAFE">OPTION B — Choix Sales</Pill>
-            </div>
-            <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8, fontFamily: "'Outfit',sans-serif", textTransform: "uppercase", letterSpacing: ".06em" }}>Selection manuelle (stock reel)</div>
-            <select value={chosenB} onChange={e => setChosenB(e.target.value)}
-              onClick={e => { e.stopPropagation(); setActiveOption("B"); }}
-              style={{ width: "100%", fontSize: 13, fontWeight: 700, border: "2px solid #DBEAFE", borderRadius: 10, padding: "9px 12px", fontFamily: "'Outfit',sans-serif", color: "#1E40AF", background: "#fff", cursor: "pointer", marginBottom: 10 }}>
-              {PROF_TYPES.map(t => { const s = stockMap[t]; return <option key={t} value={t}>{s?.dispo ? "✓" : "✗"} {t} ({s?.nb || 0})</option>; })}
-            </select>
-            {chosenB && <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", marginBottom: 3 }}>{getLabel(chosenB, psycho)}</div>
-              <div style={{ fontSize: 12, color: "#0B68B4", fontWeight: 600, marginBottom: 8 }}>↳ {refine(chosenB, matieres)}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: stockMap[chosenB]?.dispo ? "#16A34A" : "#E11D48" }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: stockMap[chosenB]?.dispo ? "#15803D" : "#B91C1C" }}>
-                  {stockMap[chosenB]?.dispo ? `✓ Disponible (${stockMap[chosenB]?.nb})` : "✗ Stock indisponible"}
+        {/* Nombre de profs */}
+        {matieres.length>=2&&<C style={{ marginBottom: 12, borderLeft: `4px solid ${nbProfs==="1"?"#0B68B4":"#16A34A"}` }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            👥 Nombre de professeurs
+            <span style={{ fontSize: 11, background: "#EFF6FF", color: "#0B68B4", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>La famille souhaite un seul prof pour toutes les matieres, ou un par matiere ?</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+            {[["1","1️⃣","Un seul prof","Pour toutes les matieres selectionnees"],["multi","👥","Plusieurs profs","Un specialiste par matiere"]].map(([id,em,label,desc])=>{
+              const on=nbProfs===id;
+              return <button key={id} onClick={()=>setNbProfs(id)} style={{padding:"12px 14px",borderRadius:12,border:`2px solid ${on?"#0B68B4":"#E4E4E7"}`,background:on?"#EFF6FF":"#FAFAFA",textAlign:"left",cursor:"pointer",transition:"all .15s"}}>
+                <div style={{fontSize:18,marginBottom:4}}>{em}</div>
+                <div style={{fontSize:12,fontWeight:700,color:on?"#1E40AF":"#3F3F46",fontFamily:"'Outfit',sans-serif"}}>{label}</div>
+                <div style={{fontSize:11,color:"#A1A1AA",marginTop:2}}>{desc}</div>
+              </button>;
+            })}
+          </div>
+        </C>}
+
+        {/* Profil psychologique */}
+        <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            🧠 Profil Psychologique <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>La personnalite de l'eleve determine le profil de prof ideal</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+            {PSYCH_PROFILES.map(p => {
+              const on = psycho === p;
+              const emoji = { "Introverti / Réservé": "🤫", "Décrocheur / Démotivé": "😮‍💨", "Compétiteur / Haut Potentiel": "🔥", "Stressé / Anxieux": "😰" }[p] || "👤";
+              return (
+                <button key={p} onClick={() => setPsycho(on ? "" : p)}
+                  style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#16A34A" : "#E4E4E7"}`, background: on ? "#E1FFED" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{emoji}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#16A34A" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p}</div>
+                </button>
+              );
+            })}
+          </div>
+        </C>
+
+        {/* Neuroatypique toggle */}
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: neuroActive ? 12 : 0 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+                🧩 Neuroatypique
+                <span style={{ fontSize: 11, background: neuroActive ? "#F5F3FF" : "#F4F4F5", color: neuroActive ? "#7C3AED" : "#71717A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>
+                  {neuroActive ? "ACTIF" : "OFF"}
                 </span>
               </div>
-            </div>}
-          </button>
-        </div>
+              <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>L'eleve a un profil neuroatypique</div>
+            </div>
+            <button onClick={() => { setNeuroActive(!neuroActive); if (neuroActive) setNeuroTrouble(""); }}
+              style={{
+                width: 48, height: 26, borderRadius: 99, border: "none", cursor: "pointer", position: "relative",
+                background: neuroActive ? "#7C3AED" : "#D4D4D8", transition: "background .2s",
+              }}>
+              <div style={{
+                width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3,
+                left: neuroActive ? 25 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)",
+              }} />
+            </button>
+          </div>
 
-        {/* ── ANALYSE MATIERES (si 1 prof + multi matières) ── */}
-        {matAnalysis && matAnalysis.type === "incompatible" && (
-          <C style={{ marginBottom: 14, background: "#FEF2F2", border: "2px solid #FCA5A5", padding: "16px 18px" }}>
+          {neuroActive && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Type de trouble <span style={{ color: "#E11D48" }}>*</span></div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {NEURO_TROUBLES.map(t => {
+                  const on = neuroTrouble === t;
+                  const tc = NEURO_COLORS[t] || "#6B7280";
+                  return (
+                    <button key={t} onClick={() => setNeuroTrouble(on ? "" : t)}
+                      style={{
+                        padding: "8px 14px", borderRadius: 99, border: `2px solid ${on ? tc : "#E4E4E7"}`,
+                        background: on ? tc + "15" : "#FAFAFA", cursor: "pointer", transition: "all .15s",
+                        display: "flex", alignItems: "center", gap: 6,
+                      }}>
+                      <span style={{ fontSize: 15 }}>{NEURO_EMOJIS[t] || "🔷"}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: on ? tc : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{t}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </C>
+
+        {/* Besoin d'accompagnement */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            ⚖️ Besoin d'accompagnement <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Positionnez le curseur selon le besoin de l'eleve</div>
+          <input type="range" min={0} max={10} value={accomp} onChange={e => setAccomp(Number(e.target.value))}
+            style={{ width: "100%", accentColor: accompColor, background: `linear-gradient(to right, #16A34A ${accomp * 10}%, #E4E4E7 ${accomp * 10}%)` }} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 700 }}>🫶 Douceur / Empathie</span>
+            <Pill color={accompColor}>{accompLabel}</Pill>
+            <span style={{ fontSize: 12, color: "#DA4F00", fontWeight: 700 }}>💪 Fermete / Cadre</span>
+          </div>
+        </C>
+
+        {/* Objectif de vie */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            🎯 Objectif de vie <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Qu'est-ce que cette famille veut vraiment accomplir ?</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+            {[
+              ["Remise à niveau", "🔄", "Rattraper le niveau de la classe"],
+              ["Réussite concours", "🏆", "Integrer une grande ecole ou un programme selectif"],
+              ["Méthodologie pure", "🗂️", "Apprendre a apprendre"],
+              ["Excellence académique", "⭐", "Etre le meilleur dans sa matiere"],
+            ].map(([o, em, desc]) => {
+              const on = objectifVie === o;
+              return (
+                <button key={o} onClick={() => setObjectifVie(on ? "" : o)}
+                  style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#0B68B4" : "#E4E4E7"}`, background: on ? "#EFF6FF" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{em}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#1E40AF" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{o}</div>
+                  <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </C>
+
+        {/* Souhait parent */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>
+            👨‍👩‍👧 Souhait du parent <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 10 }}>Quel type de prof demande-t-il ?</div>
+          <Chips options={["Pas d'avis", ...PROF_TYPES]} selected={souhaitParent} onChange={setSouhaitParent} color="#DA4F00" single={true} />
+        </C>
+
+        {/* Profil du parent */}
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            🎭 Profil du parent
+            <span style={{ fontSize: 11, background: "#FFFBEB", color: "#D97706", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Adapte l'introduction, les questions SPIN et le closing du script</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+            {PARENT_PROFILES.map(p => {
+              const on = parentProfile === p.id;
+              return (
+                <button key={p.id} onClick={() => setParentProfile(on ? "" : p.id)}
+                  style={{
+                    padding: "12px 14px", borderRadius: 12,
+                    border: `2px solid ${on ? "#D97706" : "#E4E4E7"}`,
+                    background: on ? "#FFFBEB" : "#FAFAFA",
+                    textAlign: "left", cursor: "pointer", transition: "all .15s",
+                  }}>
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{p.emoji}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#92400E" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p.label}</div>
+                  <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{p.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </C>
+
+        {/* Stock */}
+        <C style={{ marginBottom: 14, background: "#F0FDF4", border: "1px solid #C0EAD3", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+            <Logo size={15} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>Stock plateforme Sherpas (temps reel)</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {stock.map(s => (
+              <span key={s.typ} style={{
+                fontSize: 11, padding: "3px 10px", borderRadius: 99,
+                background: s.dispo ? "#D1FAE5" : "#FEE2E2",
+                color: s.dispo ? "#15803D" : "#B91C1C", fontWeight: 600,
+                border: `1px solid ${s.dispo ? "#86EFAC" : "#FCA5A5"}`,
+              }}>
+                {s.dispo ? "✓" : "✗"} {s.typ} ({s.nb})
+              </span>
+            ))}
+          </div>
+        </C>
+
+        {/* Matieres compatibility analysis (shown in step 1 if applicable) */}
+        {matAnalysis && matAnalysis.type === "college_polyvalent" && (()=>{
+          const matsList = matieres.join(", ");
+          const polyScript = `Bonne nouvelle — au niveau ${niveau}, un seul professeur peut tout à fait accompagner ${nom} en ${matsList}.\n\nPourquoi ? Parce qu'au collège, le programme reste suffisamment généraliste pour qu'un bon étudiant universitaire ou un professeur de l'Éducation Nationale maîtrise l'ensemble des matières.\n\nCe que je vous recommande :\n• Un étudiant universitaire polyvalent (L2-M1) qui a un bon niveau général — il pourra travailler toutes les matières avec ${nom} dans la même séance\n• Ou un professeur de l'Éducation Nationale qui enseigne déjà à ce niveau et connaît parfaitement les attendus du programme\n\nL'avantage d'un seul prof pour ${nom} :\n• Un seul interlocuteur = ${nom} crée un vrai lien de confiance\n• Le prof voit les connexions entre les matières (ex : la rigueur en maths aide en français)\n• Organisation simplifiée pour vous — un seul créneau, un seul suivi\n• Le prof connaît les forces ET les faiblesses de ${nom} dans toutes les matières\n\nC'est d'ailleurs ce qu'on recommande jusqu'à la 3ème — un prof polyvalent qui suit l'élève globalement est souvent plus efficace que plusieurs spécialistes à ce niveau.`;
+          return <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 16 }}>⚠️</span>
-                  <Pill color="#E11D48">ALERTE — Matières incompatibles pour 1 prof</Pill>
+                  <span style={{ fontSize: 16 }}>✅</span>
+                  <Pill color="#16A34A">1 PROF POLYVALENT — {niveau}</Pill>
                 </div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} — Filières trop différentes</div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matsList} — Un seul prof peut tout couvrir a ce niveau</div>
               </div>
-              <CopyBtn text={getIncompatibleScript(matAnalysis, nom, niveau)} />
+              <CopyBtn text={polyScript} />
             </div>
-            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #E11D48" }}>
-              {getIncompatibleScript(matAnalysis, nom, niveau)}
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
+              {polyScript}
             </div>
-          </C>
-        )}
+          </C>;
+        })()}
 
         {matAnalysis && matAnalysis.type === "combo" && (
           <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
@@ -673,189 +670,271 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </C>
         )}
 
+        {matAnalysis && matAnalysis.type === "incompatible" && (
+          <C style={{ marginBottom: 14, background: "#FEF2F2", border: "2px solid #FCA5A5", padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <Pill color="#E11D48">ALERTE — Matieres incompatibles pour 1 prof</Pill>
+                </div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} — Filieres trop differentes</div>
+              </div>
+              <CopyBtn text={getIncompatibleScript(matAnalysis, nom, niveau)} />
+            </div>
+            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #E11D48" }}>
+              {getIncompatibleScript(matAnalysis, nom, niveau)}
+            </div>
+          </C>
+        )}
+
         {matAnalysis && matAnalysis.type === "same_family" && (
           <C style={{ marginBottom: 14, background: "#FFFBEB", border: "1px solid #FDE68A", padding: "12px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>✅</span>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Matières de la même famille — 1 prof possible</div>
-                <div style={{ fontSize: 11, color: "#71717A", marginTop: 2 }}>{matieres.join(" + ")} sont dans le même domaine. Un bon profil peut couvrir les deux.</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Matieres de la meme famille — 1 prof possible</div>
+                <div style={{ fontSize: 11, color: "#71717A", marginTop: 2 }}>{matieres.join(" + ")} sont dans le meme domaine. Un bon profil peut couvrir les deux.</div>
               </div>
             </div>
           </C>
         )}
 
-        {/* College / Primaire — 1 prof polyvalent */}
-        {matAnalysis && matAnalysis.type === "college_polyvalent" && (()=>{
-          const n = nom;
-          const matsList = matieres.join(", ");
-          const polyScript = `Bonne nouvelle — au niveau ${niveau}, un seul professeur peut tout à fait accompagner ${n} en ${matsList}.\n\nPourquoi ? Parce qu'au collège, le programme reste suffisamment généraliste pour qu'un bon étudiant universitaire ou un professeur de l'Éducation Nationale maîtrise l'ensemble des matières.\n\nCe que je vous recommande :\n• Un étudiant universitaire polyvalent (L2-M1) qui a un bon niveau général — il pourra travailler toutes les matières avec ${n} dans la même séance\n• Ou un professeur de l'Éducation Nationale qui enseigne déjà à ce niveau et connaît parfaitement les attendus du programme\n\nL'avantage d'un seul prof pour ${n} :\n• Un seul interlocuteur = ${n} crée un vrai lien de confiance\n• Le prof voit les connexions entre les matières (ex : la rigueur en maths aide en français)\n• Organisation simplifiée pour vous — un seul créneau, un seul suivi\n• Le prof connaît les forces ET les faiblesses de ${n} dans toutes les matières\n\nC'est d'ailleurs ce qu'on recommande jusqu'à la 3ème — un prof polyvalent qui suit l'élève globalement est souvent plus efficace que plusieurs spécialistes à ce niveau.`;
-          return <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 16 }}>✅</span>
-                  <Pill color="#16A34A">1 PROF POLYVALENT — {niveau}</Pill>
+        {!canAnalyze && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Remplis niveau, profil psychologique et objectif de vie pour continuer</div>}
+        <Btn onClick={analyze} disabled={!canAnalyze} full color="#16A34A" style={{ padding: "13px", borderRadius: 99, fontSize: 15 }}>
+          🔦 Allumer la Lanterne V5 →
+        </Btn>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 2: RESULTAT — TOP 3 PROFILS
+  // ═══════════════════════════════════════════════════════════════
+  if (step === 2 && portrait) {
+    const nom = prenom || "l'eleve";
+    const top3 = portrait.slice(0, 3);
+    const maxScore = top3[0]?.score || 1;
+    const pp = parentProfile || "rationnel";
+    const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
+    const rankLabels = ["1er", "2e", "3e"];
+    const rankColors = ["#16A34A", "#0B68B4", "#D97706"];
+    const rankBgs = ["#F0FDF4", "#EFF6FF", "#FFFBEB"];
+    const rankBorders = ["#86EFAC", "#BFDBFE", "#FDE68A"];
+
+    return (
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <h1 style={{ fontSize: 21, fontWeight: 900, color: "#18181B", margin: "0 0 2px", fontFamily: "'Outfit',sans-serif" }}>🔦 Resultat Lanterne V5</h1>
+            <p style={{ color: "#71717A", fontSize: 13, margin: 0 }}>
+              Top 3 Profils · {nom} · {psycho} · {objectifVie}
+              {neuroActive && neuroTrouble && <span style={{ color: "#7C3AED", fontWeight: 600 }}> · 🧩 {neuroTrouble}</span>}
+              {parentProfile && <span style={{ color: "#D97706", fontWeight: 600 }}> · 🎭 {ppLabel}</span>}
+            </p>
+          </div>
+        </div>
+
+        {/* TOP 3 CARDS */}
+        {top3.map(({ typ, score }, idx) => {
+          const label = getLabel(typ, psycho);
+          const refined = refine(typ, matieres);
+          const args = getArgs(typ, psycho);
+          const dispo = stockMap[typ]?.dispo;
+          const nb = stockMap[typ]?.nb || 0;
+          const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+          const color = rankColors[idx];
+          const bg = rankBgs[idx];
+          const border = rankBorders[idx];
+          const fullScript = buildFullScript(typ);
+
+          // Neuro
+          const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
+          const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
+          const neuroWarn = (neuroActive && neuroTrouble) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom) : null;
+
+          return (
+            <C key={typ} style={{ marginBottom: 14, border: `2px solid ${border}`, background: idx === 0 ? bg : "#fff", padding: "18px 20px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: "50%", background: color, display: "flex",
+                    alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, fontWeight: 900,
+                    fontFamily: "'Outfit',sans-serif", flexShrink: 0,
+                  }}>
+                    {rankLabels[idx]}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", lineHeight: 1.3 }}>{label}</div>
+                    <div style={{ fontSize: 12, color, fontWeight: 600 }}>↳ {refined}</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>{matsList} — Un seul prof peut tout couvrir à ce niveau</div>
+                <CopyBtn text={fullScript} />
               </div>
-              <CopyBtn text={polyScript} />
+
+              {/* Score bar */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ flex: 1, height: 6, background: "#E4E4E7", borderRadius: 99 }}>
+                  <div style={{ height: 6, background: color, borderRadius: 99, width: `${pct}%`, transition: "width .3s" }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Outfit',sans-serif", minWidth: 36, textAlign: "right" }}>{pct}%</span>
+              </div>
+
+              {/* Stock status */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: dispo ? "#16A34A" : "#E11D48" }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: dispo ? "#15803D" : "#B91C1C" }}>
+                  {dispo ? `✓ Disponible en stock (${nb})` : `✗ Stock indisponible (${nb})`}
+                </span>
+              </div>
+
+              {/* 4 Argument mini-cards */}
+              {renderArgCards(args)}
+
+              {/* Neuro section */}
+              {renderNeuroSection(typ)}
+
+              {/* Neuro niveau warning */}
+              {neuroWarn && (
+                <div style={{ marginTop: 10 }}>
+                  <C style={{ background: "#FFFBEB", border: "2px solid #FDE68A", padding: "12px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14 }}>⚠️</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#D97706", fontFamily: "'Outfit',sans-serif" }}>{neuroWarn.title}</span>
+                      </div>
+                      <CopyBtn text={neuroWarn.script} />
+                    </div>
+                    <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.7, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "10px 12px", borderLeft: "3px solid #D97706", maxHeight: 200, overflow: "auto" }}>
+                      {neuroWarn.script}
+                    </div>
+                  </C>
+                </div>
+              )}
+            </C>
+          );
+        })}
+
+        {/* Bottom buttons */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
+          <Btn onClick={() => { setChosenRebond(""); setStep(3); }} full color="#DA4F00" style={{ padding: "14px", borderRadius: 99, fontSize: 15 }}>
+            Je n'ai pas ces profils en stock →
+          </Btn>
+          <Btn onClick={resetAndSave} full outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
+            ← Nouveau diagnostic
+          </Btn>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 3: REBOND — CHOIX MANUEL
+  // ═══════════════════════════════════════════════════════════════
+  if (step === 3 && portrait) {
+    const nom = prenom || "l'eleve";
+    const idealTyp = portrait[0].typ;
+    const idealLabel = getLabel(idealTyp, psycho);
+
+    return (
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: 21, fontWeight: 900, color: "#18181B", margin: "0 0 2px", fontFamily: "'Outfit',sans-serif" }}>🔄 Plan B — Quel prof avez-vous trouve ?</h1>
+          <p style={{ color: "#71717A", fontSize: 13, margin: 0 }}>
+            Selection manuelle d'un profil alternatif · Ideal etait : {idealLabel}
+          </p>
+        </div>
+
+        {/* Prof type selector */}
+        <C style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 10, fontFamily: "'Outfit',sans-serif" }}>
+            Selectionnez le profil que vous avez en stock :
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {PROF_TYPES.map(t => {
+              const on = chosenRebond === t;
+              const s = stockMap[t];
+              return (
+                <button key={t} onClick={() => setChosenRebond(t)}
+                  style={{
+                    padding: "10px 14px", borderRadius: 12,
+                    border: `2px solid ${on ? "#DA4F00" : "#E4E4E7"}`,
+                    background: on ? "#FFF7F0" : "#FAFAFA",
+                    textAlign: "left", cursor: "pointer", transition: "all .15s",
+                  }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: s?.dispo ? "#16A34A" : "#E11D48", flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: on ? "#DA4F00" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{t}</span>
+                    <span style={{ fontSize: 10, color: "#A1A1AA", marginLeft: "auto" }}>({s?.nb || 0})</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </C>
+
+        {/* Chosen rebond details */}
+        {chosenRebond && (() => {
+          const label = getLabel(chosenRebond, psycho);
+          const refined = refine(chosenRebond, matieres);
+          const args = getArgs(chosenRebond, psycho);
+          const rebondScript = getRebondScript(idealTyp, chosenRebond, psycho, nom, niveau);
+          const fullScript = buildFullScript(chosenRebond);
+
+          return (
+            <div>
+              {/* Prof info */}
+              <C style={{ marginBottom: 14, background: "#FFF7F0", border: "2px solid #FED7AA", padding: "16px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "#DA4F00", fontWeight: 600 }}>↳ {refined}</div>
+                  </div>
+                  <CopyBtn text={fullScript} />
+                </div>
+
+                {/* 4 Arguments */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#DA4F00", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>4 Arguments de vente</div>
+                  {renderArgCards(args)}
+                </div>
+
+                {/* Neuro */}
+                {renderNeuroSection(chosenRebond)}
+              </C>
+
+              {/* Rebond script */}
+              <C style={{ marginBottom: 14, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: "16px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontSize: 16 }}>🔄</span>
+                      <Pill color="#0B68B4">SCRIPT DE REBOND</Pill>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#71717A" }}>
+                      Comment presenter {chosenRebond} alors que l'algorithme recommandait {idealTyp}
+                    </div>
+                  </div>
+                  <CopyBtn text={rebondScript} />
+                </div>
+                <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #0B68B4" }}>
+                  {rebondScript}
+                </div>
+              </C>
             </div>
-            <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
-              {polyScript}
-            </div>
-          </C>;
+          );
         })()}
 
-        {/* ── BOUTON GENERER ── */}
-        {!scriptGenerated && (
-          <Btn onClick={generateScript} full color="#18181B" style={{ padding: "13px", borderRadius: 99, fontSize: 14, marginBottom: 16 }}>
-            ⚡ Generer le Script Complet — {activeOption === "A" ? "Ideal Sherpas" : "Choix Sales"}
+        {/* Bottom buttons */}
+        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+          <Btn onClick={() => setStep(2)} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
+            ← Retour aux resultats
           </Btn>
-        )}
-
-        {/* ═══ FULL SCRIPT ═══ */}
-        {scriptGenerated && (
-          <div>
-            {/* Header + copy all */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>📜 Script Personnalisé</div>
-                <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>{chosenLabel} · {nom} · {psycho}</div>
-              </div>
-              <CopyBtn text={fullScript} />
-            </div>
-
-            {/* ── PRESCRIPTION (4 arguments) ── */}
-            {args && (
-              <C style={{ marginBottom: 10, background: "#F0FDF4", border: "1px solid #C0EAD3", padding: "16px 18px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 16 }}>💊</span>
-                      <Pill color="#16A34A">SECTION 3 — PRESCRIPTION</Pill>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#71717A" }}>Les 4 arguments du moteur ARG_ENGINE — {chosenLabel}</div>
-                  </div>
-                  <CopyBtn text={[
-                    `🪝 ${injectPrenom(args.hook)}`,
-                    `🏆 ${injectPrenom(args.trust)}`,
-                    `🌉 ${injectPrenom(args.bridge)}`,
-                    `↩️ ${injectPrenom(args.rebound)}`,
-                  ].join("\n\n")} />
-                </div>
-                {[
-                  { icon: "🪝", label: "LE CROCHET (Hook)", desc: "Pourquoi ce profil va matcher avec la personnalite de l'enfant", text: args.hook, color: "#16A34A", bg: "#F0FDF4", border: "#C0EAD3" },
-                  { icon: "🏆", label: "ARGUMENT DE CONFIANCE (Trust)", desc: "Pourquoi ce profil rassure le parent", text: args.trust, color: "#0B68B4", bg: "#EFF6FF", border: "#BFDBFE" },
-                  { icon: "🌉", label: "LE PONT PEDAGOGIQUE", desc: "Le benefice concret pour l'eleve", text: args.bridge, color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
-                  { icon: "↩️", label: "ARGUMENT DE REBOND", desc: "Pour contrer l'objection classique liee a ce profil", text: args.rebound, color: "#DA4F00", bg: "#FFF7F0", border: "#FED7AA" },
-                ].map(({ icon, label, desc, text, color, bg, border }) => (
-                  <div key={label} style={{ marginBottom: 8, background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "12px 14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14 }}>{icon}</span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color, fontFamily: "'Outfit',sans-serif" }}>{label}</span>
-                      </div>
-                      <CopyBtn text={injectPrenom(text)} />
-                    </div>
-                    <div style={{ fontSize: 11, color: "#71717A", marginBottom: 4 }}>{desc}</div>
-                    <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.7, fontStyle: "italic", fontFamily: "'Inter',sans-serif", borderLeft: `3px solid ${color}`, paddingLeft: 12 }}>
-                      "{injectPrenom(text)}"
-                    </div>
-                  </div>
-                ))}
-              </C>
-            )}
-
-            {!args && (
-              <C style={{ marginBottom: 10, background: "#FFF7F0", border: "1px solid #FED7AA", textAlign: "center", padding: 24 }}>
-                <div style={{ fontSize: 20, marginBottom: 8 }}>🔧</div>
-                <div style={{ fontSize: 14, color: "#92400E", fontWeight: 600 }}>Arguments en cours d'enrichissement pour ce profil</div>
-                <div style={{ fontSize: 12, color: "#71717A", marginTop: 4 }}>Ce profil sera disponible dans la prochaine mise a jour.</div>
-              </C>
-            )}
-
-            {/* ── ALERTE NEURO POST-COLLEGE ── */}
-            {neuroActive && neuroTrouble && (()=>{
-              const neuroWarn = getNeuroNiveauWarning(niveau, neuroTrouble, nom);
-              if (!neuroWarn) return null;
-              return <C style={{ marginBottom: 10, background: "#FFFBEB", border: "2px solid #FDE68A", padding: "16px 18px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 16 }}>⚠️</span>
-                      <Pill color="#D97706">{neuroWarn.title}</Pill>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#71717A" }}>{neuroTrouble} + {niveau} — Approche mixte recommandée</div>
-                  </div>
-                  <CopyBtn text={neuroWarn.script} />
-                </div>
-                <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #D97706" }}>
-                  {neuroWarn.script}
-                </div>
-              </C>;
-            })()}
-
-            {/* ── SECTION NEURO (conditional) ── */}
-            {neuroActive && neuroTrouble && (
-              <C style={{ marginBottom: 10, background: "#F5F3FF", border: "1px solid #DDD6FE", padding: "16px 18px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 16 }}>{NEURO_EMOJIS[neuroTrouble] || "🧩"}</span>
-                      <Pill color="#7C3AED">SECTION 4 — NEURO ({neuroTrouble})</Pill>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#71717A" }}>Matrice neuroatypique — {chosenLabel} x {neuroTrouble}</div>
-                  </div>
-                  {neuroEntry && <CopyBtn text={`Realite : ${neuroEntry.realite}\n\nEn appel : ${neuroEntry.appel}`} />}
-                </div>
-
-                {neuroEntry ? (
-                  <div>
-                    {/* Badge */}
-                    <div style={{ marginBottom: 10 }}>
-                      <span style={{
-                        fontSize: 11, padding: "3px 10px", borderRadius: 99,
-                        background: neuroBadge.bg, color: neuroBadge.color,
-                        border: `1px solid ${neuroBadge.border}`, fontWeight: 700,
-                      }}>
-                        {neuroEntry.badge === "ideal" ? "✅" : neuroEntry.badge === "acceptable" ? "⚠️" : "❌"} {neuroBadge.label}
-                      </span>
-                    </div>
-
-                    {/* Realite */}
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 5, fontFamily: "'Outfit',sans-serif" }}>📋 La realite</div>
-                      <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.7, background: "rgba(255,255,255,.6)", borderRadius: 9, padding: "10px 13px", borderLeft: "3px solid #7C3AED" }}>
-                        {neuroEntry.realite}
-                      </div>
-                    </div>
-
-                    {/* En appel */}
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 5, fontFamily: "'Outfit',sans-serif" }}>📞 En appel</div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                        <div style={{ flex: 1, fontSize: 13, color: "#3F3F46", lineHeight: 1.7, fontStyle: "italic", background: "rgba(255,255,255,.6)", borderRadius: 9, padding: "10px 13px", borderLeft: "3px solid #7C3AED" }}>
-                          {neuroEntry.appel}
-                        </div>
-                        <CopyBtn text={neuroEntry.appel} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: "center", padding: 16, color: "#71717A", fontSize: 13 }}>
-                    Aucune combinaison trouvee dans la matrice neuro pour {chosenLabel} x {neuroTrouble}.
-                    <div style={{ fontSize: 11, marginTop: 4, color: "#A1A1AA" }}>La matrice couvre les profils : Psychologue, Prof EN Psychopedagogie, Professeur EN classique, AESH / AVS, Etudiant en Psychologie</div>
-                  </div>
-                )}
-              </C>
-            )}
-
-            <div style={{ marginTop: 4 }}>
-              <Btn onClick={() => { setScriptGenerated(false); }} outline color="#71717A" sm>Changer d'option</Btn>
-            </div>
-          </div>
-        )}
+          <Btn onClick={resetAndSave} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
+            ← Nouveau diagnostic
+          </Btn>
+        </div>
       </div>
     );
   }
