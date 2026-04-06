@@ -481,6 +481,27 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
     const nom = prenom || "l'eleve";
 
+    // ── Recommandation hierarchique LIVE (preview) ──
+    const livePath = niveau ? getRecommendedHierarchy({
+      niveau, classe, brevetPrep, spes, parcoursupCible, prepaFiliere, univFiliere,
+      matieres, psycho, objectif: objectifVie
+    }) : null;
+    let liveEmoji = "🎯", liveDesc = "", liveLabel = "";
+    if (livePath) {
+      let node = PROF_HIERARCHY;
+      for (let i = 0; i < livePath.length; i++) {
+        const k = livePath[i];
+        if (node && node[k]) {
+          if (i === livePath.length - 1) {
+            liveEmoji = node[k].emoji || "🎯";
+            liveDesc = node[k].description || "";
+            liveLabel = k;
+          }
+          node = node[k].children || {};
+        }
+      }
+    }
+
     return (
       <div>
         <ST emoji="🔦" sub="Le cerveau strategique de l'application — prescription, neuro & argumentation dynamique.">Lanterne Match V5</ST>
@@ -831,6 +852,26 @@ function SalesLanterne({ stock, setMatchings, user }) {
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Matieres de la meme famille — 1 prof possible</div>
                 <div style={{ fontSize: 11, color: "#71717A", marginTop: 2 }}>{matieres.join(" + ")} sont dans le meme domaine. Un bon profil peut couvrir les deux.</div>
+              </div>
+            </div>
+          </C>
+        )}
+
+        {/* RECOMMANDATION LIVE — toujours visible si niveau renseigné */}
+        {livePath && (
+          <C style={{ marginBottom: 14, background: "linear-gradient(135deg,#16A34A,#62E58E)", border: "none", padding: "16px 18px", color: "#fff" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Pill color="#fff" bg="rgba(255,255,255,.25)">🎯 RECOMMANDATION EN DIRECT</Pill>
+              <span style={{ fontSize: 10, opacity: .8 }}>Mise à jour à chaque champ</span>
+            </div>
+            <div style={{ fontSize: 11, opacity: .85, marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>
+              {livePath.join(" › ")}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 32 }}>{liveEmoji}</div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>{liveLabel}</div>
+                {liveDesc && <div style={{ fontSize: 11, opacity: .9, marginTop: 3 }}>{liveDesc}</div>}
               </div>
             </div>
           </C>
