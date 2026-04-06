@@ -1264,12 +1264,6 @@ function SalesLanterne({ stock, setMatchings, user }) {
               })()}
             </div>
 
-            {/* Champ : Prénom + détails du prof */}
-            <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #FDE68A" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>📝 Prénom + précisions (optionnel)</div>
-              <input value={profProposeNom} onChange={e => setProfProposeNom(e.target.value)} placeholder="Ex : Martin, à Louis-le-Grand, 22 ans, expérience tutorat" style={{ width: "100%", fontSize: 13, border: "1px solid #FDE68A", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
-              <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 4 }}>Détails complémentaires pour personnaliser les arguments</div>
-            </div>
 
             {/* Questions à poser */}
             <div style={{ marginBottom: 14 }}>
