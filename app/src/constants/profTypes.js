@@ -443,6 +443,68 @@ export const PROF_HIERARCHY = {
 
 // ─── Recommandation hierarchique selon diagnostic ────────────
 // Retourne le chemin precis dans PROF_HIERARCHY pour un diagnostic complet
+// Mapping filière → matières enseignées dans cette filière
+// Permet de detecter une incoherence entre la cible Parcoursup et la matiere demandee
+const FILIERE_MATIERES = {
+  "Prépa MP (Maths-Physique)": ["Maths", "Physique", "Informatique", "Anglais", "Français", "Philosophie"],
+  "Prépa PC (Physique-Chimie)": ["Maths", "Physique", "Chimie", "Anglais", "Français", "Philosophie"],
+  "Prépa PT (Physique-Techno)": ["Maths", "Physique", "Anglais", "Français", "Philosophie"],
+  "Prépa BCPST (Bio-Chimie)": ["Maths", "Physique", "Chimie", "SVT", "Anglais", "Français", "Philosophie"],
+  "Prépa ECG (Éco-Gestion)": ["Maths", "Économie", "Histoire-Géo", "Anglais", "Espagnol", "Allemand", "Français", "Philosophie"],
+  "Prépa ECT (Techno)": ["Maths", "Économie", "Anglais", "Français"],
+  "Khâgne A/L (Lettres)": ["Français", "Philosophie", "Histoire-Géo", "Anglais", "Espagnol", "Allemand"],
+  "Khâgne B/L (Lettres-Sciences)": ["Maths", "Français", "Philosophie", "Histoire-Géo", "Économie", "Anglais"],
+  "INSA / UTC / Polytech": ["Maths", "Physique", "Chimie", "Informatique", "Anglais"],
+  "École post-bac (commerce)": ["Économie", "Anglais", "Français", "Espagnol", "Maths"],
+  "Sciences Po Paris": ["Histoire-Géo", "Philosophie", "Économie", "Français", "Anglais"],
+  "IEP Région": ["Histoire-Géo", "Philosophie", "Économie", "Français", "Anglais"],
+  "PASS / LAS (1re année)": ["SVT", "Chimie", "Physique", "Maths"],
+  "Médecine (DFGSM)": ["SVT", "Chimie", "Physique"],
+  "Maths / MIAGE": ["Maths", "Informatique", "Physique"],
+  "SVT / Biologie": ["SVT", "Chimie", "Maths"],
+  "Informatique / BUT info": ["Maths", "Informatique"],
+  "Physique / Chimie": ["Physique", "Chimie", "Maths"],
+  "Lettres modernes / classiques": ["Français", "Philosophie", "Histoire-Géo"],
+  "Histoire / Géographie": ["Histoire-Géo", "Français"],
+  "LEA / LLCER (langues)": ["Anglais", "Espagnol", "Allemand", "Français"],
+  "Économie / AES": ["Économie", "Maths", "Histoire-Géo"],
+  "Droit": ["Français", "Histoire-Géo", "Philosophie"],
+};
+
+// Etant donne une matiere, retourne le chemin vers le bon profil universitaire
+function getProfilForMatiere(matieres) {
+  if (!matieres || matieres.length === 0) return null;
+  if (matieres.includes("Histoire-Géo")) return ["Étudiant université", "Lettres & Sciences humaines", "Histoire / Géographie"];
+  if (matieres.includes("Philosophie") || matieres.includes("Français")) return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+  if (matieres.includes("Anglais") || matieres.includes("Espagnol") || matieres.includes("Allemand")) return ["Étudiant université", "Lettres & Sciences humaines", "LEA / LLCER (langues)"];
+  if (matieres.includes("Économie")) return ["Étudiant université", "Économie / Gestion / Droit", "Économie / AES"];
+  if (matieres.includes("SVT")) return ["Étudiant université", "Sciences (maths, physique, info)", "SVT / Biologie"];
+  if (matieres.includes("Chimie") && !matieres.includes("Maths")) return ["Étudiant université", "Médecine / Pharmacie", "Pharmacie"];
+  if (matieres.includes("Informatique")) return ["Étudiant université", "Sciences (maths, physique, info)", "Informatique / BUT info"];
+  if (matieres.includes("Physique") || matieres.includes("Chimie")) return ["Étudiant université", "Sciences (maths, physique, info)", "Physique / Chimie"];
+  if (matieres.includes("Maths")) return ["Étudiant université", "Sciences (maths, physique, info)", "Maths / MIAGE"];
+  return null;
+}
+
+// Vérifie si la filière visée couvre les matières demandées
+function filiereCouvreMatieres(filiere, matieres) {
+  if (!matieres || matieres.length === 0) return true;
+  const couvertes = FILIERE_MATIERES[filiere];
+  if (!couvertes) return true; // Pas de mapping = on suppose OK
+  // Toutes les matieres demandees doivent etre dans la filiere
+  return matieres.every(m => couvertes.includes(m) || m === "Autre");
+}
+
+// Wrapper qui priorise la matiere demandee si elle n'est pas couverte par la filiere Parcoursup
+function maybeOverrideForMatiere(filierePath, matieres) {
+  if (!filierePath || filierePath.length === 0) return filierePath;
+  const filiereFinal = filierePath[filierePath.length - 1];
+  if (filiereCouvreMatieres(filiereFinal, matieres)) return filierePath;
+  // La filiere ne couvre pas la matiere demandee → on prend la matiere
+  const profilMatiere = getProfilForMatiere(matieres);
+  return profilMatiere || filierePath;
+}
+
 export function getRecommendedHierarchy(diag) {
   const { niveau, classe, brevetPrep, spes = [], parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, matieres = [], psycho, objectif } = diag || {};
 
@@ -510,55 +572,57 @@ export function getRecommendedHierarchy(diag) {
     if (classe === "Terminale") {
       const cat = parcoursupCategorie || "";
       const ps = parcoursupCible || "";
+      // Helper: applique la logique d'override matière si la filière ne couvre pas la matière demandée
+      const wrap = (path) => maybeOverrideForMatiere(path, matieres);
 
       // ── PREPA SCIENTIFIQUE ──
       if (cat === "Prépa scientifique") {
-        if (ps.includes("MPSI") || ps.includes("MP ") || ps.startsWith("MP")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
-        if (ps.includes("PCSI") || ps.includes("PC ") || ps.startsWith("PC")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa PC (Physique-Chimie)"];
-        if (ps.includes("PTSI") || ps.includes("PT ") || ps.startsWith("PT")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa PT (Physique-Techno)"];
-        if (ps.includes("BCPST")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa BCPST (Bio-Chimie)"];
-        if (ps.includes("MPI")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
-        if (ps.includes("TSI")) return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
-        return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
+        if (ps.includes("MPSI") || ps.includes("MP ") || ps.startsWith("MP")) return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]);
+        if (ps.includes("PCSI") || ps.includes("PC ") || ps.startsWith("PC")) return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa PC (Physique-Chimie)"]);
+        if (ps.includes("PTSI") || ps.includes("PT ") || ps.startsWith("PT")) return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa PT (Physique-Techno)"]);
+        if (ps.includes("BCPST")) return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa BCPST (Bio-Chimie)"]);
+        if (ps.includes("MPI")) return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]);
+        if (ps.includes("TSI")) return wrap(["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"]);
+        return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]);
       }
 
       // ── PREPA ECO / COMMERCE ──
       if (cat === "Prépa éco / commerce") {
-        if (ps.includes("ECT")) return ["Étudiant grande école", "École de commerce", "Prépa ECT (Techno)"];
-        return ["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"];
+        if (ps.includes("ECT")) return wrap(["Étudiant grande école", "École de commerce", "Prépa ECT (Techno)"]);
+        return wrap(["Étudiant grande école", "École de commerce", "Prépa ECG (Éco-Gestion)"]);
       }
 
       // ── PREPA LITTERAIRE ──
       if (cat === "Prépa littéraire") {
-        if (ps.includes("B/L")) return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne B/L (Lettres-Sciences)"];
-        if (ps.includes("Chartes")) return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
-        return ["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"];
+        if (ps.includes("B/L")) return wrap(["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne B/L (Lettres-Sciences)"]);
+        if (ps.includes("Chartes")) return wrap(["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"]);
+        return wrap(["Étudiant grande école", "École normale supérieure (ENS)", "Khâgne A/L (Lettres)"]);
       }
 
       // ── ECOLE D'INGE POST-BAC ──
       if (cat === "École d'ingénieurs post-bac") {
-        if (ps.includes("Polytechnique") || ps.includes("Bachelor")) return ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"];
-        return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
+        if (ps.includes("Polytechnique") || ps.includes("Bachelor")) return wrap(["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]);
+        return wrap(["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"]);
       }
 
       // ── ECOLE DE COMMERCE POST-BAC ──
       if (cat === "École de commerce post-bac") {
-        return ["Étudiant grande école", "École de commerce", "École post-bac (commerce)"];
+        return wrap(["Étudiant grande école", "École de commerce", "École post-bac (commerce)"]);
       }
 
       // ── SCIENCES PO / IEP ──
       if (cat === "Sciences Po / IEP") {
-        if (ps.includes("Sciences Po Paris")) return ["Étudiant grande école", "Sciences Po", "Sciences Po Paris"];
-        return ["Étudiant grande école", "Sciences Po", "IEP Région"];
+        if (ps.includes("Sciences Po Paris")) return wrap(["Étudiant grande école", "Sciences Po", "Sciences Po Paris"]);
+        return wrap(["Étudiant grande école", "Sciences Po", "IEP Région"]);
       }
 
       // ── MEDECINE / SANTE ──
       if (cat === "Médecine / Santé") {
-        if (ps.includes("PASS")) return ["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"];
-        if (ps.includes("LAS")) return ["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"];
-        if (ps.includes("Orthophonie") || ps.includes("Ergo") || ps.includes("Kiné")) return ["Étudiant université", "Médecine / Pharmacie", "Médecine (DFGSM)"];
-        if (ps.includes("infirmier")) return ["Étudiant université", "Sciences (maths, physique, info)", "SVT / Biologie"];
-        return ["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"];
+        if (ps.includes("PASS")) return wrap(["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"]);
+        if (ps.includes("LAS")) return wrap(["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"]);
+        if (ps.includes("Orthophonie") || ps.includes("Ergo") || ps.includes("Kiné")) return wrap(["Étudiant université", "Médecine / Pharmacie", "Médecine (DFGSM)"]);
+        if (ps.includes("infirmier")) return wrap(["Étudiant université", "Sciences (maths, physique, info)", "SVT / Biologie"]);
+        return wrap(["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"]);
       }
 
       // ── UNIVERSITE ──
