@@ -4,7 +4,7 @@ import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
-import { NEURO_MATRIX, NEURO_TROUBLES, NEURO_COLORS, NEURO_EMOJIS } from '../../constants/neuroMatrix';
+import { NEURO_MATRIX, NEURO_TROUBLES, NEURO_COLORS, NEURO_EMOJIS, NEURO_PROFS } from '../../constants/neuroMatrix';
 
 // ── Parent Profile Data ─────────────────────────────────────────
 const PARENT_PROFILES = [
@@ -593,7 +593,19 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const canAnalyze = niveau && psycho && objectifVie;
 
   function analyze() {
-    const p = computeV5(niveau, psycho, objectifVie, accomp);
+    let p;
+    if (neuroActive && neuroTrouble) {
+      // Mode neuro : on classe les profils de la matrice neuro selon le badge
+      // ideal=100, acceptable=60, deconseille=20
+      const badgeScore = { ideal: 100, acceptable: 60, deconseille: 20 };
+      const matrixEntries = NEURO_MATRIX.filter(e => e.trouble === neuroTrouble);
+      // Construire un portrait classé pour les 5 profils neuro
+      p = matrixEntries
+        .map(e => ({ typ: e.prof, score: badgeScore[e.badge] || 0, neuroEntry: e }))
+        .sort((a, b) => b.score - a.score);
+    } else {
+      p = computeV5(niveau, psycho, objectifVie, accomp);
+    }
     setPortrait(p);
     setStep(2);
   }
@@ -1560,17 +1572,23 @@ function SalesLanterne({ stock, setMatchings, user }) {
         })()}
 
         {/* TOP 3 CARDS */}
-        {top3.map(({ typ, score }, idx) => {
-          const label = getLabel(typ, psycho);
-          const refined = refine(typ, matieres);
-          const args = getArgs(typ, psycho);
-          const dispo = stockMap[typ]?.dispo;
-          const nb = stockMap[typ]?.nb || 0;
+        {top3.map(({ typ, score, neuroEntry: neuroFromMatrix }, idx) => {
+          // Detection : profil neuro de la matrice (pas dans PROF_TYPES)
+          const isNeuroProfile = neuroActive && NEURO_PROFS && NEURO_PROFS.includes(typ);
+          const label = isNeuroProfile ? typ : getLabel(typ, psycho);
+          const refined = isNeuroProfile
+            ? `Spécialiste neuroatypique — ${typ}`
+            : refine(typ, matieres);
+          const args = isNeuroProfile ? null : getArgs(typ, psycho);
+          const dispo = isNeuroProfile ? true : stockMap[typ]?.dispo;
+          const nb = isNeuroProfile ? "—" : (stockMap[typ]?.nb || 0);
           const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
           const color = rankColors[idx];
           const bg = rankBgs[idx];
           const border = rankBorders[idx];
-          const fullScript = buildFullScript(typ);
+          const fullScript = isNeuroProfile && neuroFromMatrix
+            ? `═══ ${typ} — ${neuroTrouble} ═══\n\n📋 RÉALITÉ\n${neuroFromMatrix.realite}\n\n📞 EN APPEL\n${neuroFromMatrix.appel}`
+            : buildFullScript(typ);
 
           // Neuro
           const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
@@ -1607,32 +1625,66 @@ function SalesLanterne({ stock, setMatchings, user }) {
                 <div style={{ flex: 1, height: 6, background: "#E4E4E7", borderRadius: 99 }}>
                   <div style={{ height: 6, background: color, borderRadius: 99, width: `${pct}%`, transition: "width .3s" }} />
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Outfit',sans-serif", minWidth: 36, textAlign: "right" }}>{pct}%</span>
-              </div>
-
-              {/* Stock status */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: isExpanded ? 14 : 0 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: dispo ? "#16A34A" : "#E11D48" }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: dispo ? "#15803D" : "#B91C1C" }}>
-                  {dispo ? `✓ Disponible en stock (${nb})` : `✗ Stock indisponible (${nb})`}
+                <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Outfit',sans-serif", minWidth: 36, textAlign: "right" }}>
+                  {isNeuroProfile && neuroFromMatrix
+                    ? (neuroFromMatrix.badge === "ideal" ? "✅ Idéal" : neuroFromMatrix.badge === "acceptable" ? "⚠️ Acceptable" : "❌ Déconseillé")
+                    : `${pct}%`}
                 </span>
               </div>
+
+              {/* Stock status (masqué pour profils neuro) */}
+              {!isNeuroProfile && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: isExpanded ? 14 : 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: dispo ? "#16A34A" : "#E11D48" }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: dispo ? "#15803D" : "#B91C1C" }}>
+                    {dispo ? `✓ Disponible en stock (${nb})` : `✗ Stock indisponible (${nb})`}
+                  </span>
+                </div>
+              )}
 
               {/* Indication clic si replie */}
               {!isExpanded && (
                 <div style={{ marginTop: 10, fontSize: 11, color: "#A1A1AA", textAlign: "center", fontStyle: "italic" }}>
-                  Clique pour voir les 4 arguments de prescription
+                  {isNeuroProfile ? `Clique pour voir la réalité + le script d'appel pour ${neuroTrouble}` : "Clique pour voir les 4 arguments de prescription"}
                 </div>
               )}
 
               {/* Contenu deplie */}
               {isExpanded && (
                 <div onClick={e => e.stopPropagation()}>
-                  {/* 4 Argument mini-cards */}
-                  {renderArgCards(args)}
+                  {/* Argument cards : neuro matrix OU getArgs classique */}
+                  {isNeuroProfile && neuroFromMatrix ? (
+                    <div style={{ marginBottom: 10 }}>
+                      {/* Badge */}
+                      <div style={{ marginBottom: 10 }}>
+                        <span style={{
+                          fontSize: 11, padding: "4px 12px", borderRadius: 99,
+                          background: NEURO_BADGE[neuroFromMatrix.badge]?.bg, color: NEURO_BADGE[neuroFromMatrix.badge]?.color,
+                          border: `1px solid ${NEURO_BADGE[neuroFromMatrix.badge]?.border}`, fontWeight: 700,
+                        }}>
+                          {neuroFromMatrix.badge === "ideal" ? "✅" : neuroFromMatrix.badge === "acceptable" ? "⚠️" : "❌"} {NEURO_BADGE[neuroFromMatrix.badge]?.label}
+                        </span>
+                      </div>
+                      {/* Realite */}
+                      <div style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>📋 La réalité (en interne)</div>
+                        <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.7 }}>{neuroFromMatrix.realite}</div>
+                      </div>
+                      {/* En appel */}
+                      <div style={{ padding: "12px 14px", borderRadius: 10, background: "#F0FDF4", border: "1px solid #C0EAD3" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                          <div style={{ fontSize: 10, fontWeight: 800, color: "#16A34A", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "'Outfit',sans-serif" }}>📞 En appel (à dire au parent)</div>
+                          <CopyBtn text={neuroFromMatrix.appel} />
+                        </div>
+                        <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.7, fontStyle: "italic" }}>"{neuroFromMatrix.appel}"</div>
+                      </div>
+                    </div>
+                  ) : (
+                    renderArgCards(args)
+                  )}
 
-                  {/* Neuro section */}
-                  {renderNeuroSection(typ)}
+                  {/* Neuro section (uniquement si pas deja un profil neuro) */}
+                  {!isNeuroProfile && renderNeuroSection(typ)}
 
                   {/* Neuro niveau warning */}
                   {neuroWarn && (
