@@ -108,6 +108,156 @@ function getSpinQuestions(parentProfile, nom, psycho, objectifVie, diag) {
   return contextQ ? [contextQ, ...base] : base;
 }
 
+// ── Guide neuroatypique inspiré du PAP (Plan d'Accompagnement Personnalisé) ──
+function getNeuroGuide(trouble, nom, niveau) {
+  const n = nom || "votre enfant";
+  const guides = {
+    "TDAH": {
+      questions: [
+        `"${n} a-t-il/elle un PAP ou un PPS en place avec son école ? Si oui, quelles adaptations sont prévues ?"`,
+        `"Comment se passe son temps d'attention en cours : combien de temps avant que l'attention ne décroche ?"`,
+        `"Est-ce qu'il/elle bénéficie d'un tiers-temps aux évaluations ?"`,
+        `"Avez-vous identifié des moments de la journée où ${n} est plus disponible cognitivement ?"`,
+        `"Y a-t-il un suivi médical en cours (pédopsychiatre, neuropédiatre) ?"`,
+        `"Quels outils marchent déjà à la maison pour cadrer son travail (timer, listes, récompenses) ?"`,
+      ],
+      arguments: [
+        `"Conformément aux recommandations du PAP, notre prof va structurer la séance en blocs de 15-20 minutes max avec micro-pauses — c'est exactement ce qu'il faut pour le TDAH."`,
+        `"Nous privilégions un seul objectif clair par séance : on ne surcharge pas la mémoire de travail de ${n}."`,
+        `"Notre approche utilise les supports visuels et concrets (schémas, mind-mapping, manipulation) pour ancrer les notions, comme le préconise le PAP."`,
+        `"Les consignes seront données une à la fois, à l'oral ET à l'écrit, pour éviter les pertes d'information."`,
+        `"On valorise les efforts et les petites réussites — c'est essentiel pour reconstruire l'estime de soi d'un enfant TDAH qui entend trop souvent 'tu peux mieux faire'."`,
+      ],
+      adaptationsPAP: [
+        `Séances courtes (max 1h) avec pauses programmées toutes les 15-20 min`,
+        `Consignes courtes, claires, données une par une`,
+        `Supports visuels (schémas, surlignage, codes couleur)`,
+        `Reformulation systématique des consignes par ${n}`,
+        `Utilisation du timer (méthode Pomodoro adaptée)`,
+        `Environnement de travail dépouillé (pas de stimuli parasites)`,
+        `Tiers-temps et accompagnement aux devoirs`,
+        `Renforcement positif systématique`,
+      ],
+    },
+    "TSA": {
+      questions: [
+        `"${n} a-t-il/elle un PPS (Projet Personnalisé de Scolarisation) ? Quelles aménagements sont en place ?"`,
+        `"Quels sont ses centres d'intérêt spécifiques ? On peut s'en servir comme leviers."`,
+        `"Y a-t-il des particularités sensorielles à connaître (son, lumière, contact, odeurs) ?"`,
+        `"Quelles routines fonctionnent bien à la maison qu'on pourrait reproduire en séance ?"`,
+        `"Y a-t-il des sujets ou situations à éviter (déclencheurs d'anxiété) ?"`,
+        `"Comment ${n} communique-t-il/elle quand il/elle est en surcharge ?"`,
+        `"Préférez-vous que les séances aient lieu toujours au même horaire et au même endroit ?"`,
+      ],
+      arguments: [
+        `"Avec ${n}, la prévisibilité est clé : nos séances suivent toujours le même rituel, le même créneau, le même prof — pas de changement de dernière minute."`,
+        `"Notre prof annonce le déroulé de chaque séance dès le début (avec un planning visuel si besoin) — comme préconisé pour les profils TSA."`,
+        `"Nous évitons les consignes implicites ou métaphoriques qui peuvent être déroutantes : tout est explicite et littéral."`,
+        `"Si ${n} a un intérêt spécifique, on l'utilise comme support pédagogique — c'est le levier d'engagement le plus puissant."`,
+        `"Nous laissons des temps de pause sans interaction si nécessaire — on respecte le besoin de retrait."`,
+        `"Le prof ne forcera jamais le contact visuel ou physique — on s'adapte au confort de ${n}."`,
+      ],
+      adaptationsPAP: [
+        `Cadre prévisible : même horaire, même lieu, même structure de séance`,
+        `Planning visuel affiché en début de séance`,
+        `Consignes explicites, littérales, écrites`,
+        `Pas de double tâche (écouter + écrire en simultané)`,
+        `Utilisation des intérêts spécifiques comme leviers`,
+        `Anticipation des transitions et changements`,
+        `Respect des particularités sensorielles`,
+        `Communication alternative si besoin (pictogrammes, écrit)`,
+      ],
+    },
+    "DYS": {
+      questions: [
+        `"Quel(s) trouble(s) DYS exactement : dyslexie, dysorthographie, dyspraxie, dyscalculie, dysphasie ?"`,
+        `"${n} a-t-il/elle un PAP en place ? Quelles adaptations sont prévues ?"`,
+        `"Bénéficie-t-il/elle d'un suivi orthophonique ? À quelle fréquence ?"`,
+        `"A-t-il/elle un ordinateur personnel pour les évaluations (saisie au lieu de l'écriture manuscrite) ?"`,
+        `"Quels supports fonctionnent le mieux : oral, visuel, kinesthésique ?"`,
+        `"Le tiers-temps est-il accordé aux évaluations ?"`,
+        `"Quels sont ses points forts qu'on peut renforcer ?"`,
+      ],
+      arguments: [
+        `"Notre prof connaît les outils de compensation DYS : police OpenDyslexic, surlignage en couleur, audio, dictée vocale — il/elle s'adapte au profil de ${n}."`,
+        `"Nous travaillons à l'oral plus qu'à l'écrit quand c'est possible : ${n} peut montrer ce qu'il/elle sait sans être pénalisé(e) par la transcription."`,
+        `"Les consignes sont reformulées et fragmentées, comme le préconise le PAP."`,
+        `"On part TOUJOURS des points forts : un enfant DYS qui réussit en oral va prendre confiance avant qu'on attaque les difficultés écrites."`,
+        `"Notre prof ne corrige pas TOUTES les fautes d'un coup : on cible un objectif par séance pour ne pas décourager."`,
+        `"Pour les maths (dyscalculie), on utilise la manipulation concrète avant l'abstrait — règles, jetons, schémas."`,
+      ],
+      adaptationsPAP: [
+        `Polices adaptées (OpenDyslexic, Verdana, Comic Sans, taille 14+)`,
+        `Interlignage 1.5 minimum`,
+        `Surlignage en couleur des mots-clés`,
+        `Consignes lues à voix haute par le prof`,
+        `Énoncés reformulés et fragmentés`,
+        `Tiers-temps aux évaluations`,
+        `Utilisation de l'ordinateur (correcteur, dictée vocale)`,
+        `Notation indulgente sur l'orthographe (sauf en français)`,
+        `Pas de copie au tableau (donner photocopie)`,
+      ],
+    },
+    "HPI": {
+      questions: [
+        `"${n} a-t-il/elle été diagnostiqué(e) HPI ? Quel test (WISC, WAIS) ?"`,
+        `"Y a-t-il une asynchronie particulière : très en avance dans certains domaines, en retard dans d'autres ?"`,
+        `"S'ennuie-t-il/elle en classe ? Comment se manifeste cet ennui (provocation, retrait, dispersion) ?"`,
+        `"Quels sont ses centres d'intérêt passionnels ?"`,
+        `"Comment réagit-il/elle face à l'erreur : perfectionnisme, blocage, abandon ?"`,
+        `"A-t-il/elle un cumul HPI + autre trouble (DYS, TDAH, TSA) ? C'est très fréquent."`,
+        `"Préférez-vous qu'on le/la stimule intellectuellement ou qu'on travaille d'abord la méthode ?"`,
+      ],
+      arguments: [
+        `"Notre prof va aller plus vite et plus loin que le programme officiel — un HPI s'éteint quand on le/la cantonne au minimum."`,
+        `"Le prof traite ${n} comme un interlocuteur intellectuel à part entière — pas comme 'un enfant à encadrer'."`,
+        `"Nous travaillons sur des projets ambitieux qui donnent du sens à l'apprentissage : la 'pourquoi-question' avant la 'comment-question'."`,
+        `"Pour le perfectionnisme, on travaille la tolérance à l'erreur en montrant que les grands chercheurs se trompent en permanence — c'est ce qui fait avancer la pensée."`,
+        `"On encourage les questions latérales et les digressions enrichissantes — le HPI apprend en arborescence, pas en ligne droite."`,
+        `"Si ${n} cumule HPI + autre trouble, on gère les deux dimensions : challenger ET adapter."`,
+      ],
+      adaptationsPAP: [
+        `Approfondissement et enrichissement plutôt que répétition`,
+        `Projets transversaux et exploratoires`,
+        `Travail sur la méthode et l'organisation (point faible fréquent)`,
+        `Tolérance à l'erreur travaillée explicitement`,
+        `Pas de tâches répétitives (rejet immédiat)`,
+        `Liberté de questions tangentes`,
+        `Si HPI + DYS/TDAH : double prise en charge cohérente`,
+      ],
+    },
+    "Multi-dys / profil complexe": {
+      questions: [
+        `"Quels troubles exactement sont diagnostiqués chez ${n} ? Et depuis quand ?"`,
+        `"Quels professionnels suivent ${n} aujourd'hui (orthophoniste, ergothérapeute, psychomotricien, neuropsychologue, psychiatre) ?"`,
+        `"A-t-il/elle un PPS (Projet Personnalisé de Scolarisation) ou un PAP en place ?"`,
+        `"Quel est le trouble qui pèse LE PLUS dans la scolarité aujourd'hui ?"`,
+        `"Quelles adaptations marchent déjà ?"`,
+        `"Y a-t-il une équipe éducative régulière avec l'école ? Comment se passe la coordination ?"`,
+        `"Quel est votre objectif principal pour cette année : maintien, progrès académique, bien-être, ou tout cela ?"`,
+      ],
+      arguments: [
+        `"Avec un profil complexe comme celui de ${n}, on ne peut pas appliquer une recette toute faite — notre prof construit un parcours sur-mesure semaine après semaine."`,
+        `"Nous priorisons UN objectif principal pour ne pas surcharger ${n} : la régularité et le progrès lent valent mieux qu'une ambition irréaliste."`,
+        `"Notre prof communique avec les autres professionnels qui suivent ${n} — orthophoniste, ergo, psychologue — pour aller dans la même direction."`,
+        `"On respecte le rythme de ${n} : si une séance n'est pas productive, on la transforme en moment de récupération sans culpabilité."`,
+        `"Notre approche valorise TOUS les progrès, même minimes — c'est crucial pour maintenir la motivation sur la durée."`,
+        `"Nous savons que les bons jours alternent avec les mauvais — on s'adapte sans jamais ajouter de pression."`,
+      ],
+      adaptationsPAP: [
+        `Plan personnalisé revu chaque mois selon l'évolution`,
+        `Coordination avec les autres professionnels du suivi`,
+        `Un seul objectif prioritaire par période`,
+        `Adaptation au jour le jour selon l'état de l'enfant`,
+        `Pas de double tâche, pas de surcharge cognitive`,
+        `Tous les types d'adaptations DYS/TDAH/TSA combinés selon besoin`,
+        `Bienveillance absolue, valorisation du moindre effort`,
+      ],
+    },
+  };
+  return guides[trouble] || null;
+}
+
 // ── Guide d'argumentation par profil parent ─────────────────────
 function getArgumentationGuide(parentProfile, nom, profPropose, diag, profProfilLabel) {
   const n = nom || "votre enfant";
@@ -1330,6 +1480,67 @@ function SalesLanterne({ stock, setMatchings, user }) {
                 </div>
               </div>
             )}
+
+            {/* GUIDE NEURO (PAP) */}
+            {neuroActive && neuroTrouble && (()=>{
+              const ng = getNeuroGuide(neuroTrouble, nom, niveau);
+              if (!ng) return null;
+              return <div style={{ marginBottom: 14, padding: "14px 16px", background: "#F5F3FF", borderRadius: 12, border: "2px solid #DDD6FE" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 18 }}>🧠</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>Guide Neuro — {neuroTrouble}</div>
+                    <div style={{ fontSize: 10, color: "#A855F7" }}>Inspiré du PAP (Plan d'Accompagnement Personnalisé)</div>
+                  </div>
+                </div>
+
+                {/* Questions specifiques neuro */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>❓ Questions spécifiques {neuroTrouble}</div>
+                    <CopyBtn text={ng.questions.join("\n\n")} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {ng.questions.map((q, i) => (
+                      <div key={i} style={{ fontSize: 12, color: "#3F3F46", padding: "8px 10px", background: "rgba(255,255,255,.7)", borderRadius: 7, borderLeft: "3px solid #7C3AED", fontStyle: "italic" }}>
+                        {q}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Arguments specifiques neuro */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>💪 Arguments {neuroTrouble} (PAP)</div>
+                    <CopyBtn text={ng.arguments.join("\n\n")} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {ng.arguments.map((a, i) => (
+                      <div key={i} style={{ fontSize: 12, color: "#3F3F46", padding: "8px 10px", background: "rgba(255,255,255,.7)", borderRadius: 7, borderLeft: "3px solid #16A34A", fontStyle: "italic" }}>
+                        {a}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Adaptations PAP officielles */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>📋 Adaptations PAP recommandées</div>
+                    <CopyBtn text={ng.adaptationsPAP.map(a => `• ${a}`).join("\n")} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {ng.adaptationsPAP.map((a, i) => (
+                      <div key={i} style={{ fontSize: 11, color: "#3F3F46", padding: "6px 10px", background: "rgba(255,255,255,.7)", borderRadius: 6, display: "flex", gap: 6 }}>
+                        <span style={{ color: "#16A34A", fontWeight: 700 }}>✓</span>
+                        <span>{a}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>;
+            })()}
 
             {/* FOMO */}
             <div style={{ padding: "14px 16px", background: "linear-gradient(135deg,#E11D48,#F97316)", borderRadius: 12, color: "#fff" }}>
