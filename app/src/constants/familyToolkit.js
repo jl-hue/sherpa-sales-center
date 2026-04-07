@@ -80,6 +80,7 @@ export const PROGRAMMES = {
     "Lycée pro": ["Calcul numérique et algébrique", "Fonctions affines et linéaires", "Statistiques et probabilités de base", "Géométrie et trigonométrie appliquées", "Mathématiques appliquées à la filière (BTP, industrie, tertiaire)"],
     "BTS / IUT": ["Analyse (dérivation, intégration selon filière)", "Algèbre linéaire (BUT Info, BUT GMP)", "Statistiques et probabilités appliquées", "Mathématiques financières (BTS Compta-Gestion, Banque)", "Calcul matriciel et optimisation (BUT Info)"],
     "Prépa": ["Analyse (limites, séries, intégrales)", "Algèbre linéaire (espaces vectoriels, matrices)", "Probabilités avancées", "Géométrie", "Topologie"],
+    "Université": ["Analyse réelle et complexe (suites, séries, intégrales)", "Algèbre linéaire et bilinéaire (espaces vectoriels, réduction d'endomorphismes)", "Probabilités et statistiques (lois, théorèmes limites)", "Topologie générale et espaces métriques", "Calcul différentiel et équations différentielles", "Algèbre générale (groupes, anneaux, corps)", "Géométrie différentielle (L3-M1)"],
   },
   "Physique": {
     "Collège": {
@@ -91,7 +92,12 @@ export const PROGRAMMES = {
       "Première (spé)": ["Mouvements et interactions", "Énergie : conversions et transferts", "Ondes et signaux", "Constitution et transformations de la matière"],
       "Terminale (spé)": ["Mécanique (forces, énergie, mouvements complexes)", "Ondes et signaux (acoustique, optique)", "Énergie : transferts thermiques", "Constitution de la matière (atomes, modèles)", "Réactions chimiques (acides-bases, oxydoréduction)"],
     },
+    "Lycée techno": {
+      "Première (STI2D/STL)": ["Mesure et incertitudes", "Énergie : conversions et transferts", "Électricité (circuits, puissance)", "Mécanique (forces, mouvements)", "Ondes et signaux"],
+      "Terminale (STI2D/STL)": ["Énergie thermique et machines thermiques", "Électromagnétisme appliqué (STI2D : moteurs)", "Ondes mécaniques et électromagnétiques", "Mécanique du solide", "Capteurs et chaînes de mesure (STL)"],
+    },
     "Prépa": ["Mécanique du point et du solide (MPSI/PCSI/PTSI)", "Électromagnétisme (équations de Maxwell en PC/PSI)", "Thermodynamique (principes, machines thermiques)", "Optique géométrique et ondulatoire", "Électrocinétique et électronique", "Mécanique des fluides (PSI/PT)", "Physique quantique (PC/PSI)"],
+    "Université": ["Mécanique classique et analytique (Lagrange, Hamilton)", "Électromagnétisme (équations de Maxwell, ondes)", "Thermodynamique et physique statistique", "Mécanique quantique (postulats, atome d'hydrogène)", "Optique géométrique, ondulatoire et physique", "Physique des solides et de la matière condensée (L3-M1)", "Relativité restreinte"],
   },
   "Chimie": {
     "Collège": {
@@ -102,7 +108,12 @@ export const PROGRAMMES = {
       "Première (spé)": ["Structure des entités chimiques", "Évolution des systèmes", "Modélisation"],
       "Terminale (spé)": ["Cinétique chimique", "Équilibres chimiques", "Acides-bases", "Oxydoréduction", "Synthèse organique"],
     },
+    "Lycée techno": {
+      "STL (Sciences et Technologies de Laboratoire)": ["Atomistique et liaison chimique", "Solutions aqueuses (pH, dosages)", "Cinétique et équilibres", "Chimie organique (synthèses, nomenclature)", "Techniques d'analyse (spectroscopie, chromatographie)"],
+      "ST2S (Santé et Social)": ["Bases de chimie générale (atomes, molécules, solutions)", "Biochimie : biomolécules (glucides, lipides, protides)", "Métabolisme et nutrition", "Chimie appliquée à la santé"],
+    },
     "Prépa": ["Atomistique et liaison chimique (PCSI)", "Thermodynamique chimique", "Cinétique chimique avancée", "Chimie organique (mécanismes réactionnels, stéréochimie)", "Chimie des solutions (acides-bases, oxydoréduction, complexation)", "Cristallographie (BCPST/PC)"],
+    "Université": ["Chimie générale (atomistique, liaison, thermodynamique)", "Chimie organique (mécanismes, stéréochimie, synthèses)", "Chimie analytique (spectroscopies UV, IR, RMN, masse)", "Chimie inorganique et des matériaux", "Biochimie structurale et métabolique", "Chimie physique (cinétique, électrochimie)"],
   },
   "SVT": {
     "Collège": {
@@ -114,9 +125,15 @@ export const PROGRAMMES = {
       "Première (spé)": ["Génétique et évolution", "Écosystèmes", "Corps humain (immunité, variations génétiques)"],
       "Terminale (spé)": ["Génétique et évolution avancées", "Climats et géologie", "Comportements humains et santé", "Procréation humaine"],
     },
+    "Primaire": ["Découverte du vivant (animaux, plantes, cycles de vie)", "Le corps humain (5 sens, hygiène, alimentation, croissance)", "L'environnement proche (saisons, météo, milieux naturels)", "Sensibilisation à la biodiversité et au développement durable"],
+    "Lycée techno": {
+      "ST2S (Santé et Social)": ["Biologie humaine et physiologie (systèmes : digestif, respiratoire, circulatoire, nerveux)", "Anatomie", "Microbiologie et immunologie de base", "Nutrition et santé", "Physiopathologie (introduction)"],
+    },
     "Prépa": ["Biologie cellulaire et moléculaire (BCPST)", "Génétique formelle et moléculaire", "Physiologie animale et végétale", "Écologie et évolution", "Géologie (tectonique, pétrographie, paléontologie)", "Biochimie structurale et métabolique"],
+    "Université": ["Biologie cellulaire et moléculaire", "Génétique (formelle, moléculaire, des populations)", "Biochimie (structurale, métabolique, enzymologie)", "Physiologie animale et végétale", "Écologie et évolution", "Microbiologie et immunologie", "Géologie et sciences de la Terre (selon parcours)"],
   },
   "Français": {
+    "Primaire": ["Lecture (déchiffrage CP, fluence CE1-CM2, compréhension)", "Écriture (copie, production de textes courts)", "Vocabulaire (enrichissement, familles de mots, sens propre/figuré)", "Grammaire de base (nature des mots, accords)", "Conjugaison (présent, futur, imparfait, passé composé)", "Orthographe et dictée régulière", "Expression orale"],
     "Collège": {
       "6e-5e": ["Récits de création / monstres", "Lecture des contes", "Initiation à la grammaire", "Conjugaison de base"],
       "4e": ["La fiction pour interroger le réel", "Roman du XIXe siècle", "Conjugaison avancée", "Argumentation"],
@@ -140,8 +157,16 @@ export const PROGRAMMES = {
     "Lycée techno": {
       "Terminale techno": ["8 notions au programme (allégé) : l'art, le bonheur, la conscience, la justice, le langage, la nature, la technique, le travail", "Méthode de la dissertation (sujet plus guidé qu'en général)", "Méthode de l'explication de texte (extrait court)", "Auteurs au programme (liste allégée)"],
     },
+    "Prépa": {
+      "Khâgne A/L (Lettres)": ["Tronc commun + Spécialité philo (oeuvres au programme : Platon, Aristote, Kant, Descartes, Hegel, Nietzsche...)", "Histoire de la philosophie complète", "Méthode de la dissertation longue (6h)", "Commentaire de texte philosophique avancé", "Préparation au concours ENS (épreuves écrite + orale)"],
+      "Khâgne B/L (Lettres-Sciences sociales)": ["Philosophie générale + sciences humaines", "Méthode de la dissertation type ENS B/L", "Articulation philo + sociologie + économie", "Auteurs : philosophie politique et morale (Hobbes, Locke, Rawls...)"],
+      "Prépas scientifiques (MPSI/PCSI/BCPST)": ["Programme de Français-Philo annuel : 3 oeuvres autour d'un thème (change chaque année)", "Méthode du résumé + dissertation type concours (X, Mines, Centrale)", "Pas de cours de philo pure : c'est intégré au Français-Philo", "Préparation aux épreuves écrite et orale des concours"],
+      "Prépas commerciales (ECG/ECT)": ["Culture générale + français-philo", "Préparation au concours BCE/Ecricome", "Méthode de la dissertation de culture générale (4h)", "Thème annuel commun à toutes les ECG (change chaque année)"],
+    },
+    "Université": ["Histoire de la philosophie (Antiquité, Moyen Âge, modernité, contemporains)", "Philosophie morale et éthique", "Philosophie politique (Hobbes, Locke, Rousseau, Rawls)", "Philosophie des sciences et épistémologie", "Esthétique et philosophie de l'art", "Métaphysique et philosophie de l'esprit", "Logique et philosophie du langage", "Méthode de la dissertation et de l'explication de texte (niveau master, agrégation)"],
   },
   "Histoire-Géo": {
+    "Primaire": ["Repères temporels (frise des grandes périodes : Préhistoire à nos jours)", "Personnages et événements clés de l'histoire de France", "Découverte de la France (régions, paysages, villes)", "Découverte du monde (continents, océans, repères)", "Sensibilisation à la citoyenneté et à l'EMC"],
     "Collège": {
       "6e": ["Préhistoire", "Antiquité (Égypte, Grèce, Rome)", "Géo : habiter la Terre"],
       "5e": ["Moyen Âge", "Géo : ressources et inégalités"],
@@ -160,6 +185,7 @@ export const PROGRAMMES = {
     },
     "Lycée pro": ["Grandes périodes historiques (Révolution à nos jours, allégé)", "Géographie : France, Europe, mondialisation", "Éducation morale et civique (EMC)", "Étude de documents au CCF"],
     "Prépa": ["Histoire moderne et contemporaine (khâgne A/L : depuis 1850)", "Histoire des mondes contemporains (B/L, ECG)", "Géographie politique et économique (B/L, HGGMC en ECG)", "Méthode de la dissertation et du commentaire de documents"],
+    "Université": ["Histoire ancienne (Grèce, Rome, Proche-Orient)", "Histoire médiévale (Ve-XVe siècle)", "Histoire moderne (XVIe-XVIIIe siècle)", "Histoire contemporaine (XIXe-XXIe siècle)", "Géographie humaine (population, urbanisation, mondialisation)", "Géographie physique (climats, reliefs, milieux)", "Méthodologie (commentaire de documents, dissertation, cartographie)", "Préparation aux concours (CAPES, agrégation)"],
   },
   "SES": {
     "Lycée général": {
@@ -169,12 +195,14 @@ export const PROGRAMMES = {
     },
   },
   "Anglais": {
+    "Primaire": ["Vocabulaire de base (couleurs, nombres, animaux, famille, école, corps)", "Comptines, chansons et albums jeunesse", "Présent simple (be, have, like)", "Salutations et formules de politesse", "Compréhension orale d'énoncés courts", "Expression orale guidée (se présenter, parler de ses goûts)"],
     "Collège": ["Présent simple/continu", "Past simple", "Modaux (can, must, should)", "Vocabulaire quotidien", "Compréhension orale et écrite", "Expression orale en interaction"],
     "Lycée général": ["Niveau B2 visé au Bac", "4 axes thématiques (identités, espaces, fictions, etc.)", "Expression écrite et orale avancée", "Préparation aux 4 compétences (CO, CE, EO, EE)", "Spé LLCE Anglais : œuvres littéraires"],
     "Lycée techno": ["Niveau B1 visé au Bac techno", "Axes thématiques communs avec le général (allégés)", "Vocabulaire lié à la filière (gestion, santé, industrie)", "Compréhension de documents authentiques simples", "Expression orale guidée (support visuel au Bac)"],
     "Lycée pro": ["Niveau A2 à B1 selon filière", "Anglais appliqué au métier (vocabulaire professionnel)", "Compréhension orale sur audio courts", "Expression orale de base (présentation de soi, du métier)", "CCF à l'oral"],
     "BTS / IUT": ["Niveau B2 visé en fin de BTS/BUT", "Anglais professionnel lié à la filière (commerce, informatique, industrie)", "Compréhension de documents techniques et de presse", "Expression orale en situation professionnelle", "Rédaction de mails et rapports courts"],
     "Prépa": ["Niveau C1 visé", "Version (traduction anglais→français) et thème (français→anglais)", "Dissertation en anglais sur un sujet de civilisation", "Synthèse de documents de presse anglo-saxonne", "Oral sur article de presse avec analyse"],
+    "Université": ["Anglais de spécialité (LEA, LLCER : commerce, droit, sciences)", "Traduction (version et thème) niveau C1-C2", "Civilisation des pays anglophones (Royaume-Uni, États-Unis, Commonwealth)", "Littérature anglo-saxonne (du Moyen Âge à nos jours en LLCER)", "Linguistique anglaise (phonologie, syntaxe, morphologie)", "Préparation aux concours (CAPES, agrégation)"],
   },
   "Espagnol": {
     "Collège": ["Présent, prétérit, futur simples", "Ser/Estar", "Vocabulaire quotidien", "Pays hispanophones"],
@@ -216,6 +244,10 @@ export const PROGRAMMES = {
       "6e": ["Découverte du monde technique", "Objets techniques du quotidien", "Initiation aux outils numériques"],
       "5e-3e": ["Conception et fabrication d'objets", "Programmation (Scratch, robotique)", "Énergie et environnement", "Modélisation 3D", "Informatique et sciences du numérique"],
     },
+    "Lycée techno": {
+      "STI2D (Industrie et Développement Durable)": ["Innovation technologique et éco-conception", "Énergies (production, transport, stockage)", "Information et systèmes numériques", "Architecture et construction (selon spé)", "Projet technologique en Tle"],
+      "STD2A (Design et Arts Appliqués)": ["Outils et langages du design", "Démarche créative et projet", "Histoire du design et des arts appliqués", "Conception et réalisation (maquettes, prototypes)"],
+    },
   },
   "Droit": {
     "Lycée techno": ["Droit civil de base (contrats, responsabilité)", "Droit du travail (contrat de travail, salariés)", "Droit commercial (entreprises, commerçants)", "Notion de droit social et fiscal", "Spécifique STMG : Droit appliqué à la gestion"],
@@ -230,6 +262,12 @@ export const PROGRAMMES = {
 // points difficiles classiques, conseils Sherpas pour la prescription.
 export const PROGRAMME_DETAILS = {
   "Maths": {
+    "Primaire": {
+      objectifs: "Construire les bases du calcul (4 opérations, fractions simples), de la géométrie (figures, mesures) et de la résolution de problèmes. Préparer une entrée sereine au collège.",
+      competences: ["Calcul mental et posé", "Reconnaissance et tracé de figures géométriques", "Mesures (longueurs, masses, durées, monnaie)", "Résolution de problèmes en plusieurs étapes"],
+      difficultes: ["Les tables de multiplication", "Les fractions et nombres décimaux (CM1-CM2)", "La résolution de problèmes (lecture de l'énoncé)", "La géométrie (utilisation des instruments)"],
+      conseils: "Au primaire, l'enjeu est de donner confiance et de bien ancrer les bases. Un étudiant universitaire patient, en sciences ou en éducation, fait très bien l'affaire. La clé : manipulation concrète et jeux mathématiques.",
+    },
     "Collège": {
       objectifs: "Construire le sens des nombres et des opérations, développer le raisonnement logique, manipuler les outils géométriques de base, préparer le brevet en 3e.",
       competences: ["Calculer (mental, écrit, posé)", "Raisonner et argumenter (démonstrations en 4e-3e)", "Modéliser des situations concrètes", "Utiliser le numérique (Geogebra, calculatrice)"],
@@ -266,6 +304,12 @@ export const PROGRAMME_DETAILS = {
       difficultes: ["La densité du programme", "La rapidité d'exécution exigée", "La rédaction au niveau concours", "La gestion du stress aux khôlles"],
       conseils: "Pour la prépa, SEUL un étudiant ayant fait la même filière convient (MPSI/MP, PCSI/PC...). Idéalement quelqu'un en école après concours. Les profs EN sont rarement adaptés.",
     },
+    "Université": {
+      objectifs: "Acquérir une formation théorique solide en analyse, algèbre, probabilités et topologie. Préparer la recherche, l'agrégation, ou l'entrée en école d'ingénieurs sur titre.",
+      competences: ["Analyse réelle et complexe (suites, séries, intégrales, fonctions holomorphes)", "Algèbre linéaire et bilinéaire (réduction d'endomorphismes, formes quadratiques)", "Probabilités et statistiques (lois, théorèmes limites)", "Topologie générale et espaces métriques", "Démonstration rigoureuse au niveau L3-M1"],
+      difficultes: ["L'abstraction croissante (passage L1 → L3)", "La topologie (concepts difficiles)", "Les démonstrations rigoureuses au niveau master", "Le rythme intense en M1 et préparation à l'agrégation"],
+      conseils: "Pour l'université, idéal : étudiant en M2 maths fondamentales/appliquées, doctorant, agrégé ou normalien. La maîtrise du programme officiel L3/M1 est essentielle.",
+    },
   },
   "Physique": {
     "Collège": {
@@ -286,8 +330,38 @@ export const PROGRAMME_DETAILS = {
       difficultes: ["L'électromagnétisme (formalisme mathématique lourd)", "La thermodynamique (conventions et signes)", "La rapidité d'exécution aux concours", "L'articulation entre math et physique"],
       conseils: "Un étudiant ayant fait la MÊME filière (PCSI/PC, MPSI/MP, PTSI/PT) est indispensable. Idéalement en école après les concours (X, Centrale, Mines, ENS). Les profs EN sont rarement au niveau concours.",
     },
+    "Lycée techno": {
+      objectifs: "Acquérir les bases de physique appliquée pour les filières STI2D et STL : énergie, mécanique, électricité, ondes. L'approche est plus concrète qu'en général.",
+      competences: ["Mesure et incertitudes", "Calculs d'énergie et de puissance", "Lecture et schémas de circuits électriques", "Étude de mouvements et forces simples", "Pratique expérimentale en TP"],
+      difficultes: ["Les conversions d'unités", "Les calculs de puissance et de rendement", "L'écart entre les attendus du général et du techno"],
+      conseils: "Pour le techno, cibler un étudiant en école d'ingé post-bac (INSA, UTC, Polytech, ENSAM) ou en BUT MP/GMP. Évite les profils trop théoriques qui ne saisiraient pas les attentes spécifiques au Bac techno.",
+    },
+    "Université": {
+      objectifs: "Maîtriser les fondamentaux théoriques de la physique : mécanique, électromagnétisme, thermodynamique, mécanique quantique. Préparer la recherche ou l'agrégation.",
+      competences: ["Mécanique classique et analytique (Lagrange, Hamilton)", "Électromagnétisme (équations de Maxwell, ondes)", "Thermodynamique et physique statistique", "Mécanique quantique (postulats, atome d'hydrogène)", "Optique ondulatoire et physique"],
+      difficultes: ["Le formalisme mathématique lourd (notamment en quantique et électromagnétisme)", "Les démonstrations rigoureuses", "L'articulation entre théorie et expérimentation"],
+      conseils: "Pour l'université, idéal : étudiant en master physique fondamentale, doctorant, ou agrégé de physique. Les anciens normaliens ou centraliens en master recherche sont également excellents.",
+    },
   },
   "Chimie": {
+    "Collège": {
+      objectifs: "Découvrir les notions de base de la chimie : états de la matière, mélanges, atomes et molécules, réactions chimiques simples. Initier à la démarche expérimentale.",
+      competences: ["Identifier les états de la matière (solide, liquide, gaz)", "Distinguer mélanges homogènes et hétérogènes", "Schématiser une expérience", "Utiliser le vocabulaire chimique de base"],
+      difficultes: ["Distinguer atome / molécule / ion", "Les changements d'état (vocabulaire)", "L'écriture des équations chimiques simples (3e)"],
+      conseils: "Au collège, la chimie est très accessible. Un étudiant en sciences (école d'ingé, fac de sciences, médecine, pharma) fait très bien l'affaire. La pédagogie repose surtout sur la manipulation et l'expérience.",
+    },
+    "Lycée techno": {
+      objectifs: "En STL, acquérir une formation chimique solide (atomistique, solutions, organique, techniques d'analyse). En ST2S, comprendre la biochimie et la chimie appliquée à la santé.",
+      competences: ["Atomistique et liaison chimique (STL)", "Solutions et dosages (STL)", "Chimie organique de base (STL)", "Biochimie : glucides, lipides, protides (ST2S)", "Métabolisme et nutrition (ST2S)"],
+      difficultes: ["Les techniques d'analyse instrumentale (STL)", "La biochimie structurale (ST2S)", "L'écart entre la pratique en TP et la théorie"],
+      conseils: "Pour la STL, cibler un étudiant en école de chimie (ENSCM, Chimie ParisTech) ou en pharma. Pour la ST2S, viser un étudiant en pharma, médecine ou biologie.",
+    },
+    "Université": {
+      objectifs: "Maîtriser la chimie générale (atomistique, thermodynamique, cinétique) et les spécialités (organique, analytique, biochimie). Préparer la recherche ou l'industrie.",
+      competences: ["Chimie générale (structure, liaison, thermodynamique)", "Chimie organique (mécanismes, synthèses, stéréochimie)", "Chimie analytique (spectroscopies, chromatographies)", "Biochimie structurale et métabolique", "Pratique en TP de chimie avancée"],
+      difficultes: ["La densité de la chimie organique (mécanismes à mémoriser)", "L'analyse spectroscopique", "Le passage à la chimie quantique en M1"],
+      conseils: "Pour l'université, idéal : étudiant en master chimie ou doctorant. Pour la chimie organique, un étudiant ENSCM/Chimie ParisTech est l'idéal absolu.",
+    },
     "Lycée général": {
       objectifs: "Comprendre la matière à l'échelle moléculaire, prévoir les transformations, réaliser des synthèses organiques (Tle).",
       competences: ["Écrire et équilibrer une équation chimique", "Calculer des concentrations et des quantités de matière", "Maîtriser la nomenclature organique", "Comprendre la cinétique et les équilibres"],
@@ -302,6 +376,12 @@ export const PROGRAMME_DETAILS = {
     },
   },
   "SVT": {
+    "Primaire": {
+      objectifs: "Découvrir le vivant (animaux, plantes, corps humain), comprendre l'environnement et les premières notions de santé et d'hygiène. Développer l'observation scientifique.",
+      competences: ["Observer et décrire le vivant", "Identifier les besoins des êtres vivants", "Connaître les grandes fonctions du corps humain (5 sens, alimentation)", "Sensibilité à l'environnement et à la biodiversité"],
+      difficultes: ["Distinguer animal / végétal / minéral", "Comprendre les cycles de vie", "L'alimentation équilibrée"],
+      conseils: "Au primaire, la SVT est ludique et concrète. Un étudiant en biologie, médecine ou école d'ingé biotech, avec un sens de l'éveil scientifique, est idéal.",
+    },
     "Collège": {
       objectifs: "Comprendre le vivant, le corps humain, la planète Terre. Le programme prépare aussi à l'éducation à la santé et à l'environnement.",
       competences: ["Observer et identifier (cellules, organes, écosystèmes)", "Lire un graphique ou un tableau", "Construire un raisonnement scientifique simple"],
@@ -320,8 +400,26 @@ export const PROGRAMME_DETAILS = {
       difficultes: ["Le volume de connaissances à mémoriser", "La rigueur attendue aux TP (dessins, observations)", "La géologie (souvent la matière la moins aimée)", "La rédaction de synthèses à partir de documents"],
       conseils: "Uniquement un ancien BCPST passé en école (AgroParisTech, ENS, véto, ENSAT). Un étudiant en médecine ou en L3 bio NE SUFFIT PAS — le programme de prépa est très spécifique.",
     },
+    "Lycée techno": {
+      objectifs: "En ST2S, maîtriser l'anatomie, la physiologie et la biologie humaine pour préparer les études de santé et social (PASS/LAS, IFSI, BTS SP3S, BUT Carrières Sociales).",
+      competences: ["Anatomie des grands systèmes (digestif, respiratoire, circulatoire, nerveux)", "Physiologie (fonctionnement des organes)", "Microbiologie et immunologie de base", "Nutrition et santé publique", "Lecture de documents scientifiques"],
+      difficultes: ["Le volume de vocabulaire anatomique", "La physiologie (mécanismes complexes)", "La rédaction structurée au Bac"],
+      conseils: "Pour la ST2S, idéal : étudiant en PASS/LAS, médecine, pharma, kiné, ou en école d'infirmier. Un ancien ST2S ayant réussi en santé est un excellent profil.",
+    },
+    "Université": {
+      objectifs: "Acquérir une formation solide en biologie cellulaire, génétique, biochimie, physiologie et écologie. Préparer la recherche, l'enseignement (CAPES, agrégation) ou les écoles d'ingé bio.",
+      competences: ["Biologie cellulaire et moléculaire fine", "Génétique (formelle, moléculaire, populations)", "Biochimie (enzymologie, métabolisme)", "Physiologie animale et végétale", "Écologie et évolution", "Travaux pratiques avancés"],
+      difficultes: ["Le volume de connaissances", "La biochimie (mécanismes enzymatiques)", "La génétique des populations (mathématiques)", "La rédaction scientifique"],
+      conseils: "Pour l'université, idéal : étudiant en master biologie, doctorant en bio, ou agrégé SVT. Pour les futures écoles vétérinaires/AgroParisTech, viser un ancien BCPST.",
+    },
   },
   "Français": {
+    "Primaire": {
+      objectifs: "Apprendre à lire et écrire correctement, enrichir le vocabulaire, maîtriser les bases de la grammaire, de la conjugaison et de l'orthographe. Préparer une entrée sereine au collège.",
+      competences: ["Lecture fluide et compréhension de textes", "Production écrite (récit, description)", "Grammaire de base (nature, fonctions, accords)", "Conjugaison (présent, futur, imparfait, passé composé)", "Orthographe (dictée régulière)"],
+      difficultes: ["L'orthographe (homophones, accords sujet-verbe)", "La compréhension fine d'un texte", "La rédaction structurée", "La conjugaison (temps composés)"],
+      conseils: "Au primaire, l'enjeu est l'amour de la lecture et la confiance en l'écriture. Un étudiant en lettres, hypokhâgne, ou en sciences de l'éducation, patient et bienveillant, est idéal. Lire beaucoup avec l'enfant est essentiel.",
+    },
     "Collège": {
       objectifs: "Lire et comprendre des œuvres variées, écrire correctement, s'exprimer à l'oral, préparer le brevet en 3e.",
       competences: ["Compréhension de textes (questions de lecture)", "Rédaction (récit, description, argumentation)", "Grammaire et orthographe", "Vocabulaire et culture littéraire"],
@@ -372,8 +470,26 @@ export const PROGRAMME_DETAILS = {
       difficultes: ["La problématisation (même allégée, elle reste difficile)", "L'organisation d'un plan", "Le vocabulaire philosophique", "La rédaction sous contrainte de temps"],
       conseils: "Pour la philo en techno, cibler un étudiant en khâgne ou en master philo, mais capable de pédagogie simple. Éviter les profils trop abstraits — viser quelqu'un qui sait vulgariser. Les annales techno sont indispensables.",
     },
+    "Prépa": {
+      objectifs: "En khâgne, atteindre le niveau ENS pour la dissertation et l'explication de texte. En prépa scientifique/commerciale, maîtriser la méthode du Français-Philo annuel pour les concours.",
+      competences: ["Dissertation longue (6h) niveau concours", "Explication de texte philosophique avancé", "Maîtrise de l'histoire de la philosophie (Platon → contemporains)", "Pour Français-Philo : résumé de texte + dissertation sur thème annuel", "Préparation aux oraux des concours"],
+      difficultes: ["Le volume de lectures à intégrer (œuvres entières)", "La méthode ENS très exigeante (problématisation fine, plans en 3 parties)", "Le rythme des khôlles hebdomadaires", "Pour les scientifiques : combiner technique du résumé + dissertation sur le thème annuel"],
+      conseils: "Pour la prépa, idéal : un normalien (ENS Ulm/Lyon) en philo, ou un étudiant en master philo agrégé. Pour les prépas scientifiques, viser quelqu'un qui a passé le Français-Philo aux concours (X, Centrale, Mines) — la méthode est très spécifique.",
+    },
+    "Université": {
+      objectifs: "Maîtriser l'histoire de la philosophie (Antiquité à contemporains) et les grandes spécialités (morale, politique, sciences, esthétique). Préparer la recherche, le CAPES ou l'agrégation.",
+      competences: ["Histoire de la philosophie (Platon, Aristote, Descartes, Kant, Hegel, Nietzsche, Husserl, Heidegger, Foucault, Deleuze)", "Philosophie morale et politique", "Philosophie des sciences et épistémologie", "Esthétique et philosophie de l'art", "Méthode universitaire de la dissertation et de l'explication de texte"],
+      difficultes: ["La densité des œuvres à lire (Critique de la raison pure, Phénoménologie de l'esprit...)", "La méthode de la dissertation universitaire (différente du lycée)", "L'explication de texte rigoureuse", "Le rythme de l'agrégation"],
+      conseils: "Pour l'université, idéal : étudiant en master philo (Paris 1, Paris 4, ENS), normalien, ou agrégé. La maîtrise de l'histoire de la philosophie est essentielle pour les concours.",
+    },
   },
   "Histoire-Géo": {
+    "Primaire": {
+      objectifs: "Acquérir les premiers repères historiques (frise des grandes périodes) et géographiques (France, monde). Sensibiliser à la citoyenneté.",
+      competences: ["Repères chronologiques de base (Préhistoire à nos jours)", "Personnages et événements clés de l'histoire de France", "Découverte de la France et du monde", "Lecture de cartes simples"],
+      difficultes: ["La notion de temps long (siècles, millénaires)", "Les repères géographiques (continents, pays)", "Les noms et dates à mémoriser"],
+      conseils: "Au primaire, l'enjeu est de donner le goût de l'histoire et de la géographie. Un étudiant en histoire, géographie ou Sciences Po, avec une approche ludique (cartes, anecdotes, vidéos), est idéal.",
+    },
     "Collège": {
       objectifs: "Connaître les grandes périodes historiques, comprendre les enjeux géographiques contemporains, préparer le brevet HG-EMC en 3e.",
       competences: ["Mémoriser des dates et personnages clés", "Lire et analyser un document (carte, image, texte)", "Rédiger un développement court structuré", "Construire une chronologie"],
@@ -404,6 +520,12 @@ export const PROGRAMME_DETAILS = {
       difficultes: ["Le volume gigantesque de connaissances", "La maîtrise de l'historiographie (auteurs, courants)", "La dissertation de géopolitique (ECG)", "La synthèse rapide au concours"],
       conseils: "Pour A/L ou B/L, cibler un étudiant normalien (ENS Ulm, Lyon, Cachan) ou à Sciences Po. Pour ECG HGGMC, un étudiant à HEC/ESSEC/ESCP qui a eu une bonne note est idéal. Un prof EN agrégé peut aussi convenir.",
     },
+    "Université": {
+      objectifs: "Maîtriser une vaste périodisation historique (Antiquité à contemporain) et une géographie complète (humaine et physique). Préparer la recherche, le CAPES ou l'agrégation.",
+      competences: ["Histoire ancienne, médiévale, moderne, contemporaine", "Géographie humaine et physique", "Méthode de la dissertation universitaire", "Commentaire de documents (cartes, textes, images)", "Cartographie et croquis"],
+      difficultes: ["Le volume colossal de connaissances", "La méthodologie du commentaire d'arrêt historique", "La spécialisation en M1/M2", "La préparation à l'agrégation (rythme intense)"],
+      conseils: "Pour l'université, idéal : étudiant en master histoire ou géographie, agrégé, ou normalien (ENS Ulm/Lyon). La méthode universitaire est très différente du lycée — il faut un profil rigoureux.",
+    },
   },
   "SES": {
     "Lycée général": {
@@ -414,6 +536,12 @@ export const PROGRAMME_DETAILS = {
     },
   },
   "Anglais": {
+    "Primaire": {
+      objectifs: "Sensibiliser à la langue anglaise par l'oral, les chansons et le vocabulaire de la vie courante. Atteindre le niveau A1 en fin de CM2.",
+      competences: ["Vocabulaire de base (couleurs, nombres, animaux, famille, école)", "Compréhension orale d'énoncés courts", "Expression orale guidée (se présenter, parler de ses goûts)", "Comptines et chansons en anglais"],
+      difficultes: ["La prononciation (sons inexistants en français)", "L'écart entre l'écrit et l'oral", "La timidité à l'oral"],
+      conseils: "Au primaire, idéal : un étudiant bilingue ou natif anglais, ou un étudiant en LEA/LLCER. La pédagogie doit être très ludique : chansons, jeux, vidéos courtes.",
+    },
     "Collège": {
       objectifs: "Atteindre le niveau A2 en fin de 5e et B1 en fin de 3e. Compréhension orale/écrite, expression orale/écrite simples.",
       competences: ["Vocabulaire de la vie courante (~1500 mots)", "Grammaire de base (présent, passé, futur, modaux)", "Compréhension orale (accents standards)", "Petite expression écrite (mails, descriptions)"],
@@ -449,6 +577,12 @@ export const PROGRAMME_DETAILS = {
       competences: ["Version (traduction anglais→français exigeante)", "Thème (français→anglais, idioms)", "Dissertation ou synthèse sur un sujet de civilisation", "Analyse d'articles de presse anglo-saxonne", "Oral sur article de presse"],
       difficultes: ["La traduction en version (registre, fidélité)", "Le thème (idiomatisme, structure)", "La culture anglo-saxonne exigée aux concours", "La fluidité orale au niveau concours"],
       conseils: "Cibler un ancien préparationnaire qui a eu de bonnes notes en anglais aux concours (khâgne LV1 anglais, HEC, Sciences Po, ENS Ulm). Un bilingue anglais ayant fait des études supérieures en France (pour connaître les attentes françaises) est idéal.",
+    },
+    "Université": {
+      objectifs: "Atteindre le niveau C1/C2 et maîtriser l'anglais de spécialité (LEA, LLCER). Préparer la recherche, l'enseignement (CAPES, agrégation) ou les métiers du commerce international.",
+      competences: ["Traduction (version et thème) niveau C1-C2", "Civilisation des pays anglophones (UK, US, Commonwealth)", "Littérature anglo-saxonne (LLCER)", "Linguistique anglaise (phonologie, syntaxe)", "Anglais de spécialité (commerce, droit, sciences en LEA)"],
+      difficultes: ["La traduction littéraire et idiomatique", "L'analyse littéraire en anglais", "La linguistique (formalismes)", "La préparation à l'agrégation (rythme intense)"],
+      conseils: "Pour l'université, idéal : étudiant en master anglais (LLCER ou LEA), agrégé, ou bilingue ayant fait des études en France. Pour la prépa CAPES/agrégation, viser un agrégé ou un doctorant en études anglophones.",
     },
   },
   "Espagnol": {
@@ -528,6 +662,12 @@ export const PROGRAMME_DETAILS = {
     },
   },
   "Économie": {
+    "Lycée général": {
+      objectifs: "En spé SES (Sciences Économiques et Sociales), préparer les études d'économie, sociologie, sciences politiques et écoles de commerce. Programme exigeant en raisonnement et culture économique.",
+      competences: ["Maîtriser les concepts économiques (marché, prix, monnaie, croissance)", "Comprendre les mécanismes sociologiques (déviance, intégration, mobilité)", "Lire et interpréter des données statistiques", "Construire une dissertation argumentée et une épreuve composée"],
+      difficultes: ["La distinction entre micro et macroéconomie", "Les statistiques (taux, élasticité, indices)", "La dissertation type Bac (4h, structurée)", "Mémoriser auteurs et théories"],
+      conseils: "Pour la spé SES, idéal : étudiant à Sciences Po, en prépa ECG, ou en école de commerce post-prépa. Un agrégé SES est également excellent. Cibler quelqu'un qui maîtrise la méthode de l'épreuve composée.",
+    },
     "Lycée techno": {
       objectifs: "En STMG, maîtriser les sciences de gestion (1ère) puis une spécialité (Tle : Management, Gestion-finance, Mercatique, RH, SIG). L'approche est concrète, centrée sur l'entreprise.",
       competences: ["Analyser une situation d'entreprise", "Mobiliser les notions de gestion", "Lire un bilan, un compte de résultat (Gestion-finance)", "Comprendre la stratégie marketing (Mercatique)", "Étude de cas type Bac techno"],
@@ -598,6 +738,12 @@ export const PROGRAMME_DETAILS = {
       difficultes: ["Le passage de l'idée au schéma technique", "La programmation Scratch (logique algorithmique)", "Les unités d'énergie et de puissance"],
       conseils: "La techno au collège est très pratique — un étudiant en école d'ingénieurs (INSA, UTC, Polytech) ou en BUT GMP/Génie Civil est idéal. Évite les profs trop théoriques.",
     },
+    "Lycée techno": {
+      objectifs: "Acquérir les bases techniques propres à la série (STI2D : innovation et développement durable ; STD2A : design et arts appliqués). Préparer les écoles d'ingénieurs post-bac et les écoles de design.",
+      competences: ["STI2D : innovation, énergie, systèmes numériques, conception", "STD2A : démarche créative, projet, histoire du design", "Modélisation 3D et CAO (STI2D)", "Réalisation de maquettes et prototypes (STD2A)", "Projet technologique en Tle"],
+      difficultes: ["La transition entre théorie et pratique", "Le projet de Tle (gestion de temps et autonomie)", "STI2D : l'écart entre les 4 enseignements spé"],
+      conseils: "Pour STI2D, cibler un étudiant en école d'ingé post-bac (INSA, UTC, Polytech, ENSAM, ICAM). Pour STD2A, viser un étudiant en école d'art ou de design (ENSCI, Boulle, Olivier de Serres). Un ancien élève de la même série ayant intégré une grande école est l'idéal absolu.",
+    },
   },
   "Droit": {
     "Lycée techno": {
@@ -611,6 +757,12 @@ export const PROGRAMME_DETAILS = {
       competences: ["Connaître ses droits en tant que salarié ou commerçant", "Lire un contrat de travail", "Identifier les obligations légales d'un commerçant"],
       difficultes: ["Le vocabulaire juridique", "Les règles du droit du travail (souvent contre-intuitives)"],
       conseils: "Un étudiant en Licence Droit ou en BTS Tertiaire (Notariat, Comptabilité-Gestion) fait très bien l'affaire.",
+    },
+    "BTS / IUT": {
+      objectifs: "En BTS Notariat, BTS Professions Immobilières, BUT GEA, BUT Carrières Juridiques : maîtriser les bases du droit civil, commercial, du travail et fiscal pour la pratique professionnelle.",
+      competences: ["Méthode du cas pratique", "Droit civil (contrats, responsabilité)", "Droit commercial et droit des sociétés", "Droit du travail (contrat, rupture, durée du travail)", "Droit fiscal de base"],
+      difficultes: ["Le vocabulaire juridique (très précis)", "La méthode du cas pratique", "L'application des règles à une situation concrète", "Mémoriser les articles clés"],
+      conseils: "Pour le BTS/BUT, idéal : étudiant en L2/L3 Droit, M1 Droit, ou avocat junior. Pour le BTS Notariat, viser quelqu'un qui prépare le DSN ou en master droit notarial.",
     },
     "Université": {
       objectifs: "Acquérir une formation juridique complète pour devenir avocat, juriste d'entreprise, magistrat, notaire ou pour s'orienter vers le master.",
