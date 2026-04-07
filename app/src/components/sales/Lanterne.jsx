@@ -5,6 +5,7 @@ import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
 import { NEURO_MATRIX, NEURO_TROUBLES, NEURO_COLORS, NEURO_EMOJIS, NEURO_PROFS } from '../../constants/neuroMatrix';
+import { getEcheances, getProgramme } from '../../constants/familyToolkit';
 
 // ── Parent Profile Data ─────────────────────────────────────────
 const PARENT_PROFILES = [
@@ -1587,6 +1588,78 @@ function SalesLanterne({ stock, setMatchings, user }) {
               </div>
               <div style={{ fontSize: 10, opacity: .85, marginTop: 8 }}>💡 À utiliser quand le parent hésite — crée la peur de manquer l'opportunité</div>
             </div>
+          </C>;
+        })()}
+
+        {/* ── BOITE A OUTILS FAMILLE : echeances + programmes ── */}
+        {(()=>{
+          const echeances = niveau ? getEcheances(niveau) : [];
+          const matieresWithProg = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
+          if (echeances.length === 0 && matieresWithProg.length === 0) return null;
+          // Determine la classe pour le programme
+          const classeForProg = classe === "Première" ? "Première (spé)"
+            : classe === "Terminale" ? "Terminale (spé)"
+            : classe === "6e" || classe === "5e" ? "6e-5e"
+            : classe === "4e" ? "4e"
+            : classe === "3e" ? "3e"
+            : classe === "Seconde" ? "Seconde"
+            : classe;
+          return <C style={{ marginBottom: 16, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: "18px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 22 }}>🧰</span>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: "#1E40AF", fontFamily: "'Outfit',sans-serif" }}>Boîte à outils famille</div>
+                <div style={{ fontSize: 11, color: "#3B82F6" }}>Échéances + programmes officiels pour parler avec crédibilité</div>
+              </div>
+            </div>
+
+            {/* Echeances */}
+            {echeances.length > 0 && (
+              <div style={{ marginBottom: matieresWithProg.length > 0 ? 16 : 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1E40AF", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>📅 Échéances clés — {niveau}{classe ? ` (${classe})` : ""}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {echeances.map((e, i) => {
+                    const c = e.type === "exam" ? "#E11D48" : e.type === "warn" ? "#DA4F00" : "#0B68B4";
+                    const bg = e.type === "exam" ? "#FEF2F2" : e.type === "warn" ? "#FFF7F0" : "#EFF6FF";
+                    const ic = e.type === "exam" ? "📝" : e.type === "warn" ? "⚠️" : "ℹ️";
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: bg, borderRadius: 8, borderLeft: `3px solid ${c}` }}>
+                        <span style={{ fontSize: 14 }}>{ic}</span>
+                        <div style={{ minWidth: 110, fontSize: 11, fontWeight: 700, color: c, fontFamily: "'Outfit',sans-serif" }}>{e.date}</div>
+                        <div style={{ flex: 1, fontSize: 12, color: "#3F3F46" }}>{e.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Programmes par matiere */}
+            {matieresWithProg.length > 0 && (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1E40AF", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>📚 Grandes lignes du programme</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {matieresWithProg.map(mat => {
+                    const prog = getProgramme(mat, niveau, classeForProg);
+                    if (!prog) return null;
+                    let items = Array.isArray(prog) ? prog : prog.items;
+                    let classeLabel = !Array.isArray(prog) && prog.__key ? ` — ${prog.__key}` : "";
+                    return (
+                      <div key={mat} style={{ padding: "10px 14px", background: "#fff", borderRadius: 8, border: "1px solid #BFDBFE" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#1E40AF", fontFamily: "'Outfit',sans-serif" }}>📖 {mat}{classeLabel}</div>
+                          <CopyBtn text={items.map(i => `• ${i}`).join("\n")} />
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#3F3F46", lineHeight: 1.7 }}>
+                          {items.map((it, i) => <li key={i}>{it}</li>)}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 10, color: "#71717A", marginTop: 8, fontStyle: "italic" }}>💡 Cite ces points pour montrer au parent que tu connais le programme officiel — ça crédibilise instantanément la prescription.</div>
+              </div>
+            )}
           </C>;
         })()}
 
