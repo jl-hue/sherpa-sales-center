@@ -584,6 +584,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
   const [profProposePath, setProfProposePath] = useState([]); // selection en cascade dans PROF_HIERARCHY
   const [expandedRank, setExpandedRank] = useState(null); // index du top 3 deplie
+  const [openTop3, setOpenTop3] = useState(false);
+  const [openToolkit, setOpenToolkit] = useState(false);
+  const [openGuide, setOpenGuide] = useState(false);
 
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
@@ -1397,14 +1400,18 @@ function SalesLanterne({ stock, setMatchings, user }) {
           const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere };
           const profProfilLabel = profProposePath.length > 0 ? profProposePath[profProposePath.length - 1] : "";
           const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx, profProfilLabel);
-          return <C style={{ marginBottom: 16, background: "#FFFBEB", border: "2px solid #FCD34D", padding: "18px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 22 }}>🎤</span>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Guide d'argumentation</div>
-                <div style={{ fontSize: 11, color: "#A16207" }}>Adapté au profil parent : {ppLabel}</div>
+          return <C style={{ marginBottom: 12, background: "#FFFBEB", border: "2px solid #FCD34D", padding: openGuide ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenGuide(!openGuide)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 20 }}>🎤</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Guide d'argumentation</div>
+                  <div style={{ fontSize: 11, color: "#A16207" }}>Profil parent : {ppLabel}</div>
+                </div>
               </div>
+              <span style={{ fontSize: 16, color: "#92400E", transition: "transform .2s", transform: openGuide ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
             </div>
+            {openGuide && <div onClick={e => e.stopPropagation()} style={{ marginTop: 14 }}>
 
             {/* SELECTEUR HIERARCHIQUE PROF PROPOSE */}
             <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #FDE68A" }}>
@@ -1588,6 +1595,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
               </div>
               <div style={{ fontSize: 10, opacity: .85, marginTop: 8 }}>💡 À utiliser quand le parent hésite — crée la peur de manquer l'opportunité</div>
             </div>
+            </div>}
           </C>;
         })()}
 
@@ -1604,14 +1612,18 @@ function SalesLanterne({ stock, setMatchings, user }) {
             : classe === "3e" ? "3e"
             : classe === "Seconde" ? "Seconde"
             : classe;
-          return <C style={{ marginBottom: 16, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: "18px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span style={{ fontSize: 22 }}>🧰</span>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: "#1E40AF", fontFamily: "'Outfit',sans-serif" }}>Boîte à outils famille</div>
-                <div style={{ fontSize: 11, color: "#3B82F6" }}>Échéances + programmes officiels pour parler avec crédibilité</div>
+          return <C style={{ marginBottom: 12, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: openToolkit ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenToolkit(!openToolkit)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 20 }}>🧰</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: "#1E40AF", fontFamily: "'Outfit',sans-serif" }}>Boîte à outils famille</div>
+                  <div style={{ fontSize: 11, color: "#3B82F6" }}>Échéances + programmes officiels</div>
+                </div>
               </div>
+              <span style={{ fontSize: 16, color: "#1E40AF", transition: "transform .2s", transform: openToolkit ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
             </div>
+            {openToolkit && <div onClick={e => e.stopPropagation()} style={{ marginTop: 14 }}>
 
             {/* Echeances */}
             {echeances.length > 0 && (
@@ -1709,9 +1721,23 @@ function SalesLanterne({ stock, setMatchings, user }) {
                 <div style={{ fontSize: 10, color: "#71717A", marginTop: 8, fontStyle: "italic" }}>💡 Cite ces points pour montrer au parent que tu connais le programme officiel — ça crédibilise instantanément la prescription.</div>
               </div>
             )}
+            </div>}
           </C>;
         })()}
 
+        {/* ── TOP 3 PROFILS — RECTANGLE DEROULANT ── */}
+        <C style={{ marginBottom: 12, background: "#fff", border: "2px solid #E4E4E7", padding: openTop3 ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenTop3(!openTop3)}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🏆</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>Top 3 profils recommandés</div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>Classement avec scores et arguments</div>
+              </div>
+            </div>
+            <span style={{ fontSize: 16, color: "#71717A", transition: "transform .2s", transform: openTop3 ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
+          </div>
+          {openTop3 && <div onClick={e => e.stopPropagation()} style={{ marginTop: 14 }}>
         {/* TOP 3 CARDS */}
         {top3.map(({ typ, score, neuroEntry: neuroFromMatrix }, idx) => {
           // Detection : profil neuro de la matrice (pas dans PROF_TYPES)
@@ -1849,6 +1875,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </C>
           );
         })}
+          </div>}
+        </C>
 
         {/* Bottom buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
