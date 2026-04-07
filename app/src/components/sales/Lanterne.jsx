@@ -944,7 +944,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           {niveau === "Prépa" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Filière de prépa <span style={{ color: "#E11D48" }}>*</span></div>
-              <select value={prepaFiliere} onChange={e => setPrepaFiliere(e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+              <select value={prepaFiliere} onChange={e => { const f = e.target.value; setPrepaFiliere(f); const dispos = getMatieresDisponibles("Prépa", "", f); setMatieres(matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
                 <option value="">— Sélectionner —</option>
                 {PREPA_FILIERES.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -963,7 +963,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
             <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
-            <Chips options={getMatieresDisponibles(niveau, classe)} selected={matieres} onChange={setMatieres} color="#DA4F00" />
+            <Chips options={getMatieresDisponibles(niveau, classe, prepaFiliere)} selected={matieres} onChange={setMatieres} color="#DA4F00" />
           </div>
         </C>
 

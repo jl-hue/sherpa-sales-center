@@ -287,8 +287,8 @@ export const PARCOURSUP_HIERARCHY = {
 };
 export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
 
-// ─── Filtre les matieres disponibles selon le niveau et la classe ───
-export function getMatieresDisponibles(niveau, classe) {
+// ─── Filtre les matieres disponibles selon le niveau, la classe et la filiere ───
+export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
   const SOUTIEN = "📚 Soutien scolaire (toutes matières)";
   const AUTRE = "Autre";
   if (!niveau) return MATIERES;
@@ -321,8 +321,47 @@ export function getMatieresDisponibles(niveau, classe) {
     return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "Économie", "Informatique", AUTRE];
   }
 
-  // BTS / IUT, Prepa, Universite : toutes les matieres possibles
-  if (niveau === "BTS / IUT" || niveau === "Prépa" || niveau === "Université") {
+  // ── PREPA : matieres dependent de la filiere ──
+  if (niveau === "Prépa") {
+    const f = prepaFiliere || "";
+    // MPSI / MP : Maths, Physique, Info, Francais-Philo, LV1
+    if (f.includes("MPSI") || f.startsWith("MP ") || f === "MP (2e année MPSI)") {
+      return [SOUTIEN, "Maths", "Physique", "Informatique", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // PCSI / PC : Maths, Physique, Chimie, Francais-Philo, LV1
+    if (f.includes("PCSI") || f.startsWith("PC ") || f === "PC (2e année PCSI)") {
+      return [SOUTIEN, "Maths", "Physique", "Chimie", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // PTSI / PT / PSI : Maths, Physique, Sciences de l'inge, Francais-Philo, LV1
+    if (f.includes("PTSI") || f.startsWith("PT ") || f.startsWith("PSI") || f === "PT (2e année PTSI)") {
+      return [SOUTIEN, "Maths", "Physique", "Informatique", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // BCPST : Maths, Physique, Chimie, SVT, Francais-Philo, LV1
+    if (f.includes("BCPST")) {
+      return [SOUTIEN, "Maths", "Physique", "Chimie", "SVT", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // ECG : Maths, Eco-droit-management, HGGMC ou ESH, Francais-Philo, LV1, LV2
+    if (f.includes("ECG")) {
+      return [SOUTIEN, "Maths", "Économie", "Histoire-Géo", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // ECT : Eco gestion, Maths, Francais-Philo, LV1, LV2
+    if (f.includes("ECT")) {
+      return [SOUTIEN, "Maths", "Économie", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // Khagne A/L : Francais, Philo, HG, LV1, LV2 (latin/grec en option)
+    if (f.includes("Khâgne A/L")) {
+      return [SOUTIEN, "Français", "Philosophie", "Histoire-Géo", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // Khagne B/L : Maths + Francais, Philo, HG, Eco, LV1, LV2
+    if (f.includes("Khâgne B/L")) {
+      return [SOUTIEN, "Maths", "Français", "Philosophie", "Histoire-Géo", "Économie", "Anglais", "Espagnol", "Allemand", AUTRE];
+    }
+    // Defaut : toutes matieres
+    return MATIERES;
+  }
+
+  // BTS / IUT, Universite : toutes les matieres possibles
+  if (niveau === "BTS / IUT" || niveau === "Université") {
     return MATIERES;
   }
 
