@@ -593,6 +593,84 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [openToolkit, setOpenToolkit] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
 
+  // ── Step 3 : Analyse IA d'un prof Sherpas (Gemini) ──────────────
+  const [profUrl, setProfUrl] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiArguments, setAiArguments] = useState(null); // { hook, trust, bridge, rebound, summary }
+
+  async function analyzeProfWithAI() {
+    setAiError("");
+    setAiArguments(null);
+    if (!profUrl.trim()) { setAiError("Colle d'abord un lien Sherpas"); return; }
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) { setAiError("⚠️ Clé Gemini manquante. Ajoute VITE_GEMINI_API_KEY dans Netlify env vars."); return; }
+    setAiLoading(true);
+    try {
+      // 1. Fetch URL via Jina Reader (CORS-friendly, gratuit)
+      const readerUrl = `https://r.jina.ai/${profUrl.trim()}`;
+      const profContent = await fetch(readerUrl).then(r => r.text());
+      const truncated = profContent.slice(0, 6000);
+
+      // 2. Construire le contexte Step 1 + Step 2
+      const ctx = [];
+      if (prenom) ctx.push(`Élève : ${prenom}`);
+      if (niveau) ctx.push(`Niveau : ${niveau}${classe ? " " + classe : ""}`);
+      if (spes.length > 0) ctx.push(`Spécialités : ${spes.join(", ")}`);
+      if (prepaFiliere) ctx.push(`Prépa : ${prepaAnnee || ""} ${prepaFiliere}`.trim());
+      if (serieTechno) ctx.push(`Série techno : ${serieTechno}`);
+      if (matieres.length > 0) ctx.push(`Matières : ${matieres.join(", ")}`);
+      if (objectifVie) ctx.push(`Objectif : ${objectifVie}`);
+      if (neuroActive && neuroTrouble) ctx.push(`Neuroatypique : ${neuroTrouble}`);
+      if (psycho) ctx.push(`Profil psy enfant : ${psycho}`);
+      if (parentProfile) {
+        const ppLab = PARENT_PROFILES.find(p => p.id === parentProfile)?.label;
+        if (ppLab) ctx.push(`Profil parent : ${ppLab}`);
+      }
+
+      const prompt = `Tu es un expert en vente de cours particuliers chez Les Sherpas. Voici le profil d'un professeur récupéré sur le site Sherpas :
+
+--- PROFIL PROF ---
+${truncated}
+--- FIN PROFIL ---
+
+Voici le diagnostic de la famille à qui je dois proposer ce prof :
+${ctx.map(c => `- ${c}`).join("\n")}
+
+Ta mission : génère 5 arguments de vente PERSONNALISÉS qui font le pont entre ce prof précis et les besoins de cette famille. Chaque argument doit citer un élément CONCRET du profil prof (école, expérience, matière, parcours).
+
+Format de réponse JSON strict (rien d'autre, juste le JSON) :
+{
+  "summary": "résumé 1 phrase du prof (école, niveau, spécialité)",
+  "hook": "argument crochet — accroche puissante qui matche le profil élève",
+  "trust": "argument de confiance — pourquoi ce prof est crédible pour ce niveau exact",
+  "bridge": "pont pédagogique — comment il va aider sur les matières/objectifs spécifiques",
+  "personnalisation": "comment le prof s'adapte au profil psy ${psycho || "de l'élève"} et au parent ${parentProfile || "(non renseigné)"}",
+  "rebound": "réponse à l'objection probable de cette famille"
+}`;
+
+      // 3. Appel Gemini
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, responseMimeType: "application/json" }
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || "Erreur Gemini");
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const parsed = JSON.parse(text);
+      setAiArguments(parsed);
+    } catch (err) {
+      setAiError(err.message || String(err));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   // ── State: Results ─────────────────────────────────────────────
   const [chosenRebond, setChosenRebond] = useState("");
   const [rebondPath, setRebondPath] = useState([]); // ex: ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]
@@ -792,10 +870,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // STEP 1: DIAGNOSTIC FORM
+  // MAIN RENDER : 3 steps (besoins / psycho enfant / famille)
   // ═══════════════════════════════════════════════════════════════
-  if (step === 1) {
-    const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
+  const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
     const nom = prenom || "l'eleve";
 
     // ── Recommandation hierarchique LIVE (preview) ──
@@ -846,8 +923,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
         <div style={{ display: "flex", gap: 6, marginBottom: 14, background: "#F4F4F5", padding: 4, borderRadius: 12 }}>
           {[
             { n: 1, emoji: "🎯", label: "Besoins primaires", sub: "Académique + Neuro" },
-            { n: 2, emoji: "🧠", label: "Psycho enfant", sub: "Personnalité + Accomp." },
-            { n: 3, emoji: "👨‍👩‍👧", label: "Famille", sub: "Profil parent + Argu." },
+            { n: 2, emoji: "🧠", label: "Profils psy", sub: "Enfant + Famille" },
+            { n: 3, emoji: "🤖", label: "Match prof + IA", sub: "Lien Sherpas + arguments" },
           ].map(t => {
             const on = step === t.n;
             return (
@@ -1138,7 +1215,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
         </C>}
 
         {/* Souhait parent (Step 3) */}
-        {step === 3 && <C style={{ marginBottom: 12 }}>
+        {step === 2 && <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>
             👨‍👩‍👧 Souhait du parent <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
           </div>
@@ -1147,7 +1224,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
         </C>}
 
         {/* Profil du parent (Step 3) */}
-        {step === 3 && <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
+        {step === 2 && <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🎭 Profil du parent
             <span style={{ fontSize: 11, background: "#FFFBEB", color: "#D97706", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
@@ -1171,6 +1248,51 @@ function SalesLanterne({ stock, setMatchings, user }) {
               );
             })}
           </div>
+        </C>}
+
+        {/* ── STEP 3 : Lien prof Sherpas + Analyse IA ── */}
+        {step === 3 && <C style={{ marginBottom: 12, borderLeft: "4px solid #7C3AED" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            🔗 Lien du prof Sherpas
+            <span style={{ fontSize: 11, background: "#F5F3FF", color: "#7C3AED", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>IA</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Colle l'URL du profil prof — l'IA génère des arguments personnalisés en croisant Step 1 + Step 2</div>
+          <input
+            type="url"
+            value={profUrl}
+            onChange={e => setProfUrl(e.target.value)}
+            placeholder="https://les-sherpas.com/profs/..."
+            style={{ width: "100%", fontSize: 13, border: "1px solid #DDD6FE", borderRadius: 10, padding: "10px 14px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif", marginBottom: 10 }}
+          />
+          <Btn onClick={analyzeProfWithAI} disabled={aiLoading || !profUrl.trim()} full color="#7C3AED" style={{ padding: "12px", borderRadius: 99, fontSize: 14 }}>
+            {aiLoading ? "🤖 Analyse en cours..." : "✨ Analyser avec l'IA Gemini"}
+          </Btn>
+          {aiError && <div style={{ marginTop: 10, padding: "10px 12px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: 12, color: "#B91C1C" }}>{aiError}</div>}
+        </C>}
+
+        {/* ── STEP 3 : Résultats IA ── */}
+        {step === 3 && aiArguments && <C style={{ marginBottom: 12, background: "#FAF5FF", border: "2px solid #DDD6FE", padding: "16px 18px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#6D28D9", fontFamily: "'Outfit',sans-serif" }}>🎯 Arguments personnalisés</div>
+            <CopyBtn text={Object.entries(aiArguments).map(([k, v]) => `${k.toUpperCase()} :\n${v}`).join("\n\n")} />
+          </div>
+          {aiArguments.summary && (
+            <div style={{ marginBottom: 12, padding: "10px 12px", background: "#fff", borderRadius: 8, fontSize: 12, color: "#3F3F46", fontStyle: "italic", borderLeft: "3px solid #7C3AED" }}>
+              📋 {aiArguments.summary}
+            </div>
+          )}
+          {[
+            ["hook", "🪝 LE CROCHET", "#16A34A"],
+            ["trust", "🏆 CONFIANCE", "#0B68B4"],
+            ["bridge", "🌉 PONT PÉDAGOGIQUE", "#D97706"],
+            ["personnalisation", "🎭 PERSONNALISATION", "#7C3AED"],
+            ["rebound", "↩️ REBOND OBJECTION", "#E11D48"],
+          ].map(([key, label, color]) => aiArguments[key] && (
+            <div key={key} style={{ marginBottom: 10, padding: "12px 14px", background: "#fff", borderRadius: 8, borderLeft: `3px solid ${color}` }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>{label}</div>
+              <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.6 }}>{aiArguments[key]}</div>
+            </div>
+          ))}
         </C>}
 
         {/* Stock (Step 1) */}
@@ -1299,25 +1421,6 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </C>
         )}
 
-        {/* RECOMMANDATION LIVE — toujours visible si niveau renseigné */}
-        {livePath && (
-          <C style={{ marginBottom: 14, background: "linear-gradient(135deg,#16A34A,#62E58E)", border: "none", padding: "16px 18px", color: "#fff" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <Pill color="#fff" bg="rgba(255,255,255,.25)">🎯 RECOMMANDATION EN DIRECT</Pill>
-              <span style={{ fontSize: 10, opacity: .8 }}>Mise à jour à chaque champ</span>
-            </div>
-            <div style={{ fontSize: 11, opacity: .85, marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>
-              {livePath.join(" › ")}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ fontSize: 32 }}>{liveEmoji}</div>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 900, fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>{liveLabel}</div>
-                {liveDesc && <div style={{ fontSize: 11, opacity: .9, marginTop: 3 }}>{liveDesc}</div>}
-              </div>
-            </div>
-          </C>
-        )}
 
         {!niveau && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Renseigne le niveau pour voir la recommandation en direct</div>}
 
@@ -1332,7 +1435,6 @@ function SalesLanterne({ stock, setMatchings, user }) {
         </div>
       </div>
     );
-  }
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER RESULTS : Top 3 + Toolkit (always) + Guide argumentation (step 3)
