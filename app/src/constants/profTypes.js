@@ -2,7 +2,18 @@ export const PROF_TYPES=["Étudiant grande école","Étudiant université","Prof
 
 export const PSYCH_PROFILES=["Introverti / Réservé","Décrocheur / Démotivé","Compétiteur / Haut Potentiel","Stressé / Anxieux"];
 export const VIE_OBJECTIFS=["Remise à niveau","Réussite concours","Méthodologie pure","Excellence académique"];
-export const NIVEAUX=["Primaire","Collège","Lycée général","Lycée pro","BTS / IUT","Prépa","Université"];
+export const NIVEAUX=["Primaire","Collège","Lycée général","Lycée techno","Lycée pro","BTS / IUT","Prépa","Université"];
+
+// Filieres technologiques (lycee technologique)
+export const LYCEE_TECHNO_SERIES = [
+  "STMG (Management & Gestion)",
+  "ST2S (Santé & Social)",
+  "STI2D (Industrie & Dév. Durable)",
+  "STL (Sciences & Labo)",
+  "STD2A (Design & Arts Appliqués)",
+  "STAV (Agronomie & Vivant)",
+  "STHR (Hôtellerie & Restauration)",
+];
 
 // ─── Détails académiques par niveau ────────────────────────────
 export const CLASSES_PRIMAIRE=["CP","CE1","CE2","CM1","CM2"];
@@ -288,7 +299,7 @@ export const PARCOURSUP_HIERARCHY = {
 export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Technologie","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Droit","Informatique","Autre"];
 
 // ─── Filtre les matieres disponibles selon le niveau, la classe et la filiere ───
-export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
+export function getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno) {
   const SOUTIEN = "📚 Soutien scolaire (toutes matières)";
   const AUTRE = "Autre";
   if (!niveau) return MATIERES;
@@ -314,6 +325,43 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
       return [...base.slice(0, 3), "Philosophie", ...base.slice(3), AUTRE];
     }
     return [...base, AUTRE];
+  }
+
+  // Lycee techno : matieres communes + specifiques selon la serie
+  if (niveau === "Lycée techno") {
+    const commun = [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo"];
+    const philo = (classe === "Terminale") ? ["Philosophie"] : [];
+    const s = serieTechno || "";
+    // STMG : Management, Gestion, Droit, Eco, Info
+    if (s.includes("STMG")) {
+      return [...commun, ...philo, "Économie", "Droit", "Informatique", AUTRE];
+    }
+    // ST2S : Sante-Social = SVT, Chimie, Physique
+    if (s.includes("ST2S")) {
+      return [...commun, ...philo, "SVT", "Chimie", "Physique", AUTRE];
+    }
+    // STI2D : Industrie/Dev Durable = Maths, Physique, Chimie, Info, Techno
+    if (s.includes("STI2D")) {
+      return [...commun, ...philo, "Physique", "Chimie", "Informatique", "Technologie", AUTRE];
+    }
+    // STL : Labo = Physique, Chimie, SVT
+    if (s.includes("STL")) {
+      return [...commun, ...philo, "Physique", "Chimie", "SVT", AUTRE];
+    }
+    // STD2A : Design = Physique, Chimie, Arts/Techno
+    if (s.includes("STD2A")) {
+      return [...commun, ...philo, "Physique", "Chimie", "Technologie", AUTRE];
+    }
+    // STAV : Agronomie = SVT, Physique, Chimie, Eco
+    if (s.includes("STAV")) {
+      return [...commun, ...philo, "SVT", "Physique", "Chimie", "Économie", AUTRE];
+    }
+    // STHR : Hotellerie = Eco, Droit
+    if (s.includes("STHR")) {
+      return [...commun, ...philo, "Économie", "Droit", AUTRE];
+    }
+    // Defaut lycee techno (serie non specifiee)
+    return [...commun, ...philo, "Physique", "Chimie", "SVT", "Économie", "Droit", "Informatique", "Technologie", AUTRE];
   }
 
   // Lycee pro : matieres generales + eco/droit/info pour les filieres tertiaires
@@ -369,7 +417,7 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
 }
 
 export const RULES={
-  niveau:{"Primaire":{"Professeur EN":35,"Étudiant université":25,"AESH":15},"Collège":{"Professeur EN":25,"Étudiant université":25,"Étudiant grande école":10,"AESH":10},"Lycée général":{"Étudiant grande école":30,"Professeur certifié":25,"Étudiant université":15},"Lycée pro":{"Professeur EN":25,"Professeur certifié":20,"Formateur":20},"BTS / IUT":{"Étudiant université":30,"Professeur certifié":20,"Formateur":15},"Prépa":{"Étudiant grande école":45,"Professeur certifié":20},"Université":{"Étudiant grande école":35,"Étudiant université":25,"Professeur certifié":15}},
+  niveau:{"Primaire":{"Professeur EN":35,"Étudiant université":25,"AESH":15},"Collège":{"Professeur EN":25,"Étudiant université":25,"Étudiant grande école":10,"AESH":10},"Lycée général":{"Étudiant grande école":30,"Professeur certifié":25,"Étudiant université":15},"Lycée techno":{"Étudiant université":30,"Professeur certifié":25,"Formateur":15},"Lycée pro":{"Professeur EN":25,"Professeur certifié":20,"Formateur":20},"BTS / IUT":{"Étudiant université":30,"Professeur certifié":20,"Formateur":15},"Prépa":{"Étudiant grande école":45,"Professeur certifié":20},"Université":{"Étudiant grande école":35,"Étudiant université":25,"Professeur certifié":15}},
   psycho:{"Introverti / Réservé":{"Étudiant université":35,"Étudiant grande école":15},"Décrocheur / Démotivé":{"Étudiant université":45,"Étudiant grande école":10},"Compétiteur / Haut Potentiel":{"Étudiant grande école":55,"Professeur certifié":20},"Stressé / Anxieux":{"Étudiant université":30,"Étudiant grande école":20,"AESH":10}},
   objectif_vie:{"Remise à niveau":{"Professeur EN":45,"Étudiant université":25},"Réussite concours":{"Étudiant grande école":55,"Professeur certifié":25},"Méthodologie pure":{"Formateur":45,"Étudiant grande école":20},"Excellence académique":{"Étudiant grande école":50,"Professeur certifié":25}},
   accomp_douceur:{"Étudiant université":30,"AESH":25,"Étudiant grande école":10},
@@ -595,7 +643,7 @@ export function getRecommendedHierarchy(diag) {
 }
 
 function _getRecommendedHierarchyRaw(diag) {
-  const { niveau, classe, brevetPrep, spes = [], parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, matieres = [], psycho, objectif } = diag || {};
+  const { niveau, classe, brevetPrep, spes = [], parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno, matieres = [], psycho, objectif } = diag || {};
 
   const has = (m) => matieres.includes(m);
   const hasAny = (...mats) => mats.some(m => matieres.includes(m));
@@ -782,6 +830,19 @@ function _getRecommendedHierarchyRaw(diag) {
       if (spes.includes("Maths")) return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
       return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
     }
+  }
+
+  // ── LYCEE TECHNO ──
+  if (niveau === "Lycée techno") {
+    const s = serieTechno || "";
+    if (s.includes("STMG")) return ["Étudiant université", "Économie / Gestion / Droit", "Économie / AES"];
+    if (s.includes("ST2S")) return ["Étudiant université", "Médecine / Pharmacie", "PASS / LAS (1re année)"];
+    if (s.includes("STI2D")) return ["Étudiant grande école", "École d'ingénieurs", "INSA / UTC / Polytech"];
+    if (s.includes("STL")) return ["Étudiant université", "Sciences (maths, physique, info)", "Physique / Chimie"];
+    if (s.includes("STD2A")) return ["Étudiant université", "Lettres & Sciences humaines", "Lettres modernes / classiques"];
+    if (s.includes("STAV")) return ["Étudiant université", "Sciences (maths, physique, info)", "SVT / Biologie"];
+    if (s.includes("STHR")) return ["Étudiant université", "Économie / Gestion / Droit", "Économie / AES"];
+    return ["Professeur certifié", "CAPES (collège/lycée)"];
   }
 
   // ── LYCEE PRO ──

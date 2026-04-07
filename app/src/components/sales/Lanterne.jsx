@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -579,6 +579,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [parcoursupEcole, setParcoursupEcole] = useState(""); // ex: "Louis-le-Grand (Paris)"
   const [prepaFiliere, setPrepaFiliere] = useState("");
   const [univFiliere, setUnivFiliere] = useState("");
+  const [serieTechno, setSerieTechno] = useState("");
 
   // ── State: Guide d'argumentation (Step 2) ──────────────────────
   const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
@@ -638,6 +639,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setParcoursupEcole("");
     setPrepaFiliere("");
     setUnivFiliere("");
+    setSerieTechno("");
     setProfProposeNom("");
     setProfProposePath([]);
   }
@@ -815,7 +817,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
       }
     } else if (niveau) {
       livePath = getRecommendedHierarchy({
-        niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
+        niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno,
         matieres, psycho, objectif: objectifVie
       });
     }
@@ -852,7 +854,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 16, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📚 Diagnostic academique</div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Niveau scolaire <span style={{ color: "#E11D48" }}>*</span></div>
-            <Chips options={NIVEAUX} selected={niveau} onChange={n => { setNiveau(n); setClasse(""); setBrevetPrep(false); setSpes([]); setParcoursupCible(""); setPrepaFiliere(""); const dispos = getMatieresDisponibles(n, ""); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+            <Chips options={NIVEAUX} selected={niveau} onChange={n => { setNiveau(n); setClasse(""); setBrevetPrep(false); setSpes([]); setParcoursupCible(""); setPrepaFiliere(""); setSerieTechno(""); const dispos = getMatieresDisponibles(n, "", "", ""); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
           </div>
 
           {/* QUESTIONS CONDITIONNELLES SELON NIVEAU */}
@@ -927,6 +929,18 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </div>
           )}
 
+          {niveau === "Lycée techno" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
+              <Chips options={CLASSES_LYCEE_GENERAL} selected={classe} onChange={c => { setClasse(c); const dispos = getMatieresDisponibles("Lycée techno", c, "", serieTechno); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 8 }}>Série technologique <span style={{ color: "#E11D48" }}>*</span></div>
+              <select value={serieTechno} onChange={e => { const s = e.target.value; setSerieTechno(s); const dispos = getMatieresDisponibles("Lycée techno", classe, "", s); setMatieres(matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+                <option value="">— Sélectionner la série —</option>
+                {LYCEE_TECHNO_SERIES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+
           {niveau === "Lycée pro" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
@@ -963,7 +977,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
             <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
-            <Chips options={getMatieresDisponibles(niveau, classe, prepaFiliere)} selected={matieres} onChange={setMatieres} color="#DA4F00" />
+            <Chips options={getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno)} selected={matieres} onChange={setMatieres} color="#DA4F00" />
           </div>
         </C>
 
@@ -1301,7 +1315,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
     // ── Recommandation hiérarchique précise ──
     const recommendedPath = getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere,
+      niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno,
       matieres, psycho, objectif: objectifVie
     });
     // Récupère l'emoji + description du nœud final
