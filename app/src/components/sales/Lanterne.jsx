@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, getRecommendedHierarchy } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -852,14 +852,14 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 16, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📚 Diagnostic academique</div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Niveau scolaire <span style={{ color: "#E11D48" }}>*</span></div>
-            <Chips options={NIVEAUX} selected={niveau} onChange={n => { setNiveau(n); setClasse(""); setBrevetPrep(false); setSpes([]); setParcoursupCible(""); setPrepaFiliere(""); }} color="#16A34A" single={true} />
+            <Chips options={NIVEAUX} selected={niveau} onChange={n => { setNiveau(n); setClasse(""); setBrevetPrep(false); setSpes([]); setParcoursupCible(""); setPrepaFiliere(""); const dispos = getMatieresDisponibles(n, ""); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
           </div>
 
           {/* QUESTIONS CONDITIONNELLES SELON NIVEAU */}
           {niveau === "Collège" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe précise <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_COLLEGE} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+              <Chips options={CLASSES_COLLEGE} selected={classe} onChange={c => { setClasse(c); const dispos = getMatieresDisponibles("Collège", c); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
               {classe === "3e" && (
                 <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
                   <button onClick={() => setBrevetPrep(!brevetPrep)} style={{ width: 22, height: 22, borderRadius: 5, border: `2px solid ${brevetPrep ? "#16A34A" : "#D4D4D8"}`, background: brevetPrep ? "#16A34A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 12 }}>{brevetPrep ? "✓" : ""}</button>
@@ -872,7 +872,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           {niveau === "Lycée général" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_LYCEE_GENERAL} selected={classe} onChange={c => { setClasse(c); setSpes([]); setParcoursupCible(""); }} color="#16A34A" single={true} />
+              <Chips options={CLASSES_LYCEE_GENERAL} selected={classe} onChange={c => { setClasse(c); setSpes([]); setParcoursupCible(""); const dispos = getMatieresDisponibles("Lycée général", c); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
 
               {(classe === "Première" || classe === "Terminale") && (
                 <div style={{ marginTop: 12 }}>
@@ -963,7 +963,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
             <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
-            <Chips options={MATIERES} selected={matieres} onChange={setMatieres} color="#DA4F00" />
+            <Chips options={getMatieresDisponibles(niveau, classe)} selected={matieres} onChange={setMatieres} color="#DA4F00" />
           </div>
         </C>
 

@@ -287,6 +287,48 @@ export const PARCOURSUP_HIERARCHY = {
 };
 export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
 
+// ─── Filtre les matieres disponibles selon le niveau et la classe ───
+export function getMatieresDisponibles(niveau, classe) {
+  const SOUTIEN = "📚 Soutien scolaire (toutes matières)";
+  const AUTRE = "Autre";
+  if (!niveau) return MATIERES;
+
+  // Primaire : pas de langues vivantes 2, pas de physique/chimie separees, pas de philo, pas d'eco, pas d'info
+  if (niveau === "Primaire") {
+    return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", AUTRE];
+  }
+
+  // College : Espagnol/Allemand a partir de la 5e (LV2). 6e = LV1 seule (Anglais en general)
+  if (niveau === "Collège") {
+    if (classe === "6e") {
+      return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", AUTRE];
+    }
+    // 5e, 4e, 3e : LV2 + Physique/Chimie introduites
+    return [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo", "SVT", "Physique", "Chimie", AUTRE];
+  }
+
+  // Lycee general : Philo apparait en Terminale uniquement
+  if (niveau === "Lycée général") {
+    const base = [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo", "SVT", "Physique", "Chimie", "Économie", "Informatique"];
+    if (classe === "Terminale") {
+      return [...base.slice(0, 3), "Philosophie", ...base.slice(3), AUTRE];
+    }
+    return [...base, AUTRE];
+  }
+
+  // Lycee pro : matieres generales + selon orientation
+  if (niveau === "Lycée pro") {
+    return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "Économie", "Informatique", AUTRE];
+  }
+
+  // BTS / IUT, Prepa, Universite : toutes les matieres possibles
+  if (niveau === "BTS / IUT" || niveau === "Prépa" || niveau === "Université") {
+    return MATIERES;
+  }
+
+  return MATIERES;
+}
+
 export const RULES={
   niveau:{"Primaire":{"Professeur EN":35,"Étudiant université":25,"AESH":15},"Collège":{"Professeur EN":25,"Étudiant université":25,"Étudiant grande école":10,"AESH":10},"Lycée général":{"Étudiant grande école":30,"Professeur certifié":25,"Étudiant université":15},"Lycée pro":{"Professeur EN":25,"Professeur certifié":20,"Formateur":20},"BTS / IUT":{"Étudiant université":30,"Professeur certifié":20,"Formateur":15},"Prépa":{"Étudiant grande école":45,"Professeur certifié":20},"Université":{"Étudiant grande école":35,"Étudiant université":25,"Professeur certifié":15}},
   psycho:{"Introverti / Réservé":{"Étudiant université":35,"Étudiant grande école":15},"Décrocheur / Démotivé":{"Étudiant université":45,"Étudiant grande école":10},"Compétiteur / Haut Potentiel":{"Étudiant grande école":55,"Professeur certifié":20},"Stressé / Anxieux":{"Étudiant université":30,"Étudiant grande école":20,"AESH":10}},
