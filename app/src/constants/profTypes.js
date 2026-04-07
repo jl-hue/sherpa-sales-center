@@ -285,7 +285,7 @@ export const PARCOURSUP_HIERARCHY = {
     },
   },
 };
-export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Droit","Informatique","Autre"];
+export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Technologie","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Droit","Informatique","Autre"];
 
 // ─── Filtre les matieres disponibles selon le niveau, la classe et la filiere ───
 export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
@@ -298,13 +298,13 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
     return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", AUTRE];
   }
 
-  // College : Espagnol/Allemand a partir de la 5e (LV2). 6e = LV1 seule (Anglais en general)
+  // College : Espagnol/Allemand a partir de la 5e (LV2). 6e = LV1 seule. Techno presente toute la scolarite.
   if (niveau === "Collège") {
     if (classe === "6e") {
-      return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", AUTRE];
+      return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", "Technologie", AUTRE];
     }
     // 5e, 4e, 3e : LV2 + Physique/Chimie introduites
-    return [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo", "SVT", "Physique", "Chimie", AUTRE];
+    return [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo", "SVT", "Physique", "Chimie", "Technologie", AUTRE];
   }
 
   // Lycee general : Philo apparait en Terminale uniquement
