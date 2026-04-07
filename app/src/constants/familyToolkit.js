@@ -21,6 +21,15 @@ export const ECHEANCES = {
     { date: "Juin-Juillet", label: "Parcoursup : phase d'admission principale", type: "warn" },
     { date: "Toute l'année", label: "Bulletins trimestriels (poids dans Parcoursup)", type: "info" },
   ],
+  "Lycée techno": [
+    { date: "Janvier-Mars (1ère)", label: "Épreuves anticipées de Français (écrit + oral du Bac)", type: "exam" },
+    { date: "Mars (Terminale)", label: "Épreuves de spécialité du Bac techno (2 enseignements de spé)", type: "exam" },
+    { date: "Juin (Terminale)", label: "Épreuve écrite de Philosophie + Grand Oral techno", type: "exam" },
+    { date: "Janvier-Mars", label: "Parcoursup : formulation des vœux (BTS, BUT, écoles, université)", type: "warn" },
+    { date: "Avril-Mai", label: "Parcoursup : confirmation + dossier", type: "warn" },
+    { date: "Juin-Juillet", label: "Parcoursup : phase d'admission principale", type: "warn" },
+    { date: "Toute l'année", label: "Bulletins trimestriels (poids fort dans Parcoursup pour le techno)", type: "info" },
+  ],
   "Lycée pro": [
     { date: "Mars (Tle pro)", label: "CCF — Contrôles en Cours de Formation", type: "exam" },
     { date: "Juin (Tle pro)", label: "Épreuves finales du Bac pro", type: "exam" },
@@ -155,7 +164,20 @@ export const PROGRAMMES = {
       "Première (spé NSI)": ["Histoire de l'informatique", "Représentation des données", "Types construits", "Langages et programmation (Python)", "Algorithmes de tri"],
       "Terminale (spé NSI)": ["Structures de données (listes, arbres, graphes)", "Bases de données (SQL)", "Programmation orientée objet", "Algorithmique avancée"],
     },
+    "Lycée techno": ["Bureautique avancée", "Notions de bases de données", "Réseaux d'entreprise", "Systèmes d'information de gestion (STMG)"],
     "Université": ["Algorithmique", "Programmation (Python, Java, C)", "Bases de données", "Systèmes d'exploitation", "Réseaux"],
+  },
+  "Technologie": {
+    "Collège": {
+      "6e": ["Découverte du monde technique", "Objets techniques du quotidien", "Initiation aux outils numériques"],
+      "5e-3e": ["Conception et fabrication d'objets", "Programmation (Scratch, robotique)", "Énergie et environnement", "Modélisation 3D", "Informatique et sciences du numérique"],
+    },
+  },
+  "Droit": {
+    "Lycée techno": ["Droit civil de base (contrats, responsabilité)", "Droit du travail (contrat de travail, salariés)", "Droit commercial (entreprises, commerçants)", "Notion de droit social et fiscal", "Spécifique STMG : Droit appliqué à la gestion"],
+    "Lycée pro": ["Droit du travail (BTS Tertiaires)", "Droit commercial (Commerce/Vente)", "Droit social (RH/Assistanat)"],
+    "BTS / IUT": ["Droit civil et droit commercial", "Droit du travail", "Droit fiscal de base"],
+    "Université": ["Droit civil (personnes, contrats, responsabilité)", "Droit constitutionnel", "Droit administratif", "Droit pénal", "Droit du travail", "Droit commercial"],
   },
 };
 
@@ -327,6 +349,34 @@ export const PROGRAMME_DETAILS = {
       conseils: "Pour l'université, idéal : étudiant en master info, école d'ingénieurs informatique, ou doctorant en informatique.",
     },
   },
+  "Technologie": {
+    "Collège": {
+      objectifs: "Découvrir le monde technique, les objets du quotidien, comprendre comment ils fonctionnent. Initier à la programmation et à la modélisation 3D dès la 5e.",
+      competences: ["Identifier les fonctions d'un objet technique", "Programmer en Scratch (5e-3e)", "Modéliser en 3D (SketchUp, FreeCAD)", "Lire et créer un schéma technique", "Comprendre la chaîne d'énergie"],
+      difficultes: ["Le passage de l'idée au schéma technique", "La programmation Scratch (logique algorithmique)", "Les unités d'énergie et de puissance"],
+      conseils: "La techno au collège est très pratique — un étudiant en école d'ingénieurs (INSA, UTC, Polytech) ou en BUT GMP/Génie Civil est idéal. Évite les profs trop théoriques.",
+    },
+  },
+  "Droit": {
+    "Lycée techno": {
+      objectifs: "En STMG (et un peu en STHR), comprendre le cadre juridique de l'entreprise et de la vie quotidienne. Le droit est étroitement lié à l'économie et au management.",
+      competences: ["Identifier une situation juridique", "Qualifier juridiquement les faits", "Mobiliser une règle de droit", "Argumenter une solution juridique", "Analyser un contrat ou une décision de justice"],
+      difficultes: ["Le vocabulaire juridique (très précis)", "La méthode du cas pratique", "Distinguer droit civil / droit commercial / droit du travail", "Mémoriser les articles de loi clés"],
+      conseils: "Pour le droit en STMG, idéal : étudiant en Licence ou Master Droit, ou en école de commerce avec spécialisation juridique. La méthode est très rigoureuse — la pratique répétée d'études de cas est essentielle.",
+    },
+    "Lycée pro": {
+      objectifs: "Comprendre les bases juridiques applicables à une activité professionnelle (droit du travail, droit commercial, droit social).",
+      competences: ["Connaître ses droits en tant que salarié ou commerçant", "Lire un contrat de travail", "Identifier les obligations légales d'un commerçant"],
+      difficultes: ["Le vocabulaire juridique", "Les règles du droit du travail (souvent contre-intuitives)"],
+      conseils: "Un étudiant en Licence Droit ou en BTS Tertiaire (Notariat, Comptabilité-Gestion) fait très bien l'affaire.",
+    },
+    "Université": {
+      objectifs: "Acquérir une formation juridique complète pour devenir avocat, juriste d'entreprise, magistrat, notaire ou pour s'orienter vers le master.",
+      competences: ["Méthode du cas pratique", "Méthode du commentaire d'arrêt", "Dissertation juridique", "Analyse de la jurisprudence", "Maîtrise du Code civil et du Code du travail"],
+      difficultes: ["Le volume de connaissances", "La méthode du commentaire d'arrêt (très spécifique)", "Le passage de L1 (très théorique) à L2 (plus pratique)", "Les partiels (3h-4h sans documents)"],
+      conseils: "Pour la fac de droit, idéal : étudiant en M1/M2 Droit, ou un avocat junior. Les anciens étudiants d'Assas (Paris 2) sont particulièrement recherchés. Méthode = clé de la réussite.",
+    },
+  },
 };
 
 // Helper : recupere les details pedagogiques pour une matiere + niveau
@@ -347,8 +397,14 @@ export function getProgramme(matiere, niveau, classe) {
   if (!n) return null;
   // Cas où le programme dépend de la classe précise
   if (typeof n === "object" && !Array.isArray(n)) {
-    if (classe && n[classe]) return n[classe];
-    // Sinon renvoie la première sous-classe trouvée
+    // Match exact d'abord
+    if (classe && n[classe]) return { __key: classe, items: n[classe], allClasses: n };
+    // Match intelligent : on cherche une key qui contient la classe (ex: "5e" est dans "5e-3e" ou "5e-4e")
+    if (classe) {
+      const matched = Object.keys(n).find(k => k.includes(classe));
+      if (matched) return { __key: matched, items: n[matched], allClasses: n };
+    }
+    // Fallback : première sous-classe trouvée
     const firstKey = Object.keys(n)[0];
     return { __key: firstKey, items: n[firstKey], allClasses: n };
   }

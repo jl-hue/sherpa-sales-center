@@ -19,7 +19,7 @@ const PARENT_PROFILES = [
 // ── Script Generation by Parent Profile ─────────────────────────
 // Construit une chaine de contexte academique precis pour personnaliser les scripts
 function buildAcademicContext(diag) {
-  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere } = diag || {};
+  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno } = diag || {};
   const parts = [];
   if (niveau === "Collège" && classe) {
     parts.push(`en ${classe}`);
@@ -29,6 +29,9 @@ function buildAcademicContext(diag) {
     if (spes.length > 0) parts.push(`spés ${spes.join("/")}`);
     if (parcoursupCible) parts.push(`cible ${parcoursupCible}`);
     if (parcoursupEcole) parts.push(`vise ${parcoursupEcole}`);
+  } else if (niveau === "Lycée techno" && classe) {
+    parts.push(`en ${classe}`);
+    if (serieTechno) parts.push(`série ${serieTechno}`);
   } else if (niveau === "Lycée pro" && classe) {
     parts.push(`en ${classe}`);
   } else if (niveau === "Prépa" && prepaFiliere) {
@@ -672,7 +675,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const args = getArgs(typ, psycho);
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
-    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere };
+    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno };
     const introText = getIntroScript(pp, nom, psycho, diagCtx);
     const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie, diagCtx);
     const closingText = getClosingScript(pp, nom, label, diagCtx);
@@ -1346,6 +1349,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
             <h1 style={{ fontSize: 21, fontWeight: 900, color: "#18181B", margin: "0 0 2px", fontFamily: "'Outfit',sans-serif" }}>🔦 Resultat Lanterne V5</h1>
             <p style={{ color: "#71717A", fontSize: 13, margin: 0 }}>
               Top 3 Profils · {nom} · {psycho} · {objectifVie}
+              {serieTechno && <span style={{ color: "#0B68B4", fontWeight: 600 }}> · 🏛️ {serieTechno}</span>}
               {neuroActive && neuroTrouble && <span style={{ color: "#7C3AED", fontWeight: 600 }}> · 🧩 {neuroTrouble}</span>}
               {parentProfile && <span style={{ color: "#D97706", fontWeight: 600 }}> · 🎭 {ppLabel}</span>}
             </p>
@@ -1405,13 +1409,13 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </div>
           </div>
           <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(255,255,255,.15)", borderRadius: 10, fontSize: 12, lineHeight: 1.6 }}>
-            💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaFiliere}` : ""}
+            💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{serieTechno ? ` · ${serieTechno}` : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaFiliere}` : ""}
           </div>
         </C>
 
         {/* ── GUIDE D'ARGUMENTATION ── */}
         {(()=>{
-          const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere };
+          const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno };
           const profProfilLabel = profProposePath.length > 0 ? profProposePath[profProposePath.length - 1] : "";
           const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx, profProfilLabel);
           return <C style={{ marginBottom: 12, background: "#FFFBEB", border: "2px solid #FCD34D", padding: openGuide ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenGuide(!openGuide)}>
@@ -1618,14 +1622,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
           const echeances = niveau ? getEcheances(niveau) : [];
           const matieresWithProg = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
           if (echeances.length === 0 && matieresWithProg.length === 0) return null;
-          // Determine la classe pour le programme
+          // Determine la classe pour le programme (le helper getProgramme fait un match intelligent)
           const classeForProg = classe === "Première" ? "Première (spé)"
             : classe === "Terminale" ? "Terminale (spé)"
-            : classe === "6e" || classe === "5e" ? "6e-5e"
-            : classe === "4e" ? "4e"
-            : classe === "3e" ? "3e"
-            : classe === "Seconde" ? "Seconde"
-            : classe;
+            : classe; // 6e/5e/4e/3e/Seconde restent tels quels, le helper trouve la bonne key
           return <C style={{ marginBottom: 12, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: openToolkit ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenToolkit(!openToolkit)}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
