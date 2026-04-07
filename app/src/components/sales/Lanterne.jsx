@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
 import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_TECHNO, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
@@ -594,34 +594,31 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [openGuide, setOpenGuide] = useState(false);
 
   // ── State: Results ─────────────────────────────────────────────
-  const [portrait, setPortrait] = useState(null);
   const [chosenRebond, setChosenRebond] = useState("");
   const [rebondPath, setRebondPath] = useState([]); // ex: ["Étudiant grande école", "École d'ingénieurs", "Prépa MP (Maths-Physique)"]
 
   const stockMap = Object.fromEntries(stock.map(s => [s.typ, s]));
-  const canAnalyze = niveau && psycho && objectifVie;
 
-  function analyze() {
-    let p;
+  // ── Auto-compute portrait live (remplace l'ancien bouton "Allumer la Lanterne") ──
+  // Dès que niveau est rempli, on calcule. Psycho/objectif prennent un fallback en Step 1.
+  const portrait = useMemo(() => {
+    if (!niveau) return null;
     if (neuroActive && neuroTrouble) {
-      // Mode neuro : on classe les profils de la matrice neuro selon le badge
-      // ideal=100, acceptable=60, deconseille=20
       const badgeScore = { ideal: 100, acceptable: 60, deconseille: 20 };
       const matrixEntries = NEURO_MATRIX.filter(e => e.trouble === neuroTrouble);
-      // Construire un portrait classé pour les 5 profils neuro
-      p = matrixEntries
+      return matrixEntries
         .map(e => ({ typ: e.prof, score: badgeScore[e.badge] || 0, neuroEntry: e }))
         .sort((a, b) => b.score - a.score);
-    } else {
-      p = computeV5(niveau, psycho, objectifVie, accomp);
     }
-    setPortrait(p);
-    setStep(2);
-  }
+    const psychoEff = psycho || "Stressé / Anxieux";
+    const objectifEff = objectifVie || "Remise à niveau";
+    return computeV5(niveau, psychoEff, objectifEff, accomp);
+  }, [niveau, psycho, objectifVie, accomp, neuroActive, neuroTrouble]);
+
+  const canAnalyze = niveau; // navigation libre, juste besoin du niveau pour avoir un résultat
 
   function reset() {
     setStep(1);
-    setPortrait(null);
     setChosenRebond("");
     setRebondPath([]);
     setPrenom("");
@@ -845,6 +842,29 @@ function SalesLanterne({ stock, setMatchings, user }) {
       <div>
         <ST emoji="🔦" sub="Le cerveau strategique de l'application — prescription, neuro & argumentation dynamique.">Lanterne Match V5</ST>
 
+        {/* ── STEP TABS : 1 Besoins / 2 Psycho enfant / 3 Famille ── */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, background: "#F4F4F5", padding: 4, borderRadius: 12 }}>
+          {[
+            { n: 1, emoji: "🎯", label: "Besoins primaires", sub: "Académique + Neuro" },
+            { n: 2, emoji: "🧠", label: "Psycho enfant", sub: "Personnalité + Accomp." },
+            { n: 3, emoji: "👨‍👩‍👧", label: "Famille", sub: "Profil parent + Argu." },
+          ].map(t => {
+            const on = step === t.n;
+            return (
+              <button key={t.n} onClick={() => setStep(t.n)}
+                style={{
+                  flex: 1, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer",
+                  background: on ? "#fff" : "transparent", boxShadow: on ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+                  textAlign: "center", transition: "all .15s",
+                }}>
+                <div style={{ fontSize: 16, marginBottom: 2 }}>{t.emoji}</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: on ? "#16A34A" : "#71717A", fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>Step {t.n}</div>
+                <div style={{ fontSize: 10, color: on ? "#18181B" : "#A1A1AA", marginTop: 2, fontWeight: 600 }}>{t.label}</div>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Prenom */}
         <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>
@@ -1007,8 +1027,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </div>
         </C>}
 
-        {/* Profil psychologique */}
-        <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
+        {/* Profil psychologique (Step 2) */}
+        {step === 2 && <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🧠 Profil Psychologique <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
           </div>
@@ -1026,10 +1046,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
               );
             })}
           </div>
-        </C>
+        </C>}
 
-        {/* Neuroatypique toggle */}
-        <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
+        {/* Neuroatypique toggle (Step 1) */}
+        {step === 1 && <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: neuroActive ? 12 : 0 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
@@ -1074,10 +1094,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
               </div>
             </div>
           )}
-        </C>
+        </C>}
 
-        {/* Besoin d'accompagnement */}
-        <C style={{ marginBottom: 12 }}>
+        {/* Besoin d'accompagnement (Step 2) */}
+        {step === 2 && <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             ⚖️ Besoin d'accompagnement <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
           </div>
@@ -1089,10 +1109,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
             <Pill color={accompColor}>{accompLabel}</Pill>
             <span style={{ fontSize: 12, color: "#DA4F00", fontWeight: 700 }}>💪 Fermete / Cadre</span>
           </div>
-        </C>
+        </C>}
 
-        {/* Objectif de vie */}
-        <C style={{ marginBottom: 12 }}>
+        {/* Objectif de vie (Step 1) */}
+        {step === 1 && <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🎯 Objectif de vie <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
           </div>
@@ -1115,19 +1135,19 @@ function SalesLanterne({ stock, setMatchings, user }) {
               );
             })}
           </div>
-        </C>
+        </C>}
 
-        {/* Souhait parent */}
-        <C style={{ marginBottom: 12 }}>
+        {/* Souhait parent (Step 3) */}
+        {step === 3 && <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>
             👨‍👩‍👧 Souhait du parent <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
           </div>
           <div style={{ fontSize: 12, color: "#71717A", marginBottom: 10 }}>Quel type de prof demande-t-il ?</div>
           <Chips options={["Pas d'avis", ...PROF_TYPES]} selected={souhaitParent} onChange={setSouhaitParent} color="#DA4F00" single={true} />
-        </C>
+        </C>}
 
-        {/* Profil du parent */}
-        <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
+        {/* Profil du parent (Step 3) */}
+        {step === 3 && <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🎭 Profil du parent
             <span style={{ fontSize: 11, background: "#FFFBEB", color: "#D97706", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
@@ -1151,9 +1171,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
               );
             })}
           </div>
-        </C>
+        </C>}
 
-        {/* Stock */}
+        {/* Stock (Step 1) */}
         <C style={{ marginBottom: 14, background: "#F0FDF4", border: "1px solid #C0EAD3", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
             <Logo size={15} />
@@ -1299,18 +1319,27 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </C>
         )}
 
-        {!canAnalyze && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Remplis niveau, profil psychologique et objectif de vie pour continuer</div>}
-        <Btn onClick={analyze} disabled={!canAnalyze} full color="#16A34A" style={{ padding: "13px", borderRadius: 99, fontSize: 15 }}>
-          🔦 Allumer la Lanterne V5 →
-        </Btn>
+        {!niveau && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Renseigne le niveau pour voir la recommandation en direct</div>}
+
+        {/* ── RESULTS PANEL : Top 3 + Toolkit + (step 3) Guide argumentation ── */}
+        {portrait && renderResults()}
+
+        {/* Bottom nav */}
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          {step > 1 && <Btn onClick={() => setStep(step - 1)} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>← Step {step - 1}</Btn>}
+          {step < 3 && <Btn onClick={() => setStep(step + 1)} flex={1} color="#16A34A" style={{ padding: "13px", borderRadius: 99, fontSize: 14 }}>Step {step + 1} →</Btn>}
+          {step === 3 && <Btn onClick={resetAndSave} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>↺ Nouveau diagnostic</Btn>}
+        </div>
       </div>
     );
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // STEP 2: RESULTAT — TOP 3 PROFILS
+  // RENDER RESULTS : Top 3 + Toolkit (always) + Guide argumentation (step 3)
+  // Appelée depuis step 1 — rend le panel résultats toujours visible
   // ═══════════════════════════════════════════════════════════════
-  if (step === 2 && portrait) {
+  function renderResults() {
+    if (!portrait) return null;
     const nom = prenom || "l'eleve";
     const top3 = portrait.slice(0, 3);
     const maxScore = top3[0]?.score || 1;
@@ -1347,16 +1376,16 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const rankBorders = ["#86EFAC", "#BFDBFE", "#FDE68A"];
 
     return (
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, marginTop: 8, padding: "12px 14px", background: "#FAFAFA", borderRadius: 10 }}>
           <div>
-            <h1 style={{ fontSize: 21, fontWeight: 900, color: "#18181B", margin: "0 0 2px", fontFamily: "'Outfit',sans-serif" }}>🔦 Resultat Lanterne V5</h1>
-            <p style={{ color: "#71717A", fontSize: 13, margin: 0 }}>
-              Top 3 Profils · {nom} · {psycho} · {objectifVie}
+            <div style={{ fontSize: 11, color: "#71717A", fontWeight: 600, marginBottom: 2 }}>🔦 Résultats en direct</div>
+            <div style={{ color: "#71717A", fontSize: 11 }}>
+              {nom}{psycho ? ` · ${psycho}` : ""}{objectifVie ? ` · ${objectifVie}` : ""}
               {serieTechno && <span style={{ color: "#0B68B4", fontWeight: 600 }}> · 🏛️ {serieTechno}</span>}
               {neuroActive && neuroTrouble && <span style={{ color: "#7C3AED", fontWeight: 600 }}> · 🧩 {neuroTrouble}</span>}
               {parentProfile && <span style={{ color: "#D97706", fontWeight: 600 }}> · 🎭 {ppLabel}</span>}
-            </p>
+            </div>
           </div>
         </div>
 
@@ -1417,8 +1446,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </div>
         </C>
 
-        {/* ── GUIDE D'ARGUMENTATION ── */}
-        {(()=>{
+        {/* ── GUIDE D'ARGUMENTATION (Step 3 uniquement) ── */}
+        {step === 3 && (()=>{
           const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, prepaAnnee, univFiliere, serieTechno };
           const profProfilLabel = profProposePath.length > 0 ? profProposePath[profProposePath.length - 1] : "";
           const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx, profProfilLabel);
@@ -1896,181 +1925,10 @@ function SalesLanterne({ stock, setMatchings, user }) {
           </div>}
         </C>
 
-        {/* Bottom buttons */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-          <Btn onClick={() => { setChosenRebond(""); setRebondPath([]); setStep(3); }} full color="#DA4F00" style={{ padding: "14px", borderRadius: 99, fontSize: 15 }}>
-            Je n'ai pas ces profils en stock →
-          </Btn>
-          <Btn onClick={resetAndSave} full outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
-            ← Nouveau diagnostic
-          </Btn>
-        </div>
-      </div>
+      </>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // STEP 3: REBOND — CHOIX MANUEL
-  // ═══════════════════════════════════════════════════════════════
-  if (step === 3 && portrait) {
-    const nom = prenom || "l'eleve";
-    const idealTyp = portrait[0].typ;
-    const idealLabel = getLabel(idealTyp, psycho);
-
-    return (
-      <div>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 21, fontWeight: 900, color: "#18181B", margin: "0 0 2px", fontFamily: "'Outfit',sans-serif" }}>🔄 Plan B — Quel prof avez-vous trouve ?</h1>
-          <p style={{ color: "#71717A", fontSize: 13, margin: 0 }}>
-            Selection manuelle d'un profil alternatif · Ideal etait : {idealLabel}
-          </p>
-        </div>
-
-        {/* Prof type selector — CASCADE HIERARCHY */}
-        <C style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 10, fontFamily: "'Outfit',sans-serif" }}>
-            Affinez le profil du prof que vous avez trouvé :
-          </div>
-
-          {/* Breadcrumb path */}
-          {rebondPath.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, padding: "8px 12px", background: "#FFF7F0", borderRadius: 8, border: "1px solid #FED7AA", flexWrap: "wrap" }}>
-            <button onClick={() => { setRebondPath([]); setChosenRebond(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#DA4F00", fontWeight: 700 }}>↺ Reset</button>
-            {rebondPath.map((p, i) => (
-              <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "#A1A1AA", fontSize: 11 }}>›</span>
-                <button onClick={() => { setRebondPath(rebondPath.slice(0, i + 1)); setChosenRebond(rebondPath[0]); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#92400E", fontWeight: 600, fontFamily: "'Outfit',sans-serif" }}>{p}</button>
-              </span>
-            ))}
-          </div>}
-
-          {/* Cascade selector */}
-          {(()=>{
-            // Determine current level
-            let currentLevel = PROF_HIERARCHY;
-            for (const key of rebondPath) {
-              if (currentLevel[key]?.children) {
-                currentLevel = currentLevel[key].children;
-              } else {
-                return null; // Leaf reached
-              }
-            }
-            const entries = Object.entries(currentLevel || {});
-            if (entries.length === 0) return null;
-
-            return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {entries.map(([key, val]) => {
-                const isLevel0 = rebondPath.length === 0;
-                const stock = isLevel0 ? stockMap[key] : null;
-                const hasChildren = val.children && Object.keys(val.children).length > 0;
-                return (
-                  <button key={key} onClick={() => {
-                    const newPath = [...rebondPath, key];
-                    setRebondPath(newPath);
-                    if (isLevel0) setChosenRebond(key);
-                  }}
-                    style={{
-                      padding: "12px 14px", borderRadius: 12,
-                      border: "2px solid #E4E4E7",
-                      background: "#FAFAFA",
-                      textAlign: "left", cursor: "pointer", transition: "all .15s",
-                    }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 18 }}>{val.emoji || "📌"}</span>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: "#3F3F46", fontFamily: "'Outfit',sans-serif", flex: 1 }}>{key}</span>
-                      {hasChildren && <span style={{ fontSize: 14, color: "#A1A1AA" }}>›</span>}
-                      {stock && <span style={{ fontSize: 10, color: stock.dispo ? "#15803D" : "#B91C1C", fontWeight: 600 }}>{stock.dispo ? "✓" : "✗"} {stock.nb}</span>}
-                    </div>
-                    {val.description && <div style={{ fontSize: 11, color: "#71717A", marginLeft: 26 }}>{val.description}</div>}
-                  </button>
-                );
-              })}
-            </div>;
-          })()}
-
-          {/* Final selection summary */}
-          {rebondPath.length >= 2 && (()=>{
-            const last = rebondPath[rebondPath.length - 1];
-            // Walk path to get last node info
-            let node = PROF_HIERARCHY;
-            for (let i = 0; i < rebondPath.length - 1; i++) {
-              node = node[rebondPath[i]]?.children || {};
-            }
-            const finalNode = node[last];
-            return <div style={{ marginTop: 12, padding: "12px 16px", background: "#F0FDF4", border: "2px solid #C0EAD3", borderRadius: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 18 }}>{finalNode?.emoji || "✓"}</span>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>Profil sélectionné : {last}</div>
-              </div>
-              {finalNode?.description && <div style={{ fontSize: 11, color: "#71717A", marginLeft: 26 }}>{finalNode.description}</div>}
-              <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 6, marginLeft: 26 }}>Catégorie : {chosenRebond}</div>
-            </div>;
-          })()}
-        </C>
-
-        {/* Chosen rebond details */}
-        {chosenRebond && (() => {
-          const label = getLabel(chosenRebond, psycho);
-          const refined = refine(chosenRebond, matieres);
-          const args = getArgs(chosenRebond, psycho);
-          const rebondScript = getRebondScript(idealTyp, chosenRebond, psycho, nom, niveau);
-          const fullScript = buildFullScript(chosenRebond);
-
-          return (
-            <div>
-              {/* Prof info */}
-              <C style={{ marginBottom: 14, background: "#FFF7F0", border: "2px solid #FED7AA", padding: "16px 18px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", marginBottom: 2 }}>{label}</div>
-                    <div style={{ fontSize: 12, color: "#DA4F00", fontWeight: 600 }}>↳ {refined}</div>
-                  </div>
-                  <CopyBtn text={fullScript} />
-                </div>
-
-                {/* 4 Arguments */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#DA4F00", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>4 Arguments de vente</div>
-                  {renderArgCards(args)}
-                </div>
-
-                {/* Neuro */}
-                {renderNeuroSection(chosenRebond)}
-              </C>
-
-              {/* Rebond script */}
-              <C style={{ marginBottom: 14, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: "16px 18px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 16 }}>🔄</span>
-                      <Pill color="#0B68B4">SCRIPT DE REBOND</Pill>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#71717A" }}>
-                      Comment presenter {chosenRebond} alors que l'algorithme recommandait {idealTyp}
-                    </div>
-                  </div>
-                  <CopyBtn text={rebondScript} />
-                </div>
-                <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #0B68B4" }}>
-                  {rebondScript}
-                </div>
-              </C>
-            </div>
-          );
-        })()}
-
-        {/* Bottom buttons */}
-        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-          <Btn onClick={() => setStep(2)} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
-            ← Retour aux resultats
-          </Btn>
-          <Btn onClick={resetAndSave} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>
-            ← Nouveau diagnostic
-          </Btn>
-        </div>
-      </div>
-    );
-  }
 
   return null;
 }
