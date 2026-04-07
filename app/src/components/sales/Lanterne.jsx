@@ -588,9 +588,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
   const [profProposePath, setProfProposePath] = useState([]); // selection en cascade dans PROF_HIERARCHY
   const [expandedRank, setExpandedRank] = useState(null); // index du top 3 deplie
-  const [openTop3, setOpenTop3] = useState(true);
-  const [openToolkit, setOpenToolkit] = useState(true);
-  const [openGuide, setOpenGuide] = useState(true);
+  const [openTop3, setOpenTop3] = useState(false);
+  const [openToolkit, setOpenToolkit] = useState(false);
+  const [openGuide, setOpenGuide] = useState(false);
 
   // ── State: Results ─────────────────────────────────────────────
   const [portrait, setPortrait] = useState(null);
