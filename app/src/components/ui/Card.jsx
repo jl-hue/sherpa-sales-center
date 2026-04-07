@@ -1,7 +1,9 @@
 import React from 'react';
 
-export const C = ({ children, style = {} }) => (
+export const C = ({ children, style = {}, onClick, ...rest }) => (
   <div
+    onClick={onClick}
+    {...rest}
     style={{
       background: '#fff',
       borderRadius: 16,
@@ -14,8 +16,10 @@ export const C = ({ children, style = {} }) => (
   </div>
 );
 
-export const GC = ({ children, style = {} }) => (
+export const GC = ({ children, style = {}, onClick, ...rest }) => (
   <div
+    onClick={onClick}
+    {...rest}
     style={{
       background: 'linear-gradient(135deg,#16A34A 0%,#62E58E 100%)',
       borderRadius: 16,
