@@ -19,6 +19,7 @@ export const LYCEE_TECHNO_SERIES = [
 export const CLASSES_PRIMAIRE=["CP","CE1","CE2","CM1","CM2"];
 export const CLASSES_COLLEGE=["6e","5e","4e","3e"];
 export const CLASSES_LYCEE_GENERAL=["Seconde","Première","Terminale"];
+export const CLASSES_LYCEE_TECHNO=["Première","Terminale"]; // Seconde commune avec lycée général
 export const CLASSES_LYCEE_PRO=["Seconde pro","Première pro","Terminale pro"];
 export const CLASSES_BTS=["BTS 1","BTS 2","BUT 1","BUT 2","BUT 3"];
 export const CLASSES_UNIV=["L1","L2","L3","M1","M2","Doctorat"];

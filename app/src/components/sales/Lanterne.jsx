@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_TECHNO, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -932,7 +932,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
           {niveau === "Lycée techno" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_LYCEE_GENERAL} selected={classe} onChange={c => { setClasse(c); const dispos = getMatieresDisponibles("Lycée techno", c, "", serieTechno); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+              <Chips options={CLASSES_LYCEE_TECHNO} selected={classe} onChange={c => { setClasse(c); const dispos = getMatieresDisponibles("Lycée techno", c, "", serieTechno); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 8 }}>Série technologique <span style={{ color: "#E11D48" }}>*</span></div>
               <select value={serieTechno} onChange={e => { const s = e.target.value; setSerieTechno(s); const dispos = getMatieresDisponibles("Lycée techno", classe, "", s); setMatieres(matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
                 <option value="">— Sélectionner la série —</option>
