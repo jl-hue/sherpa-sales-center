@@ -5,7 +5,7 @@ import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
 import { NEURO_MATRIX, NEURO_TROUBLES, NEURO_COLORS, NEURO_EMOJIS, NEURO_PROFS } from '../../constants/neuroMatrix';
-import { getEcheances, getProgramme } from '../../constants/familyToolkit';
+import { getEcheances, getProgramme, getProgrammeDetails } from '../../constants/familyToolkit';
 
 // ── Parent Profile Data ─────────────────────────────────────────
 const PARENT_PROFILES = [
@@ -1644,15 +1644,64 @@ function SalesLanterne({ stock, setMatchings, user }) {
                     if (!prog) return null;
                     let items = Array.isArray(prog) ? prog : prog.items;
                     let classeLabel = !Array.isArray(prog) && prog.__key ? ` — ${prog.__key}` : "";
+                    const details = getProgrammeDetails(mat, niveau);
                     return (
-                      <div key={mat} style={{ padding: "10px 14px", background: "#fff", borderRadius: 8, border: "1px solid #BFDBFE" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <div key={mat} style={{ padding: "12px 14px", background: "#fff", borderRadius: 8, border: "1px solid #BFDBFE" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                           <div style={{ fontSize: 12, fontWeight: 800, color: "#1E40AF", fontFamily: "'Outfit',sans-serif" }}>📖 {mat}{classeLabel}</div>
-                          <CopyBtn text={items.map(i => `• ${i}`).join("\n")} />
+                          <CopyBtn text={
+                            `📖 ${mat}${classeLabel}\n\n` +
+                            (details?.objectifs ? `🎯 OBJECTIFS\n${details.objectifs}\n\n` : "") +
+                            `📚 CHAPITRES\n${items.map(i => `• ${i}`).join("\n")}\n\n` +
+                            (details?.competences ? `🧠 COMPÉTENCES\n${details.competences.map(c => `• ${c}`).join("\n")}\n\n` : "") +
+                            (details?.difficultes ? `⚠️ POINTS DIFFICILES\n${details.difficultes.map(d => `• ${d}`).join("\n")}\n\n` : "") +
+                            (details?.conseils ? `💡 CONSEIL SHERPAS\n${details.conseils}` : "")
+                          } />
                         </div>
-                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#3F3F46", lineHeight: 1.7 }}>
-                          {items.map((it, i) => <li key={i}>{it}</li>)}
-                        </ul>
+
+                        {/* Objectifs de l'annee */}
+                        {details?.objectifs && (
+                          <div style={{ marginBottom: 8, padding: "8px 10px", background: "#F0FDF4", borderRadius: 6, borderLeft: "3px solid #16A34A" }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#15803D", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em" }}>🎯 Objectifs de l'année</div>
+                            <div style={{ fontSize: 11, color: "#3F3F46", lineHeight: 1.6 }}>{details.objectifs}</div>
+                          </div>
+                        )}
+
+                        {/* Chapitres */}
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 800, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>📚 Chapitres au programme</div>
+                          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#3F3F46", lineHeight: 1.7 }}>
+                            {items.map((it, i) => <li key={i}>{it}</li>)}
+                          </ul>
+                        </div>
+
+                        {/* Competences evaluees */}
+                        {details?.competences && (
+                          <div style={{ marginBottom: 8, padding: "8px 10px", background: "#F5F3FF", borderRadius: 6, borderLeft: "3px solid #7C3AED" }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#6D28D9", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>🧠 Compétences évaluées</div>
+                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#3F3F46", lineHeight: 1.6 }}>
+                              {details.competences.map((c, i) => <li key={i}>{c}</li>)}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Difficultes classiques */}
+                        {details?.difficultes && (
+                          <div style={{ marginBottom: 8, padding: "8px 10px", background: "#FEF2F2", borderRadius: 6, borderLeft: "3px solid #E11D48" }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#B91C1C", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>⚠️ Points difficiles classiques</div>
+                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#3F3F46", lineHeight: 1.6 }}>
+                              {details.difficultes.map((d, i) => <li key={i}>{d}</li>)}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Conseil Sherpas */}
+                        {details?.conseils && (
+                          <div style={{ padding: "8px 10px", background: "#FFFBEB", borderRadius: 6, borderLeft: "3px solid #D97706" }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#92400E", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em" }}>💡 Conseil Sherpas pour la prescription</div>
+                            <div style={{ fontSize: 11, color: "#3F3F46", lineHeight: 1.6, fontStyle: "italic" }}>{details.conseils}</div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
