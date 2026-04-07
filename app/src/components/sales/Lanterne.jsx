@@ -19,7 +19,7 @@ const PARENT_PROFILES = [
 // ── Script Generation by Parent Profile ─────────────────────────
 // Construit une chaine de contexte academique precis pour personnaliser les scripts
 function buildAcademicContext(diag) {
-  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno } = diag || {};
+  const { niveau, classe, brevetPrep, spes = [], parcoursupCible, parcoursupEcole, prepaFiliere, prepaAnnee, univFiliere, serieTechno } = diag || {};
   const parts = [];
   if (niveau === "Collège" && classe) {
     parts.push(`en ${classe}`);
@@ -35,7 +35,7 @@ function buildAcademicContext(diag) {
   } else if (niveau === "Lycée pro" && classe) {
     parts.push(`en ${classe}`);
   } else if (niveau === "Prépa" && prepaFiliere) {
-    parts.push(`en prépa ${prepaFiliere}`);
+    parts.push(`en ${prepaAnnee || ""} prépa ${prepaFiliere}`.trim().replace("  ", " "));
   } else if (niveau === "Université") {
     if (classe) parts.push(`en ${classe}`);
     if (univFiliere) parts.push(univFiliere);
@@ -581,6 +581,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [parcoursupCible, setParcoursupCible] = useState(""); // ex: "MPSI / MP (Maths-Physique)"
   const [parcoursupEcole, setParcoursupEcole] = useState(""); // ex: "Louis-le-Grand (Paris)"
   const [prepaFiliere, setPrepaFiliere] = useState("");
+  const [prepaAnnee, setPrepaAnnee] = useState(""); // "1re année" ou "2e année"
   const [univFiliere, setUnivFiliere] = useState("");
   const [serieTechno, setSerieTechno] = useState("");
 
@@ -641,6 +642,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     setParcoursupCible("");
     setParcoursupEcole("");
     setPrepaFiliere("");
+    setPrepaAnnee("");
     setUnivFiliere("");
     setSerieTechno("");
     setProfProposeNom("");
@@ -675,7 +677,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
     const args = getArgs(typ, psycho);
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
-    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno };
+    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, prepaAnnee, univFiliere, serieTechno };
     const introText = getIntroScript(pp, nom, psycho, diagCtx);
     const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie, diagCtx);
     const closingText = getClosingScript(pp, nom, label, diagCtx);
@@ -960,7 +962,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
           {niveau === "Prépa" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Filière de prépa <span style={{ color: "#E11D48" }}>*</span></div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Année <span style={{ color: "#E11D48" }}>*</span></div>
+              <Chips options={["1re année", "2e année"]} selected={prepaAnnee} onChange={setPrepaAnnee} color="#16A34A" single={true} />
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 8 }}>Filière de prépa <span style={{ color: "#E11D48" }}>*</span></div>
               <select value={prepaFiliere} onChange={e => { const f = e.target.value; setPrepaFiliere(f); const dispos = getMatieresDisponibles("Prépa", "", f); setMatieres(matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
                 <option value="">— Sélectionner —</option>
                 {PREPA_FILIERES.map(o => <option key={o} value={o}>{o}</option>)}
@@ -1409,13 +1413,13 @@ function SalesLanterne({ stock, setMatchings, user }) {
             </div>
           </div>
           <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(255,255,255,.15)", borderRadius: 10, fontSize: 12, lineHeight: 1.6 }}>
-            💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{serieTechno ? ` · ${serieTechno}` : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaFiliere}` : ""}
+            💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{serieTechno ? ` · ${serieTechno}` : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaAnnee ? prepaAnnee + " " : ""}${prepaFiliere}` : ""}
           </div>
         </C>
 
         {/* ── GUIDE D'ARGUMENTATION ── */}
         {(()=>{
-          const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno };
+          const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, prepaAnnee, univFiliere, serieTechno };
           const profProfilLabel = profProposePath.length > 0 ? profProposePath[profProposePath.length - 1] : "";
           const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx, profProfilLabel);
           return <C style={{ marginBottom: 12, background: "#FFFBEB", border: "2px solid #FCD34D", padding: openGuide ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenGuide(!openGuide)}>
