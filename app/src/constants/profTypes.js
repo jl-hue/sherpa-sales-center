@@ -285,7 +285,7 @@ export const PARCOURSUP_HIERARCHY = {
     },
   },
 };
-export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Informatique","Autre"];
+export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Droit","Informatique","Autre"];
 
 // ─── Filtre les matieres disponibles selon le niveau, la classe et la filiere ───
 export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
@@ -316,9 +316,9 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
     return [...base, AUTRE];
   }
 
-  // Lycee pro : matieres generales + selon orientation
+  // Lycee pro : matieres generales + eco/droit/info pour les filieres tertiaires
   if (niveau === "Lycée pro") {
-    return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "Économie", "Informatique", AUTRE];
+    return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "Économie", "Droit", "Informatique", AUTRE];
   }
 
   // ── PREPA : matieres dependent de la filiere ──
@@ -344,9 +344,9 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere) {
     if (f.includes("ECG")) {
       return [SOUTIEN, "Maths", "Économie", "Histoire-Géo", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
     }
-    // ECT : Eco gestion, Maths, Francais-Philo, LV1, LV2
+    // ECT : Maths, Eco-Droit-Management, Francais-Philo, LV1, LV2
     if (f.includes("ECT")) {
-      return [SOUTIEN, "Maths", "Économie", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+      return [SOUTIEN, "Maths", "Économie", "Droit", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
     }
     // Khagne A/L : Francais, Philo, HG, LV1, LV2 (latin/grec en option)
     if (f.includes("Khâgne A/L")) {
