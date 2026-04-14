@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { syncToSupabase } from '../../lib/supabase';
 import { C, Btn, ST, CopyBtn } from '../ui';
 import { DEFAULT_SMS_TEMPLATES } from '../../constants/smsTemplates';
 
@@ -15,7 +16,7 @@ function Templates() {
   const [adding, setAdding] = useState(false);
   const [openCat, setOpenCat] = useState(null);
 
-  function save(next) { setTemplates(next); localStorage.setItem(LS_KEY, JSON.stringify(next)); }
+  function save(next) { setTemplates(next); localStorage.setItem(LS_KEY, JSON.stringify(next)); syncToSupabase("sms_templates", next); }
 
   const cats = [...new Set(templates.map(t => t.cat))].sort();
   const filtered = templates.filter(t => {

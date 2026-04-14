@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { syncToSupabase } from '../../lib/supabase';
 import { ST, C, GC, Stat, Pill, Logo } from '../ui';
 import { cArr } from '../../lib/utils';
 import { USERS } from '../../constants/brand';
@@ -91,7 +92,7 @@ function ManagerVue({feedbacks,rentree,matchings}){
         <C style={{ marginBottom: 14, background: "#FEF2F2", border: "2px solid #FCA5A5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#B91C1C", fontFamily: "'Outfit',sans-serif" }}>📍 Zones sans profs à domicile ({demandes.length} signalements)</div>
-            <button onClick={() => { localStorage.removeItem("sherpas_demandes_zones_v1"); window.location.reload(); }}
+            <button onClick={() => { localStorage.removeItem("sherpas_demandes_zones_v1"); syncToSupabase("demandes_zones", []); window.location.reload(); }}
               style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid #FCA5A5", background: "#fff", color: "#E11D48", cursor: "pointer", fontWeight: 700 }}>🗑️ Vider</button>
           </div>
           {sorted.map((z, i) => (

@@ -19,6 +19,33 @@ export async function fetchTeam() {
   return LOCAL_TEAM;
 }
 
+// ── Helpers sync config (Supabase ↔ localStorage) ──
+export async function syncToSupabase(key, data) {
+  try { await sb.from("config").upsert({ key, value: JSON.stringify(data) }, { onConflict: "key" }); } catch {}
+}
+
+export async function loadFromSupabase(key) {
+  try {
+    const { data } = await sb.from("config").select("value").eq("key", key).maybeSingle();
+    if (data?.value) return JSON.parse(data.value);
+  } catch {}
+  return null;
+}
+
+// Mapping localStorage keys → Supabase config keys
+export const LS_TO_SB = {
+  "sherpas_okr_v1": "okr",
+  "sherpas_okr_published_v1": "okr_published",
+  "sherpas_paliers_v1": "paliers",
+  "sherpas_paliers_published_v1": "paliers_published",
+  "sherpas_defis_v1": "defis",
+  "sherpas_defis_published_v1": "defis_published",
+  "sherpas_sms_templates_v1": "sms_templates",
+  "sherpas_demandes_zones_v1": "demandes_zones",
+  "sherpas_user_statuts_v1": "user_statuts",
+  "sherpas_user_dates_v1": "user_dates",
+};
+
 export function rowToFeedback(r){return{id:r.id,date:r.date,auteur:r.auteur,anonyme:r.anonyme,clientTypes:r.client_types||[],objections:r.objections||[],bien:r.bien||[],bloque:r.bloque||[],confiance:r.confiance,suggestions:r.suggestions||""};}
 export function rowToMatching(r){return{id:r.id,date:r.date,auteur:r.auteur,idealTyp:r.ideal_typ,chosenTyp:r.chosen_typ,followed:r.followed,niveau:r.niveau,psycho:r.psycho};}
 export function rowToStock(r){return{typ:r.typ,dispo:r.dispo,nb:r.nb,note:r.note||""};}

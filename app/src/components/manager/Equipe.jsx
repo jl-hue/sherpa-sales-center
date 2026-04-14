@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { sb } from '../../lib/supabase';
+import { sb, syncToSupabase } from '../../lib/supabase';
 import { C, Btn, Pill, ST } from '../ui';
 
 const ROLES = [
@@ -36,6 +36,7 @@ function Equipe({ user }) {
     const next = { ...userStatuts, [email]: statut };
     setUserStatuts(next);
     localStorage.setItem(LS_STATUTS, JSON.stringify(next));
+    syncToSupabase("user_statuts", next);
   }
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
@@ -74,6 +75,7 @@ function Equipe({ user }) {
     const dates = JSON.parse(localStorage.getItem("sherpas_user_dates_v1") || "{}");
     dates[emailLower] = newDateArrivee || new Date().toISOString().slice(0, 10);
     localStorage.setItem("sherpas_user_dates_v1", JSON.stringify(dates));
+    syncToSupabase("user_dates", dates);
     setNewEmail(""); setNewName(""); setNewRole("sales"); setNewColor("#16A34A"); setNewStatut("cdi"); setNewDateArrivee("");
     reload();
   }
@@ -186,7 +188,7 @@ function Equipe({ user }) {
                 {STATUTS.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
               </select>
               <input type="date" value={(() => { try { return JSON.parse(localStorage.getItem("sherpas_user_dates_v1") || "{}")[u.email] || ""; } catch { return ""; } })()}
-                onChange={e => { const d = JSON.parse(localStorage.getItem("sherpas_user_dates_v1") || "{}"); d[u.email] = e.target.value; localStorage.setItem("sherpas_user_dates_v1", JSON.stringify(d)); }}
+                onChange={e => { const d = JSON.parse(localStorage.getItem("sherpas_user_dates_v1") || "{}"); d[u.email] = e.target.value; localStorage.setItem("sherpas_user_dates_v1", JSON.stringify(d)); syncToSupabase("user_dates", d); }}
                 style={{ fontSize: 9, padding: "3px 4px", borderRadius: 4, border: "1px solid #E4E4E7", width: 95 }} />
               <select value={u.role} onChange={e => changeRole(u, e.target.value)}
                 style={{ fontSize: 10, padding: "4px 6px", borderRadius: 6, border: "1px solid #E4E4E7", background: "#fff", cursor: "pointer", fontWeight: 700, color: roleMeta.color }}>

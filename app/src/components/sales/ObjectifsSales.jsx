@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTeam } from '../../lib/supabase';
+import { fetchTeam, loadFromSupabase } from '../../lib/supabase';
 import { C, ST } from '../ui';
 
 const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -16,9 +16,14 @@ function ObjectifsSales({ user }) {
 
   useEffect(() => {
     fetchTeam().then(setTeam);
-    try { setPubPaliers(JSON.parse(localStorage.getItem("sherpas_paliers_published_v1") || "{}")); } catch {}
-    try { setPubDefis(JSON.parse(localStorage.getItem("sherpas_defis_published_v1") || "[]")); } catch {}
-    try { setPubOkrs(JSON.parse(localStorage.getItem("sherpas_okr_published_v1") || "{}")); } catch {}
+    (async () => {
+      const p = await loadFromSupabase("paliers_published");
+      const d = await loadFromSupabase("defis_published");
+      const o = await loadFromSupabase("okr_published");
+      if (p) setPubPaliers(p); else try { setPubPaliers(JSON.parse(localStorage.getItem("sherpas_paliers_published_v1") || "{}")); } catch {}
+      if (d) setPubDefis(d); else try { setPubDefis(JSON.parse(localStorage.getItem("sherpas_defis_published_v1") || "[]")); } catch {}
+      if (o) setPubOkrs(o); else try { setPubOkrs(JSON.parse(localStorage.getItem("sherpas_okr_published_v1") || "{}")); } catch {}
+    })();
   }, []);
 
   const now = new Date();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTeam } from '../../lib/supabase';
+import { fetchTeam, syncToSupabase } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 const LS_OKR = "sherpas_okr_v1";
@@ -59,12 +59,15 @@ function Objectifs({ user }) {
   const [published, setPublished] = useState(false);
   const [pubTimestamp, setPubTimestamp] = useState(() => localStorage.getItem("sherpas_objectifs_pub_ts") || "");
 
-  function saveOkrs(next) { setOkrs(next); localStorage.setItem(LS_OKR, JSON.stringify(next)); }
-  function savePaliers(next) { setPaliers(next); localStorage.setItem(LS_PALIERS, JSON.stringify(next)); }
-  function saveDefis(next) { setDefis(next); localStorage.setItem(LS_DEFIS, JSON.stringify(next)); }
+  function saveOkrs(next) { setOkrs(next); localStorage.setItem(LS_OKR, JSON.stringify(next)); syncToSupabase("okr", next); }
+  function savePaliers(next) { setPaliers(next); localStorage.setItem(LS_PALIERS, JSON.stringify(next)); syncToSupabase("paliers", next); }
+  function saveDefis(next) { setDefis(next); localStorage.setItem(LS_DEFIS, JSON.stringify(next)); syncToSupabase("defis", next); }
 
   function publier() {
     localStorage.setItem("sherpas_objectifs_published_v1", JSON.stringify({ okrs, paliers, defis }));
+    syncToSupabase("okr_published", okrs);
+    syncToSupabase("paliers_published", paliers);
+    syncToSupabase("defis_published", defis);
     const ts = new Date().toLocaleString("fr-FR");
     localStorage.setItem("sherpas_objectifs_pub_ts", ts);
     setPubTimestamp(ts);

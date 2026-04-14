@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
+import { syncToSupabase } from '../../lib/supabase';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
 import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_PRIMAIRE, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_TECHNO, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
@@ -661,6 +662,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
       auteur: user?.email || "",
     });
     localStorage.setItem("sherpas_demandes_zones_v1", JSON.stringify(demandes));
+    syncToSupabase("demandes_zones", demandes);
     setNoProfSignaled(true);
     setTimeout(() => setNoProfSignaled(false), 3000);
   }

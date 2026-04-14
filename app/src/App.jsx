@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { sb, rowToFeedback, rowToMatching, rowToDemande, rowToRentree, rowToSuggestion, rowToStock } from './lib/supabase';
+import { sb, rowToFeedback, rowToMatching, rowToDemande, rowToRentree, rowToSuggestion, rowToStock, LS_TO_SB } from './lib/supabase';
 import { today } from './lib/utils';
 import { USERS } from './constants/brand';
 import { INIT_STOCK, INIT_SCRIPTS, INIT_OBJECTIONS, INIT_FEEDBACKS, INIT_MATCHINGS, INIT_DEMANDES, INIT_RENTREE, INIT_SUGGESTIONS, FORMATION_DEFAULT } from './constants/data';
@@ -93,6 +93,11 @@ export default function App(){
         if(edtRow?.value) try{localStorage.setItem("sherpas_edt_published_v1",edtRow.value);localStorage.setItem("sherpas_edt_v1",edtRow.value);}catch(e){}
         const ptRow=cfg.data.find(r=>r.key==="plan_table_published");
         if(ptRow?.value) try{localStorage.setItem("sherpas_plan_table_published_v1",ptRow.value);}catch(e){}
+        // Sync toutes les autres clés config → localStorage
+        Object.entries(LS_TO_SB).forEach(([lsKey,sbKey])=>{
+          const row=cfg.data.find(r=>r.key===sbKey);
+          if(row?.value) try{localStorage.setItem(lsKey,row.value);}catch(e){}
+        });
       }
       setDbReady(true);
     } catch(e){
