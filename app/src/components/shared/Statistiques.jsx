@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam } from '../../lib/supabase';
 import { C, ST } from '../ui';
 
 function fmtDate(d) {
@@ -87,10 +87,16 @@ function Statistiques({ user, isManager }) {
   useEffect(() => { fetchTeam().then(setTeam); }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("sherpas_edt_published_v1");
-      if (raw) setSchedules(JSON.parse(raw));
-    } catch {}
+    (async () => {
+      try {
+        const { data: cfg } = await sb.from("config").select("value").eq("key", "edt_published").maybeSingle();
+        if (cfg?.value) { setSchedules(JSON.parse(cfg.value)); return; }
+      } catch {}
+      try {
+        const raw = localStorage.getItem("sherpas_edt_published_v1");
+        if (raw) setSchedules(JSON.parse(raw));
+      } catch {}
+    })();
   }, []);
 
   const members = isManager ? team : team.filter(m => m.email === user?.email);

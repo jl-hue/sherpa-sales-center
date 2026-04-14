@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam } from '../../lib/supabase';
 import { C, ST } from '../ui';
 
 const SEATS_PER_SIDE = 4;
@@ -21,13 +21,24 @@ function PlanDeTableView({ user }) {
   useEffect(() => { fetchTeam().then(setTeam); }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("sherpas_plan_table_published_v1");
-      if (raw) {
-        const all = JSON.parse(raw);
-        if (all[today]) setPlan(all[today]);
-      }
-    } catch {}
+    (async () => {
+      // 1. Essayer Supabase
+      try {
+        const { data: cfg } = await sb.from("config").select("value").eq("key", "plan_table_published").maybeSingle();
+        if (cfg?.value) {
+          const all = JSON.parse(cfg.value);
+          if (all[today]) { setPlan(all[today]); return; }
+        }
+      } catch {}
+      // 2. Fallback localStorage
+      try {
+        const raw = localStorage.getItem("sherpas_plan_table_published_v1");
+        if (raw) {
+          const all = JSON.parse(raw);
+          if (all[today]) setPlan(all[today]);
+        }
+      } catch {}
+    })();
   }, []);
 
   const seatEntries = Object.entries(plan).filter(([k]) => k.startsWith("pole_"));

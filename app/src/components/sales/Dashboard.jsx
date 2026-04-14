@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { GC, C, Pill, Stat } from '../ui';
 import { Logo } from '../ui/Logo';
-import { fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam } from '../../lib/supabase';
 import PlanDeTableView from './PlanDeTableView';
 
 // ── Helpers dates (copiés de EmploiDuTemps) ──
@@ -13,10 +13,16 @@ function fmtLabel(d) { const j=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"]; retu
 function MonPlanning({ user }) {
   const [schedules, setSchedules] = useState({});
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("sherpas_edt_published_v1");
-      if (raw) setSchedules(JSON.parse(raw));
-    } catch {}
+    (async () => {
+      try {
+        const { data: cfg } = await sb.from("config").select("value").eq("key", "edt_published").maybeSingle();
+        if (cfg?.value) { setSchedules(JSON.parse(cfg.value)); return; }
+      } catch {}
+      try {
+        const raw = localStorage.getItem("sherpas_edt_published_v1");
+        if (raw) setSchedules(JSON.parse(raw));
+      } catch {}
+    })();
   }, []);
 
   const monday = useMemo(() => getMonday(new Date()), []);
@@ -74,13 +80,19 @@ function MonPlanDeTable() {
   const today = fmtDate(new Date());
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("sherpas_plan_table_published_v1");
-      if (raw) {
-        const all = JSON.parse(raw);
-        if (all[today]) setPlan(all[today]);
-      }
-    } catch {}
+    (async () => {
+      try {
+        const { data: cfg } = await sb.from("config").select("value").eq("key", "plan_table_published").maybeSingle();
+        if (cfg?.value) {
+          const all = JSON.parse(cfg.value);
+          if (all[today]) { setPlan(all[today]); return; }
+        }
+      } catch {}
+      try {
+        const raw = localStorage.getItem("sherpas_plan_table_published_v1");
+        if (raw) { const all = JSON.parse(raw); if (all[today]) setPlan(all[today]); }
+      } catch {}
+    })();
   }, []);
 
   // Load team (fallback local si Supabase vide)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 // ── Config ──
@@ -449,13 +449,15 @@ function PlanDeTable({ user }) {
           localStorage.setItem(LS_KEY, JSON.stringify(nextAll));
         }} outline color="#7C3AED" style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12 }}>📋 Toute la semaine</Btn>
         <Btn onClick={clearAll} outline color="#71717A" style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12 }}>🗑️ Vider</Btn>
-        <Btn onClick={() => {
+        <Btn onClick={async () => {
           const pub = JSON.parse(localStorage.getItem("sherpas_plan_table_published_v1") || "{}");
           pub[selectedDate] = assignments;
           localStorage.setItem("sherpas_plan_table_published_v1", JSON.stringify(pub));
           const ts = { ...planPubTimestamps, [selectedDate]: new Date().toLocaleString("fr-FR") };
           setPlanPubTimestamps(ts);
           localStorage.setItem("sherpas_plan_pub_timestamps_v1", JSON.stringify(ts));
+          // Sync to Supabase for all users
+          try { await sb.from("config").upsert({ key: "plan_table_published", value: JSON.stringify(pub) }, { onConflict: "key" }); } catch {}
           setPublished(true);
           setTimeout(() => setPublished(false), 3000);
         }} color="#16A34A" style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12 }}>

@@ -88,6 +88,11 @@ export default function App(){
         if(uRow?.value) try{setExtraUsers(JSON.parse(uRow.value));}catch(e){}
         const pRow=cfg.data.find(r=>r.key==="formation_progress");
         if(pRow?.value) try{setProgress(JSON.parse(pRow.value));}catch(e){}
+        // Sync EDT et Plan de table depuis Supabase → localStorage
+        const edtRow=cfg.data.find(r=>r.key==="edt_published");
+        if(edtRow?.value) try{localStorage.setItem("sherpas_edt_published_v1",edtRow.value);localStorage.setItem("sherpas_edt_v1",edtRow.value);}catch(e){}
+        const ptRow=cfg.data.find(r=>r.key==="plan_table_published");
+        if(ptRow?.value) try{localStorage.setItem("sherpas_plan_table_published_v1",ptRow.value);}catch(e){}
       }
       setDbReady(true);
     } catch(e){

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 // ── Helpers dates ──
@@ -142,24 +142,42 @@ function EmploiDuTemps({ user }) {
   // Charge l'équipe (fallback local si Supabase vide)
   useEffect(() => { fetchTeam().then(data => setTeam(sortTeam(data))); }, []);
 
-  // Charge les plannings depuis localStorage, ou importe depuis edt_data.json
+  // Charge les plannings : Supabase > localStorage > edt_data.json
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_EDT);
-      if (raw) { setSchedules(JSON.parse(raw)); return; }
-    } catch {}
-    // Premier lancement : importer les données du planning Excel
-    fetch("/edt_data.json")
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && Object.keys(data).length > 0) {
-          setSchedules(data);
-          localStorage.setItem(LS_EDT, JSON.stringify(data));
-          // Publier aussi directement
-          localStorage.setItem("sherpas_edt_published_v1", JSON.stringify(data));
+    (async () => {
+      // 1. Essayer Supabase
+      try {
+        const { data: cfg } = await sb.from("config").select("value").eq("key", "edt_published").maybeSingle();
+        if (cfg?.value) {
+          const parsed = JSON.parse(cfg.value);
+          if (Object.keys(parsed).length > 0) {
+            setSchedules(parsed);
+            localStorage.setItem(LS_EDT, JSON.stringify(parsed));
+            localStorage.setItem("sherpas_edt_published_v1", JSON.stringify(parsed));
+            return;
+          }
         }
-      })
-      .catch(() => {});
+      } catch {}
+      // 2. Fallback localStorage
+      try {
+        const raw = localStorage.getItem(LS_EDT);
+        if (raw) { setSchedules(JSON.parse(raw)); return; }
+      } catch {}
+      // 3. Premier lancement : importer depuis edt_data.json
+      try {
+        const r = await fetch("/edt_data.json");
+        if (r.ok) {
+          const data = await r.json();
+          if (data && Object.keys(data).length > 0) {
+            setSchedules(data);
+            localStorage.setItem(LS_EDT, JSON.stringify(data));
+            localStorage.setItem("sherpas_edt_published_v1", JSON.stringify(data));
+            // Push to Supabase
+            try { await sb.from("config").upsert({ key: "edt_published", value: JSON.stringify(data) }, { onConflict: "key" }); } catch {}
+          }
+        }
+      } catch {}
+    })();
   }, []);
 
   function persist(newSchedules) {
@@ -379,7 +397,7 @@ function EmploiDuTemps({ user }) {
                           🧹 Clear
                         </button>
                         {/* Valider cette semaine */}
-                        <button onClick={() => {
+                        <button onClick={async () => {
                           const pub = JSON.parse(localStorage.getItem("sherpas_edt_published_v1") || "{}");
                           team.forEach(m => {
                             week.days.forEach(day => {
@@ -389,6 +407,8 @@ function EmploiDuTemps({ user }) {
                             });
                           });
                           localStorage.setItem("sherpas_edt_published_v1", JSON.stringify(pub));
+                          // Sync to Supabase for all users
+                          try { await sb.from("config").upsert({ key: "edt_published", value: JSON.stringify(pub) }, { onConflict: "key" }); } catch {}
                           const ts = { ...pubTimestamps, [fmtDate(week.monday)]: new Date().toLocaleString("fr-FR") };
                           setPubTimestamps(ts);
                           localStorage.setItem("sherpas_edt_pub_timestamps_v1", JSON.stringify(ts));
