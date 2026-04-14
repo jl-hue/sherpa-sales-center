@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { ST, C, GC, Stat, Pill, Logo } from '../ui';
 import { cArr } from '../../lib/utils';
 import { USERS } from '../../constants/brand';
@@ -70,6 +71,42 @@ function ManagerVue({feedbacks,rentree,matchings}){
         </div>)}
       </C>
     </div>
+
+    {/* ── Carte des zones sans profs ── */}
+    {(() => {
+      const demandes = JSON.parse(localStorage.getItem("sherpas_demandes_zones_v1") || "[]");
+      if (demandes.length === 0) return null;
+      // Compter par ville
+      const parVille = {};
+      demandes.forEach(d => {
+        const v = (d.ville || "").trim().toLowerCase();
+        if (!v) return;
+        if (!parVille[v]) parVille[v] = { ville: d.ville, count: 0, matieres: new Set(), dates: [] };
+        parVille[v].count++;
+        if (d.matieres) d.matieres.split(", ").forEach(m => parVille[v].matieres.add(m));
+        parVille[v].dates.push(d.date);
+      });
+      const sorted = Object.values(parVille).sort((a, b) => b.count - a.count);
+      return (
+        <C style={{ marginBottom: 14, background: "#FEF2F2", border: "2px solid #FCA5A5" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#B91C1C", fontFamily: "'Outfit',sans-serif" }}>📍 Zones sans profs à domicile ({demandes.length} signalements)</div>
+            <button onClick={() => { localStorage.removeItem("sherpas_demandes_zones_v1"); window.location.reload(); }}
+              style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid #FCA5A5", background: "#fff", color: "#E11D48", cursor: "pointer", fontWeight: 700 }}>🗑️ Vider</button>
+          </div>
+          {sorted.map((z, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "8px 10px", background: "#fff", borderRadius: 8, borderLeft: `3px solid ${i === 0 ? "#E11D48" : i < 3 ? "#DA4F00" : "#D4D4D8"}` }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: i === 0 ? "#E11D48" : "#71717A", fontFamily: "'Outfit',sans-serif", width: 24, textAlign: "center" }}>{z.count}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#18181B" }}>📍 {z.ville}</div>
+                <div style={{ fontSize: 9, color: "#71717A" }}>{[...z.matieres].join(", ")}</div>
+              </div>
+              <div style={{ fontSize: 9, color: "#A1A1AA" }}>{z.count} demande{z.count > 1 ? "s" : ""}</div>
+            </div>
+          ))}
+        </C>
+      );
+    })()}
 
     <C style={{background:"#F0FDF4",border:"1px solid #C0EAD3"}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><Logo size={14}/><span style={{fontSize:13,fontWeight:700,color:"#15803D",fontFamily:"'Outfit',sans-serif"}}>Recommandations formation automatiques</span></div>

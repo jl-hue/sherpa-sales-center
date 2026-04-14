@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vite-preview",
+      "runtimeExecutable": "/tmp/run-preview.sh",
+      "runtimeArgs": [],
+      "port": 4173
+    },
+    {
+      "name": "prodtest",
+      "runtimeExecutable": "/tmp/run-prodtest.sh",
+      "runtimeArgs": [],
+      "port": 5555
+    }
+  ]
+}

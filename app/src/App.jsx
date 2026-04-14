@@ -10,7 +10,12 @@ import { LoadingOverlay } from './components/ui';
 
 import SalesDash from './components/sales/Dashboard';
 import SalesLanterne from './components/sales/Lanterne';
+import SalesPlanning from './components/sales/Planning';
+import SalesPlanDeTable from './components/sales/PlanDeTableView';
+import Statistiques from './components/shared/Statistiques';
+import ObjectifsSales from './components/sales/ObjectifsSales';
 import SalesScripts from './components/sales/Scripts';
+import SalesRessources from './components/sales/Ressources';
 import SalesObjections from './components/sales/Objections';
 import SalesFormation from './components/sales/Formation';
 import SalesFeedback from './components/sales/Feedback';
@@ -24,6 +29,11 @@ import ManagerRentree from './components/manager/Rentree';
 import ManagerFeedbacks from './components/manager/Feedbacks';
 import ManagerProgression from './components/manager/Progression';
 import ManagerUsers from './components/manager/Users';
+import ManagerEquipe from './components/manager/Equipe';
+import ManagerEmploiDuTemps from './components/manager/EmploiDuTemps';
+import ManagerPlanDeTable from './components/manager/PlanDeTable';
+import ManagerObjectifs from './components/manager/Objectifs';
+import ManagerCarte from './components/manager/CarteFrance';
 
 import FormateurScripts from './components/formateur/Scripts';
 import FormateurFormations from './components/formateur/Formations';
@@ -96,7 +106,8 @@ export default function App(){
     setTimeout(()=>loadAll(), 0);
   }
 
-  function logout(){
+  async function logout(){
+    try { await sb.auth.signOut(); } catch {}
     setUser(null);setSpace(null);setPage(null);
     setDbReady(false);setDbError(null);
     setFeedbacks(INIT_FEEDBACKS);setMatchings(INIT_MATCHINGS);
@@ -190,13 +201,24 @@ export default function App(){
   const pages={
     dash:      ()=><SalesDash rentree={myRentree} user={user}/>,
     lanterne:  ()=><SalesLanterne stock={stock} setMatchings={addMatching} user={user}/>,
+    planning:  ()=><SalesPlanning user={user}/>,
+    "plan-table": ()=><SalesPlanDeTable user={user}/>,
+    "stats":     ()=><Statistiques user={user} isManager={false}/>,
+    "objectifs": ()=><ObjectifsSales user={user}/>,
     scripts:   ()=><SalesScripts scripts={scripts}/>,
     objections:()=><SalesObjections objections={objections} setSuggestions={(s)=>addSuggestion(s)}/>,
+    ressources:()=><SalesRessources scripts={scripts} objections={objections} setSuggestions={(s)=>addSuggestion(s)}/>,
     formation: ()=><SalesFormation formations={formations} progress={progress} setProgress={saveProgress} user={user}/>,
     feedback:  ()=><SalesFeedback feedbacks={myFeedbacks} setFeedbacks={addFeedback} setSuggestions={addSuggestion} user={user}/>,
     demandes:  ()=><SalesDemandes demandes={myDemandes} setDemandes={addDemande} user={user}/>,
     rentree:   ()=><SalesRentree rentree={myRentree} setRentree={addRentree} user={user}/>,
     "m-vue":        ()=><ManagerVue feedbacks={feedbacks} rentree={rentree} matchings={matchings}/>,
+    "m-equipe":     ()=><ManagerEquipe user={user}/>,
+    "m-edt":        ()=><ManagerEmploiDuTemps user={user}/>,
+    "m-plan":       ()=><ManagerPlanDeTable user={user}/>,
+    "m-stats":      ()=><Statistiques user={user} isManager={true}/>,
+    "m-objectifs":  ()=><ManagerObjectifs user={user}/>,
+    "m-carte":      ()=><ManagerCarte user={user}/>,
     "m-matching":   ()=><ManagerMatching matchings={matchings}/>,
     "m-besoins":    ()=><ManagerBesoins feedbacks={feedbacks}/>,
     "m-rentree":    ()=><ManagerRentree rentree={rentree}/>,
@@ -212,8 +234,8 @@ export default function App(){
   const Page=pages[page]||(()=>null);
 
   return <div style={{display:"flex",height:"100vh",fontFamily:"'Inter',sans-serif",background:"#F8FFF9"}}>
-    <Sidebar role={space} page={page} setPage={setPage} onLogout={logout} user={user} dbReady={dbReady} loading={loading}/>
-    <div style={{flex:1,overflow:"auto",padding:26}}>
+    <Sidebar role={space} page={page} setPage={setPage} setSpace={setSpace} onLogout={logout} user={user} dbReady={dbReady} loading={loading}/>
+    <div style={{flex:1,overflow:"auto",padding:26,marginLeft:226}}>
       {dbBanner}
       <Page/>
     </div>

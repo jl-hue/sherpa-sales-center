@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { C, GC, Pill, Btn, Chips, ST, CopyBtn, Logo } from '../ui';
-import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_TECHNO, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
+import { PROF_TYPES, NIVEAUX, MATIERES, PSYCH_PROFILES, PROF_HIERARCHY, CLASSES_PRIMAIRE, CLASSES_COLLEGE, CLASSES_LYCEE_GENERAL, CLASSES_LYCEE_TECHNO, CLASSES_LYCEE_PRO, CLASSES_BTS, CLASSES_UNIV, PREPA_FILIERES, SPE_PREMIERE, PARCOURSUP_OPTIONS, PARCOURSUP_HIERARCHY, LYCEE_TECHNO_SERIES, getRecommendedHierarchy, getMatieresDisponibles } from '../../constants/profTypes';
 import { computeV5, getLabel, refine } from '../../lib/matching';
 import { getArgs } from '../../lib/argEngine';
 import { today } from '../../lib/utils';
@@ -573,6 +573,52 @@ function SalesLanterne({ stock, setMatchings, user }) {
   // ── State: Nombre de profs ─────────────────────────────────────
   const [nbProfs, setNbProfs] = useState("1");
 
+  // ── State: Disponibilités famille ──────────────────────────────
+  const [dispoJours, setDispoJours] = useState([]); // ["Lundi","Mardi",...]
+  const [dispoCreneaux, setDispoCreneaux] = useState([]); // ["Matin","Midi","Après-midi","Soir"]
+  const [dispoNote, setDispoNote] = useState("");
+
+  // ── State: Budget famille ──
+  const [budget, setBudget] = useState(""); // "petit" | "moyen" | "gros"
+  // ── State: Note perso ──
+  const [notePerso, setNotePerso] = useState("");
+  // ── State: 2e créneaux dispo ──
+  const [dispoJours2, setDispoJours2] = useState([]);
+  const [dispoCreneaux2, setDispoCreneaux2] = useState([]);
+
+  // ── State: Mode de cours (domicile / en ligne / peu importe) ──
+  const [modeCours, setModeCours] = useState("");
+  const [villeClient, setVilleClient] = useState("");
+  const [villeCP, setVilleCP] = useState("");
+  const [villeSearch, setVilleSearch] = useState("");
+  const [villeSuggestions, setVilleSuggestions] = useState([]);
+  const [villeLoading, setVilleLoading] = useState(false);
+
+  // Autocomplétion ville via API gouv
+  function rechercheVille(q) {
+    if (q.length < 2) { setVilleSuggestions([]); return; }
+    setVilleLoading(true);
+    fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&type=municipality&limit=6`)
+      .then(r => r.json())
+      .then(data => {
+        const results = (data.features || []).map(f => ({
+          label: `${f.properties.city || f.properties.name} (${f.properties.postcode})`,
+          ville: f.properties.city || f.properties.name,
+          cp: f.properties.postcode,
+        }));
+        setVilleSuggestions([...new Map(results.map(r => [r.label, r])).values()]);
+      })
+      .catch(() => setVilleSuggestions([]))
+      .finally(() => setVilleLoading(false));
+  }
+
+  // ── State: UI matières par groupe ──────────────────────────────
+  const [openMatGroup, setOpenMatGroup] = useState(null);
+
+  // ── State: Moyennes (optionnel) ────────────────────────────────
+  const [moyenneGenerale, setMoyenneGenerale] = useState("");
+  const [moyennesMat, setMoyennesMat] = useState({}); // { "Maths": "12", ... }
+
   // ── State: Diagnostic académique détaillé ──────────────────────
   const [classe, setClasse] = useState("");
   const [brevetPrep, setBrevetPrep] = useState(false);
@@ -598,19 +644,158 @@ function SalesLanterne({ stock, setMatchings, user }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [aiArguments, setAiArguments] = useState(null); // { hook, trust, bridge, rebound, summary }
+  const [aiRawContent, setAiRawContent] = useState(""); // contenu brut récupéré (debug)
+  const [showRawContent, setShowRawContent] = useState(false);
+
+  // ── Pas de prof à domicile (signalement zone) ──────────────────
+  const [noProfSignaled, setNoProfSignaled] = useState(false);
+  function signalerPasDeProf() {
+    if (!villeClient || modeCours !== "domicile") return;
+    const demandes = JSON.parse(localStorage.getItem("sherpas_demandes_zones_v1") || "[]");
+    demandes.push({
+      ville: villeClient,
+      cp: villeCP,
+      niveau: niveau || "",
+      matieres: matieres.join(", "),
+      date: new Date().toISOString(),
+      auteur: user?.email || "",
+    });
+    localStorage.setItem("sherpas_demandes_zones_v1", JSON.stringify(demandes));
+    setNoProfSignaled(true);
+    setTimeout(() => setNoProfSignaled(false), 3000);
+  }
+
+  // ── Step 3 : Recherche auto de profs Sherpas ──────────────────
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [searchResults, setSearchResults] = useState(null); // [{ nom, url, score, raison }]
+  const [searchCity, setSearchCity] = useState("");
+  const [searchMode, setSearchMode] = useState("online"); // "online" | "atHome"
+
+  function buildSherpasSearchUrl() {
+    const params = new URLSearchParams();
+    // Matière (on prend la première sélectionnée, sans accents/caractères spéciaux pour l'URL)
+    if (matieres.length > 0) {
+      const m = matieres[0]
+        .replace("Physique-Chimie", "Physique-chimie")
+        .replace("Histoire-Géo", "Histoire-géographie")
+        .replace("SES", "SES")
+        .replace("SVT", "SVT");
+      params.set("subject", m);
+    }
+    // Niveau
+    const niveauMap = {
+      "Primaire": "primaire",
+      "Collège": "college",
+      "Lycée général": "lycee",
+      "Lycée pro": "lycee",
+      "Lycée techno": "lycee",
+      "BTS": "superieur",
+      "Prépa": "superieur",
+      "Université": "superieur",
+    };
+    const nivKey = niveauMap[niveau];
+    if (nivKey) params.set("educationalStages", nivKey);
+    // Mode online / à domicile
+    params.set("courseLocation", searchMode);
+    if (searchMode === "atHome" && searchCity.trim()) {
+      params.set("address", searchCity.trim());
+    }
+    return `https://sherpas.com/professeurs?${params.toString()}`;
+  }
+
+  async function searchProfsWithAI() {
+    setSearchError("");
+    setSearchResults(null);
+    if (!niveau || matieres.length === 0) {
+      setSearchError("Il faut au moins un niveau et une matière en Step 1");
+      return;
+    }
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) { setSearchError("Clé Groq manquante"); return; }
+    setSearchLoading(true);
+    try {
+      const searchUrl = buildSherpasSearchUrl();
+      // Fetch le markdown de la page de recherche via Jina Reader
+      const mdContent = await fetch(`https://r.jina.ai/${searchUrl}`).then(r => r.text());
+
+      if (!mdContent || mdContent.length < 200) {
+        throw new Error("Jina Reader n'a pas pu récupérer la page. Réessaye dans quelques secondes.");
+      }
+
+      const truncated = mdContent.slice(0, 10000);
+
+      // Contexte diag
+      const ctx = [];
+      if (niveau) ctx.push(`Niveau : ${niveau}${classe ? " " + classe : ""}`);
+      if (matieres.length > 0) ctx.push(`Matières : ${matieres.join(", ")}`);
+      if (spes.length > 0) ctx.push(`Spécialités : ${spes.join(", ")}`);
+      if (prepaFiliere) ctx.push(`Prépa : ${prepaAnnee || ""} ${prepaFiliere}`.trim());
+      if (objectifVie) ctx.push(`Objectif : ${objectifVie}`);
+      if (psycho) ctx.push(`Profil psy enfant : ${psycho}`);
+      if (neuroActive && neuroTrouble) ctx.push(`Neuroatypique : ${neuroTrouble}`);
+
+      const prompt = `Tu es un expert en sélection de profs pour Les Sherpas. Voici la page de résultats de recherche Sherpas (markdown brut) :
+
+--- PAGE DE RECHERCHE ---
+${truncated}
+--- FIN ---
+
+DEMANDE FAMILLE :
+${ctx.map(c => `- ${c}`).join("\n")}
+
+Mission : identifie les 5 MEILLEURS profs parmi la liste ci-dessus. Pour chacun, extrait UNIQUEMENT ce qui est écrit dans le markdown : le prénom, le titre exact de l'annonce (la ligne qui commence par ###), le prix, le nombre d'heures données, le nombre d'avis. INTERDIT d'inventer. INTERDIT de générer des URLs (on n'en a pas accès). Note chaque prof sur 100 selon la cohérence parcours/expérience/matière/niveau.
+
+Format JSON STRICT :
+{
+  "results": [
+    {
+      "nom": "<prénom exact du prof>",
+      "titre": "<titre EXACT de l'annonce du prof extrait du markdown>",
+      "prix": "<prix extrait, ex: '31,45€/h'>",
+      "experience": "<nb heures/avis extrait, ex: '92h données, 13 avis'>",
+      "score": <0-100>,
+      "raison": "<pourquoi ce prof matche — 1 phrase>"
+    }
+  ],
+  "verdict": "<analyse globale en 1 phrase>"
+}`;
+
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || "Erreur Groq");
+      const parsed = JSON.parse(data.choices?.[0]?.message?.content || "{}");
+      parsed._searchUrl = searchUrl;
+      setSearchResults(parsed);
+    } catch (err) {
+      setSearchError(err.message || String(err));
+    } finally {
+      setSearchLoading(false);
+    }
+  }
 
   async function analyzeProfWithAI() {
     setAiError("");
     setAiArguments(null);
     if (!profUrl.trim()) { setAiError("Colle d'abord un lien Sherpas"); return; }
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) { setAiError("⚠️ Clé Gemini manquante. Ajoute VITE_GEMINI_API_KEY dans Netlify env vars."); return; }
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) { setAiError("⚠️ Clé Groq manquante. Ajoute VITE_GROQ_API_KEY dans Netlify env vars."); return; }
     setAiLoading(true);
     try {
       // 1. Fetch URL via Jina Reader (CORS-friendly, gratuit)
       const readerUrl = `https://r.jina.ai/${profUrl.trim()}`;
       const profContent = await fetch(readerUrl).then(r => r.text());
       const truncated = profContent.slice(0, 6000);
+      setAiRawContent(truncated);
 
       // 2. Construire le contexte Step 1 + Step 2
       const ctx = [];
@@ -628,41 +813,138 @@ function SalesLanterne({ stock, setMatchings, user }) {
         if (ppLab) ctx.push(`Profil parent : ${ppLab}`);
       }
 
-      const prompt = `Tu es un expert en vente de cours particuliers chez Les Sherpas. Voici le profil d'un professeur récupéré sur le site Sherpas :
+      const prompt = `Tu es un expert STRICT et HONNÊTE en évaluation de profils profs chez Les Sherpas. Tu n'es PAS un commercial flatteur — tu es un auditeur rigoureux. Ton rôle est de vérifier si un prof matche vraiment une demande, pas de faire plaisir au sales.
 
---- PROFIL PROF ---
+--- PROFIL PROF (texte brut récupéré du site) ---
 ${truncated}
 --- FIN PROFIL ---
 
-Voici le diagnostic de la famille à qui je dois proposer ce prof :
+DEMANDE FAMILLE :
 ${ctx.map(c => `- ${c}`).join("\n")}
 
-Ta mission : génère 5 arguments de vente PERSONNALISÉS qui font le pont entre ce prof précis et les besoins de cette famille. Chaque argument doit citer un élément CONCRET du profil prof (école, expérience, matière, parcours).
+═══════════════════════════════════════════════
+RÈGLES DE NOTATION ULTRA-STRICTES :
+═══════════════════════════════════════════════
 
-Format de réponse JSON strict (rien d'autre, juste le JSON) :
+1. **PREUVE OBLIGATOIRE** : Pour chaque critère, tu DOIS d'abord chercher une CITATION EXACTE dans le profil prof avant de mettre une note. Si tu ne trouves AUCUNE preuve textuelle → score = 0 et evidence = "Aucune mention dans le profil".
+
+2. **MATIÈRES** :
+   - 100 = la matière demandée est explicitement mentionnée dans le profil avec une citation claire
+   - 50 = matière proche/connexe mentionnée (ex: maths-physique pour une demande maths)
+   - 0 = la matière n'apparaît PAS du tout dans le profil
+
+3. **NIVEAU** :
+   - 100 = le niveau exact (ex: "Seconde" pour une demande Seconde) ou la catégorie (ex: "lycée") est mentionné
+   - 50 = niveau adjacent (ex: prof collège pour demande Seconde)
+   - 0 = niveau pas mentionné OU explicitement exclu
+
+4. **PARCOURS (légitimité académique)** : C'est un critère CRUCIAL. Le parcours du prof doit être COHÉRENT avec la matière et le niveau demandés.
+   - 100 = parcours d'excellence PARFAITEMENT aligné (ex: prépa MP/X pour maths terminale/prépa, ENS pour philo, Assas pour droit, école d'ingé post-prépa pour physique lycée…)
+   - 80 = parcours cohérent et solide (ex: L3 maths pour maths lycée, LLCE anglais pour anglais collège)
+   - 50 = parcours plausible mais pas idéal (ex: étudiant en médecine pour maths collège)
+   - 20 = parcours INCOHÉRENT avec la matière/niveau demandés (ex: école de commerce post-bac pour maths prépa, DUT TC pour maths terminale, licence d'histoire pour physique)
+   - 0 = aucune info sur le parcours ou parcours non-académique
+   EXEMPLES CONCRETS :
+   • Prof → école de commerce post-bac (type SKEMA post-bac) enseignant maths prépa = 20/100 (incohérent)
+   • Prof → prépa scientifique MPSI/MP puis école d'ingé enseignant maths terminale = 100/100 (excellent)
+   • Prof → DUT TC enseignant maths terminale = 25/100 (parcours peu sélectif en maths)
+   • Prof → Normale Sup/X/Centrale enseignant maths = 100/100
+5. **EXPÉRIENCE** : note GÉNÉREUSE basée sur les preuves chiffrées dans le profil (nombre d'élèves, heures de cours données, stages, années d'expérience, diplômes pédagogiques). Barème :
+   - 100 = expérience massive (50+ élèves OU 500h+ de cours OU 5+ années OU prof titulaire EN)
+   - 90 = très solide (20+ élèves OU 200h+ de cours OU stages pédagogiques ET chiffres solides)
+   - 80 = solide (10+ élèves OU 100h+ de cours OU stages en enseignement)
+   - 70 = bonne (5+ élèves OU 50h+ de cours)
+   - 50 = débutant avec quelques élèves
+   - 20 = aucune expérience mentionnée
+   RÈGLE : si le profil mentionne un chiffre d'élèves ≥ 10 OU un total d'heures ≥ 100h OU des stages pédagogiques, le score MINIMUM est 80. Ne sois PAS avare, cumule les preuves.
+
+5. **INTERDIT** : inventer des compétences que le profil ne mentionne pas. Si le prof ne dit rien sur "anglais", tu ne peux pas dire "il enseigne sûrement l'anglais".
+
+6. **HONNÊTETÉ AVANT TOUT** : Si le match global est faible (<40), dis-le clairement dans le verdict avec un ❌. Le sales préfère savoir la vérité plutôt que perdre la confiance du client.
+
+═══════════════════════════════════════════════
+
+Format JSON STRICT (rien d'autre) :
 {
-  "summary": "résumé 1 phrase du prof (école, niveau, spécialité)",
-  "hook": "argument crochet — accroche puissante qui matche le profil élève",
-  "trust": "argument de confiance — pourquoi ce prof est crédible pour ce niveau exact",
-  "bridge": "pont pédagogique — comment il va aider sur les matières/objectifs spécifiques",
-  "personnalisation": "comment le prof s'adapte au profil psy ${psycho || "de l'élève"} et au parent ${parentProfile || "(non renseigné)"}",
-  "rebound": "réponse à l'objection probable de cette famille"
+  "matchScore": <0-100 — RÈGLE DE CALCUL OBLIGATOIRE : matieres, niveau et parcours sont BLOQUANTS. Si matieres < 50 OU niveau < 50 OU parcours < 40, le score global NE PEUT PAS dépasser 35. Si deux ou plus de ces critères sont insuffisants, max = 20. Sinon, moyenne pondérée : matieres 30%, niveau 25%, parcours 25%, experience 10%, profilPsy 7%, specifique 3%>,
+  "verdict": "<✅ Excellent / ⚠️ Moyen / ❌ Faible — explication factuelle en 1 phrase>",
+  "criteria": {
+    "matieres": {
+      "score": <0-100>,
+      "evidence": "<CITATION EXACTE du profil prouvant le score, ou 'Aucune mention'>",
+      "comment": "<analyse en 1 phrase>"
+    },
+    "niveau": {
+      "score": <0-100>,
+      "evidence": "<CITATION EXACTE>",
+      "comment": "<1 phrase>"
+    },
+    "parcours": {
+      "score": <0-100>,
+      "evidence": "<CITATION EXACTE du parcours académique : école, diplôme, filière>",
+      "comment": "<analyse de cohérence parcours ↔ matière/niveau demandés en 1 phrase>"
+    },
+    "experience": {
+      "score": <0-100>,
+      "evidence": "<CITATION : années d'expérience, nb d'élèves>",
+      "comment": "<1 phrase>"
+    },
+    "profilPsy": {
+      "score": <0-100>,
+      "evidence": "<CITATION ou 'Aucune info dans le profil'>",
+      "comment": "<adapté à ${psycho || "(non renseigné)"} ?>"
+    },
+    "specifique": {
+      "score": <0-100>,
+      "evidence": "<CITATION ou 'Non mentionné'>",
+      "comment": "<adapté à ${neuroActive ? neuroTrouble : "objectif " + (objectifVie || "non précisé")} ?>"
+    }
+  },
+  "summary": "<résumé factuel du profil prof basé sur le contenu réel — ne rien inventer>",
+  "hook": "<argument crochet basé UNIQUEMENT sur ce qui est dans le profil>",
+  "trust": "<argument confiance avec citation du profil>",
+  "bridge": "<pont pédagogique factuel>",
+  "personnalisation": "<adaptation honnête, ne pas inventer>",
+  "rebound": "<réponse à l'objection probable de la famille>"
 }`;
 
-      // 3. Appel Gemini
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-      const res = await fetch(geminiUrl, {
+      // 3. Appel Groq (Llama 3.3 70B, gratuit, rapide)
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, responseMimeType: "application/json" }
-        })
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error.message || "Erreur Gemini");
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (data.error) throw new Error(data.error.message || "Erreur Groq");
+      const text = data.choices?.[0]?.message?.content || "";
       const parsed = JSON.parse(text);
+
+      // ── Safety net : reclampe le score si l'IA a triché ──
+      // Règle : matieres, niveau et parcours sont bloquants.
+      const matScore = parsed.criteria?.matieres?.score ?? 0;
+      const nivScore = parsed.criteria?.niveau?.score ?? 0;
+      const parScore = parsed.criteria?.parcours?.score ?? 100;
+      if (typeof parsed.matchScore === "number") {
+        const fails = [];
+        if (matScore < 50) fails.push("matière");
+        if (nivScore < 50) fails.push("niveau");
+        if (parScore < 40) fails.push("parcours incohérent");
+        let cap = 100;
+        if (fails.length >= 2) cap = 20;
+        else if (fails.length === 1) cap = 35;
+        if (parsed.matchScore > cap) {
+          parsed.matchScore = cap;
+          parsed.verdict = `❌ Match faible — ${fails.join(" + ")} ne correspond${fails.length > 1 ? "ent" : ""} pas à la demande (score plafonné automatiquement).`;
+        }
+      }
       setAiArguments(parsed);
     } catch (err) {
       setAiError(err.message || String(err));
@@ -718,6 +1000,20 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
     setParcoursupEcole("");
     setPrepaFiliere("");
     setPrepaAnnee("");
+    setMoyenneGenerale("");
+    setMoyennesMat({});
+    setDispoJours([]);
+    setDispoCreneaux([]);
+    setDispoNote("");
+    setModeCours("");
+    setVilleClient("");
+    setBudget("");
+    setNotePerso("");
+    setDispoJours2([]);
+    setDispoCreneaux2([]);
+    setVilleCP("");
+    setVilleSearch("");
+    setVilleSuggestions([]);
     setUnivFiliere("");
     setSerieTechno("");
     setProfProposeNom("");
@@ -919,36 +1215,136 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
       <div>
         <ST emoji="🔦" sub="Le cerveau strategique de l'application — prescription, neuro & argumentation dynamique.">Lanterne Match V5</ST>
 
-        {/* ── STEP TABS : 1 Besoins / 2 Psycho enfant / 3 Famille ── */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 14, background: "#F4F4F5", padding: 4, borderRadius: 12 }}>
-          {[
-            { n: 1, emoji: "🎯", label: "Besoins primaires", sub: "Académique + Neuro" },
-            { n: 2, emoji: "🧠", label: "Profils psy", sub: "Enfant + Famille" },
-            { n: 3, emoji: "🤖", label: "Match prof + IA", sub: "Lien Sherpas + arguments" },
-          ].map(t => {
-            const on = step === t.n;
-            return (
-              <button key={t.n} onClick={() => setStep(t.n)}
-                style={{
-                  flex: 1, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer",
-                  background: on ? "#fff" : "transparent", boxShadow: on ? "0 1px 3px rgba(0,0,0,.08)" : "none",
-                  textAlign: "center", transition: "all .15s",
-                }}>
-                <div style={{ fontSize: 16, marginBottom: 2 }}>{t.emoji}</div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: on ? "#16A34A" : "#71717A", fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>Step {t.n}</div>
-                <div style={{ fontSize: 10, color: on ? "#18181B" : "#A1A1AA", marginTop: 2, fontWeight: 600 }}>{t.label}</div>
-              </button>
-            );
-          })}
-        </div>
+        {/* ── SCRIPT CRM : bouton sticky en haut ── */}
+        {(() => {
+          if (!niveau && !prenom) return null;
+          const ppLab = PARENT_PROFILES.find(p => p.id === parentProfile)?.label || "";
+          const lines = [];
+          if (modeCours) lines.push(`📍 Mode : ${modeCours === "domicile" ? "À domicile" + (villeClient ? " — " + villeClient : "") : modeCours === "enligne" ? "En ligne" : "Peu importe"}`);
+          lines.push(`🎓 DIAGNOSTIC ACADÉMIQUE`);
+          if (niveau) {
+            let niv = niveau;
+            if (classe) niv += ` · ${classe}`;
+            if (brevetPrep) niv += ` (prep brevet)`;
+            if (serieTechno) niv += ` · ${serieTechno}`;
+            if (spes.length > 0) niv += ` · spés ${spes.join("/")}`;
+            if (prepaFiliere) niv += ` · ${prepaAnnee ? prepaAnnee + " " : ""}prépa ${prepaFiliere}`;
+            if (univFiliere) niv += ` · ${univFiliere}`;
+            lines.push(`• Niveau : ${niv}`);
+          }
+          if (matieres.length > 0) lines.push(`• Matières : ${matieres.join(", ")}`);
+          if (parcoursupCible) lines.push(`• Parcoursup : ${parcoursupCible}${parcoursupEcole ? " — " + parcoursupEcole : ""}`);
+          if (objectifVie) lines.push(`• Objectif : ${objectifVie}`);
+          if (nbProfs) lines.push(`• Nombre de profs souhaité : ${nbProfs}`);
+          if (neuroActive && neuroTrouble) lines.push(`• Neuroatypique : ${neuroTrouble}`);
+          // Moyennes
+          const hasMoyMat = Object.keys(moyennesMat).some(k => moyennesMat[k]);
+          if (moyenneGenerale || hasMoyMat) {
+            lines.push(``);
+            lines.push(`📊 MOYENNES`);
+            if (moyenneGenerale) lines.push(`• Générale : ${moyenneGenerale}/20`);
+            matieres.forEach(m => {
+              if (moyennesMat[m]) lines.push(`• ${m} : ${moyennesMat[m]}/20`);
+            });
+          }
+          lines.push(``);
+          // Disponibilités
+          if (dispoJours.length > 0 || dispoCreneaux.length > 0 || dispoNote) {
+            lines.push(`📅 DISPONIBILITÉS`);
+            if (dispoJours.length > 0) lines.push(`• Créneaux 1 : ${dispoJours.join(", ")} — ${dispoCreneaux.join(", ")}`);
+            if (dispoNote) lines.push(`• Note : ${dispoNote}`);
+            if (dispoJours2.length > 0 || dispoCreneaux2.length > 0) lines.push(`• Créneaux 2 : ${dispoJours2.join(", ")} — ${dispoCreneaux2.join(", ")}`);
+            lines.push(``);
+          }
+          if (budget) {
+            const budgetLabel = { petit: "Budget serré", moyen: "Budget moyen", gros: "Budget confortable" }[budget];
+            lines.push(`💰 ${budgetLabel}`);
+            lines.push(``);
+          }
+          if (notePerso) {
+            lines.push(`📝 NOTE`);
+            lines.push(`${notePerso}`);
+            lines.push(``);
+          }
+          if (psycho) {
+            lines.push(`🧠 PROFIL PSY ÉLÈVE`);
+            lines.push(`• Personnalité : ${psycho}`);
+            lines.push(``);
+          }
+          if (parentProfile || souhaitParent) {
+            lines.push(`👨‍👩‍👧 PROFIL FAMILLE`);
+            if (ppLab) lines.push(`• Profil parent : ${ppLab}`);
+            if (souhaitParent && souhaitParent !== "Pas d'avis") lines.push(`• Souhait : ${souhaitParent}`);
+            lines.push(``);
+          }
+          while (lines.length && lines[lines.length - 1] === "") lines.pop();
+          const scriptText = lines.join("\n");
+          return <div style={{ position: "sticky", top: 0, zIndex: 50, marginBottom: 12, paddingTop: 8, paddingBottom: 4, background: "transparent" }}>
+            <C style={{ marginBottom: 0, background: "linear-gradient(135deg,#0369A1,#0EA5E9)", border: "none", padding: "14px 18px", color: "#fff", boxShadow: "0 6px 16px rgba(3,105,161,.25)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                  <span style={{ fontSize: 22 }}>📋</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 900, fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>Script CRM prêt à coller</div>
+                    <div style={{ fontSize: 11, opacity: .9, marginTop: 2 }}>Généré en live à partir de tes inputs</div>
+                  </div>
+                </div>
+                <CopyBtn text={scriptText} />
+                <button onClick={() => { if (confirm("Effacer le diagnostic en cours ?")) resetAndSave(); }} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#E11D48", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit',sans-serif", whiteSpace: "nowrap" }}>↺ Nouveau</button>
+              </div>
+              <textarea value={notePerso} onChange={e => setNotePerso(e.target.value)} placeholder="📝 Note personnalisée..."
+                rows={2} style={{ width: "100%", fontSize: 12, border: "1px solid rgba(255,255,255,.3)", background: "rgba(255,255,255,.95)", borderRadius: 8, padding: "8px 12px", marginTop: 8, boxSizing: "border-box", resize: "vertical", color: "#18181B", fontFamily: "'Inter',sans-serif", outline: "none" }} />
+            </C>
+          </div>;
+        })()}
 
-        {/* Prenom */}
+        {/* Mode de cours */}
         <C style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>
-            👤 Prenom de l'eleve <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel, personnalise les scripts)</span>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 8, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📍 Mode de cours</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: modeCours === "domicile" ? 10 : 0 }}>
+            {[
+              { id: "enligne", emoji: "💻", label: "En ligne" },
+              { id: "domicile", emoji: "🏠", label: "À domicile" },
+              { id: "peuimporte", emoji: "🤷", label: "Peu importe" },
+            ].map(m => {
+              const on = modeCours === m.id;
+              return (
+                <button key={m.id} onClick={() => setModeCours(on ? "" : m.id)}
+                  style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: `2px solid ${on ? "#16A34A" : "#E4E4E7"}`, background: on ? "#F0FDF4" : "#FAFAFA", cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
+                  <div style={{ fontSize: 18, marginBottom: 2 }}>{m.emoji}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: on ? "#15803D" : "#71717A", fontFamily: "'Outfit',sans-serif" }}>{m.label}</div>
+                </button>
+              );
+            })}
           </div>
-          <input value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Ex : Lucas, Emma, Thomas..."
-            style={{ width: "100%", fontSize: 14, border: "1px solid #E4E4E7", borderRadius: 10, padding: "10px 14px", boxSizing: "border-box", fontFamily: "'Outfit',sans-serif", fontWeight: 600, color: "#18181B" }} />
+          {modeCours === "domicile" && (
+            <div style={{ position: "relative" }}>
+              {villeClient ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#F0FDF4", border: "2px solid #16A34A", borderRadius: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#15803D", flex: 1 }}>📍 {villeClient} ({villeCP})</span>
+                  <button onClick={() => { setVilleClient(""); setVilleCP(""); setVilleSearch(""); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#71717A" }}>×</button>
+                </div>
+              ) : (
+                <>
+                  <input type="text" value={villeSearch} onChange={e => { const v = e.target.value; setVilleSearch(v); setVilleClient(""); setVilleCP(""); rechercheVille(v); }}
+                    placeholder="Tape une ville ou un code postal..."
+                    style={{ width: "100%", fontSize: 12, border: "1px solid #C0EAD3", borderRadius: 8, padding: "8px 12px", boxSizing: "border-box" }} />
+                  {villeLoading && <div style={{ fontSize: 10, color: "#71717A", marginTop: 4, fontStyle: "italic" }}>Recherche...</div>}
+                  {villeSuggestions.length > 0 && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #E4E4E7", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.1)", zIndex: 50, marginTop: 4, maxHeight: 200, overflowY: "auto" }}>
+                      {villeSuggestions.map((s, i) => (
+                        <button key={i} onClick={() => { setVilleClient(s.ville); setVilleCP(s.cp); setVilleSearch(""); setVilleSuggestions([]); }}
+                          style={{ width: "100%", padding: "8px 12px", border: "none", borderBottom: i < villeSuggestions.length - 1 ? "1px solid #F4F4F5" : "none", background: "#fff", cursor: "pointer", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#18181B" }}>
+                          📍 {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </C>
 
         {/* Diagnostic academique */}
@@ -960,6 +1356,12 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
           </div>
 
           {/* QUESTIONS CONDITIONNELLES SELON NIVEAU */}
+          {niveau === "Primaire" && (
+            <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe précise</div>
+              <Chips options={CLASSES_PRIMAIRE} selected={classe} onChange={c => { setClasse(c); }} color="#16A34A" single={true} />
+            </div>
+          )}
           {niveau === "Collège" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe précise <span style={{ color: "#E11D48" }}>*</span></div>
@@ -1080,8 +1482,87 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
 
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
-            <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Affine la prescription (medecine, ingenieurs, droit...)</div>
-            <Chips options={getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno)} selected={matieres} onChange={setMatieres} color="#DA4F00" />
+            <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Clique sur un groupe pour voir les matières</div>
+            {(() => {
+              const dispos = getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno);
+              // Groupes de matières
+              const GROUPS = [
+                { id: "scientifique", label: "🔬 Scientifique", color: "#0B68B4",
+                  mats: ["Maths","Maths expertes","Maths complémentaires","Physique","Chimie","SVT","NSI","Sciences de l'ingénieur","Biologie-Écologie","Biotechnologies","Technologie","Informatique"] },
+                { id: "litteraire", label: "📖 Littéraire", color: "#D97706",
+                  mats: ["Français","Littérature","Philosophie","HLP","LLCE","Latin","Grec ancien"] },
+                { id: "langues", label: "🌍 Langues", color: "#16A34A",
+                  mats: ["Anglais","Espagnol","Allemand","Italien","Chinois","Japonais","Russe","Arabe","Portugais"] },
+                { id: "sciences_humaines", label: "🏛️ Sciences Humaines", color: "#7C3AED",
+                  mats: ["Histoire-Géo","HGGSP","SES","EMC"] },
+                { id: "economie_droit", label: "💼 Éco & Droit", color: "#0369A1",
+                  mats: ["Économie","Management","Droit","Gestion","Comptabilité","Marketing","Finance","Sciences de gestion"] },
+                { id: "autre", label: "📚 Autre", color: "#71717A",
+                  mats: ["📚 Soutien scolaire (toutes matières)","Autre"] },
+              ];
+              // Construire les groupes visibles (uniquement ceux qui ont des matières dispo)
+              const visibleGroups = GROUPS.map(g => ({
+                ...g,
+                mats: g.mats.filter(m => dispos.includes(m))
+              })).filter(g => g.mats.length > 0);
+              // Matières non classées → dans "Autre"
+              const knownMats = new Set(GROUPS.flatMap(g => g.mats));
+              const unclassified = dispos.filter(m => !knownMats.has(m));
+              if (unclassified.length > 0) {
+                const autreGrp = visibleGroups.find(g => g.id === "autre");
+                if (autreGrp) autreGrp.mats = [...autreGrp.mats, ...unclassified];
+                else visibleGroups.push({ id: "autre", label: "📚 Autre", color: "#71717A", mats: unclassified });
+              }
+
+              return (
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {visibleGroups.map(g => {
+                      const nbSelected = g.mats.filter(m => matieres.includes(m)).length;
+                      const isOpen = openMatGroup === g.id;
+                      return (
+                        <button key={g.id} onClick={() => setOpenMatGroup(isOpen ? null : g.id)}
+                          style={{
+                            padding: "10px 12px", borderRadius: 10,
+                            border: `2px solid ${isOpen ? g.color : nbSelected > 0 ? g.color : "#E4E4E7"}`,
+                            background: isOpen ? g.color + "12" : nbSelected > 0 ? g.color + "08" : "#FAFAFA",
+                            textAlign: "left", cursor: "pointer", transition: "all .15s",
+                            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
+                          }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: isOpen || nbSelected > 0 ? g.color : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{g.label}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            {nbSelected > 0 && <span style={{ fontSize: 10, background: g.color, color: "#fff", borderRadius: 99, padding: "1px 7px", fontWeight: 800 }}>{nbSelected}</span>}
+                            <span style={{ fontSize: 11, color: isOpen ? g.color : "#A1A1AA", transition: "transform .2s", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {openMatGroup && (() => {
+                    const g = visibleGroups.find(gg => gg.id === openMatGroup);
+                    if (!g) return null;
+                    return (
+                      <div style={{ marginTop: 10, padding: "10px 12px", background: g.color + "08", border: `1px dashed ${g.color}`, borderRadius: 10 }}>
+                        <Chips options={g.mats} selected={matieres} onChange={setMatieres} color={g.color} />
+                      </div>
+                    );
+                  })()}
+                  {matieres.length > 0 && (
+                    <div style={{ marginTop: 10, padding: "8px 10px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#15803D", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>✓ Matières sélectionnées</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {matieres.map(m => (
+                          <span key={m} style={{ fontSize: 11, background: "#fff", color: "#15803D", padding: "3px 10px", borderRadius: 99, border: "1px solid #86EFAC", display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
+                            {m}
+                            <button onClick={() => setMatieres(matieres.filter(x => x !== m))} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717A", fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </C>
 
@@ -1104,8 +1585,8 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
           </div>
         </C>}
 
-        {/* Profil psychologique (Step 2) */}
-        {step === 2 && <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
+        {/* Profil psychologique */}
+        <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🧠 Profil Psychologique <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
           </div>
@@ -1123,10 +1604,10 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
               );
             })}
           </div>
-        </C>}
+        </C>
 
         {/* Neuroatypique toggle (Step 1) */}
-        {step === 1 && <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: neuroActive ? 12 : 0 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
@@ -1171,25 +1652,10 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
               </div>
             </div>
           )}
-        </C>}
-
-        {/* Besoin d'accompagnement (Step 2) */}
-        {step === 2 && <C style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-            ⚖️ Besoin d'accompagnement <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Positionnez le curseur selon le besoin de l'eleve</div>
-          <input type="range" min={0} max={10} value={accomp} onChange={e => setAccomp(Number(e.target.value))}
-            style={{ width: "100%", accentColor: accompColor, background: `linear-gradient(to right, #16A34A ${accomp * 10}%, #E4E4E7 ${accomp * 10}%)` }} />
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 700 }}>🫶 Douceur / Empathie</span>
-            <Pill color={accompColor}>{accompLabel}</Pill>
-            <span style={{ fontSize: 12, color: "#DA4F00", fontWeight: 700 }}>💪 Fermete / Cadre</span>
-          </div>
-        </C>}
+        </C>
 
         {/* Objectif de vie (Step 1) */}
-        {step === 1 && <C style={{ marginBottom: 12 }}>
+        <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🎯 Objectif de vie <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
           </div>
@@ -1212,19 +1678,137 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
               );
             })}
           </div>
-        </C>}
+        </C>
 
-        {/* Souhait parent (Step 3) */}
-        {step === 2 && <C style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>
-            👨‍👩‍👧 Souhait du parent <span style={{ fontSize: 12, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
+        {/* Moyennes (Step 1, optionnel) */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            📊 Moyennes <span style={{ fontSize: 11, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
           </div>
-          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 10 }}>Quel type de prof demande-t-il ?</div>
-          <Chips options={["Pas d'avis", ...PROF_TYPES]} selected={souhaitParent} onChange={setSouhaitParent} color="#DA4F00" single={true} />
-        </C>}
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Moyenne générale et par matière choisie</div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", display: "block", marginBottom: 4 }}>Moyenne générale / 20</label>
+            <input type="number" min="0" max="20" step="0.5" value={moyenneGenerale} onChange={e => setMoyenneGenerale(e.target.value)}
+              placeholder="ex: 12.5"
+              style={{ width: "100%", fontSize: 13, border: "1px solid #E4E4E7", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box" }} />
+          </div>
+          {(() => {
+            const matsPourMoy = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
+            if (matsPourMoy.length === 0) return null;
+            return (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", marginBottom: 6 }}>Moyennes par matière</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {matsPourMoy.map(mat => (
+                    <div key={mat}>
+                      <label style={{ fontSize: 10, color: "#71717A", display: "block", marginBottom: 3 }}>{mat}</label>
+                      <input type="number" min="0" max="20" step="0.5"
+                        value={moyennesMat[mat] || ""}
+                        onChange={e => setMoyennesMat({ ...moyennesMat, [mat]: e.target.value })}
+                        placeholder="/20"
+                        style={{ width: "100%", fontSize: 12, border: "1px solid #E4E4E7", borderRadius: 6, padding: "7px 10px", boxSizing: "border-box" }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </C>
 
-        {/* Profil du parent (Step 3) */}
-        {step === 2 && <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
+        {/* Disponibilités famille */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            📅 Disponibilités <span style={{ fontSize: 11, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
+          </div>
+          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 10 }}>Quand la famille est disponible pour les cours</div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", marginBottom: 6 }}>Jours</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"].map(j => {
+                const on = dispoJours.includes(j);
+                return <button key={j} onClick={() => setDispoJours(on ? dispoJours.filter(x=>x!==j) : [...dispoJours, j])}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${on?"#16A34A":"#E4E4E7"}`, background: on?"#F0FDF4":"#FAFAFA", cursor: "pointer", fontSize: 11, fontWeight: 700, color: on?"#15803D":"#71717A", transition: "all .15s" }}>
+                  {j.slice(0,3)}
+                </button>;
+              })}
+            </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", marginBottom: 6 }}>Créneaux</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {[
+                ["Matin (8h-12h)","🌅"],
+                ["Midi (12h-14h)","☀️"],
+                ["Après-midi (14h-17h)","🌤️"],
+                ["Fin de journée (17h-19h)","🌇"],
+                ["Soir (19h-21h)","🌙"],
+              ].map(([c, em]) => {
+                const on = dispoCreneaux.includes(c);
+                return <button key={c} onClick={() => setDispoCreneaux(on ? dispoCreneaux.filter(x=>x!==c) : [...dispoCreneaux, c])}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${on?"#0B68B4":"#E4E4E7"}`, background: on?"#EFF6FF":"#FAFAFA", cursor: "pointer", fontSize: 11, fontWeight: 700, color: on?"#1E40AF":"#71717A", transition: "all .15s" }}>
+                  {em} {c}
+                </button>;
+              })}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", marginBottom: 4 }}>Précision (optionnel)</div>
+            <input type="text" value={dispoNote} onChange={e => setDispoNote(e.target.value)}
+              placeholder="Ex: Pas le mercredi après-midi, uniquement en visio..."
+              style={{ width: "100%", fontSize: 12, border: "1px solid #E4E4E7", borderRadius: 8, padding: "8px 12px", boxSizing: "border-box" }} />
+          </div>
+        </C>
+
+        {/* 2e créneau de disponibilité */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            📅 2e créneau <span style={{ fontSize: 11, fontWeight: 400, color: "#A1A1AA" }}>(optionnel, si la famille a 2 enfants ou 2 créneaux)</span>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", marginBottom: 4 }}>Jours</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"].map(j => {
+                const on = dispoJours2.includes(j);
+                return <button key={j} onClick={() => setDispoJours2(on ? dispoJours2.filter(x=>x!==j) : [...dispoJours2, j])}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${on?"#0B68B4":"#E4E4E7"}`, background: on?"#EFF6FF":"#FAFAFA", cursor: "pointer", fontSize: 11, fontWeight: 700, color: on?"#1E40AF":"#71717A" }}>{j.slice(0,3)}</button>;
+              })}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", marginBottom: 4 }}>Créneaux</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {[["Matin (8h-12h)","🌅"],["Midi (12h-14h)","☀️"],["Après-midi (14h-17h)","🌤️"],["Fin de journée (17h-19h)","🌇"],["Soir (19h-21h)","🌙"]].map(([c, em]) => {
+                const on = dispoCreneaux2.includes(c);
+                return <button key={c} onClick={() => setDispoCreneaux2(on ? dispoCreneaux2.filter(x=>x!==c) : [...dispoCreneaux2, c])}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: `2px solid ${on?"#0B68B4":"#E4E4E7"}`, background: on?"#EFF6FF":"#FAFAFA", cursor: "pointer", fontSize: 11, fontWeight: 700, color: on?"#1E40AF":"#71717A" }}>{em} {c}</button>;
+              })}
+            </div>
+          </div>
+        </C>
+
+        {/* Budget famille */}
+        <C style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>💰 Budget famille <span style={{ fontSize: 11, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span></div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[
+              { id: "petit", emoji: "💸", label: "Serré" },
+              { id: "moyen", emoji: "💰", label: "Moyen" },
+              { id: "gros", emoji: "🤑", label: "Confortable" },
+            ].map(b => {
+              const on = budget === b.id;
+              return (
+                <button key={b.id} onClick={() => setBudget(on ? "" : b.id)}
+                  style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: `2px solid ${on ? "#D97706" : "#E4E4E7"}`, background: on ? "#FFFBEB" : "#FAFAFA", cursor: "pointer", textAlign: "center" }}>
+                  <div style={{ fontSize: 18, marginBottom: 2 }}>{b.emoji}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: on ? "#92400E" : "#71717A", fontFamily: "'Outfit',sans-serif" }}>{b.label}</div>
+                </button>
+              );
+            })}
+          </div>
+        </C>
+
+        {/* Profil du parent (Step 2) */}
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             🎭 Profil du parent
             <span style={{ fontSize: 11, background: "#FFFBEB", color: "#D97706", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
@@ -1248,34 +1832,129 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
               );
             })}
           </div>
-        </C>}
+        </C>
 
-        {/* ── STEP 3 : Lien prof Sherpas + Analyse IA ── */}
-        {step === 3 && <C style={{ marginBottom: 12, borderLeft: "4px solid #7C3AED" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-            🔗 Lien du prof Sherpas
-            <span style={{ fontSize: 11, background: "#F5F3FF", color: "#7C3AED", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>IA</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Colle l'URL du profil prof — l'IA génère des arguments personnalisés en croisant Step 1 + Step 2</div>
-          <input
-            type="url"
-            value={profUrl}
-            onChange={e => setProfUrl(e.target.value)}
-            placeholder="https://les-sherpas.com/profs/..."
-            style={{ width: "100%", fontSize: 13, border: "1px solid #DDD6FE", borderRadius: 10, padding: "10px 14px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif", marginBottom: 10 }}
-          />
-          <Btn onClick={analyzeProfWithAI} disabled={aiLoading || !profUrl.trim()} full color="#7C3AED" style={{ padding: "12px", borderRadius: 99, fontSize: 14 }}>
-            {aiLoading ? "🤖 Analyse en cours..." : "✨ Analyser avec l'IA Gemini"}
+        {/* ── STEP 3 : Recherche automatique de profs via IA ── */}
+        <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A", background: "#F0FDF4" }}>
+          <Btn onClick={() => {
+            // Utilise le modeCours sélectionné plus haut
+            if (modeCours === "domicile" && villeClient) { setSearchMode("atHome"); setSearchCity(villeClient); }
+            else { setSearchMode("online"); }
+            setTimeout(searchProfsWithAI, 100);
+          }} disabled={searchLoading || !niveau || matieres.length === 0} full color="#16A34A" style={{ padding: "12px", borderRadius: 99, fontSize: 14 }}>
+            {searchLoading ? "🔎 Recherche en cours..." : "🔍 Trouver un prof avec l'IA"}
           </Btn>
-          {aiError && <div style={{ marginTop: 10, padding: "10px 12px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: 12, color: "#B91C1C" }}>{aiError}</div>}
-        </C>}
+          {modeCours === "domicile" && villeClient && (
+            <Btn onClick={signalerPasDeProf} outline color="#E11D48" style={{ padding: "10px", borderRadius: 99, fontSize: 12, marginTop: 8, width: "100%" }}>
+              {noProfSignaled ? "✅ Zone signalée !" : `📍 Pas de prof à domicile à ${villeClient}`}
+            </Btn>
+          )}
+          {searchError && <div style={{ marginTop: 8, padding: "9px 12px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: 11, color: "#B91C1C" }}>{searchError}</div>}
+          {searchResults && (
+            <div style={{ marginTop: 12 }}>
+              {searchResults.verdict && (
+                <div style={{ marginBottom: 10, padding: "8px 12px", background: "#fff", borderRadius: 8, fontSize: 12, color: "#3F3F46", fontStyle: "italic", borderLeft: "3px solid #16A34A" }}>
+                  💬 {searchResults.verdict}
+                </div>
+              )}
+              {(searchResults.results || []).map((r, i) => {
+                const col = r.score >= 75 ? "#16A34A" : r.score >= 50 ? "#D97706" : "#E11D48";
+                // Slugify le titre pour construire l'URL Sherpas : /t/titre-slugifie
+                const slug = (r.titre || "")
+                  .toLowerCase()
+                  .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire accents
+                  .replace(/['']/g, "") // retire apostrophes
+                  .replace(/[^a-z0-9]+/g, "-") // non-alphanum → tiret
+                  .replace(/^-+|-+$/g, "") // trim tirets
+                  .replace(/-+/g, "-"); // collapse tirets
+                const profileUrl = slug ? `https://sherpas.com/t/${slug}?locationOfInterest=online` : null;
+                return (
+                  <div key={i} style={{ marginBottom: 8, padding: "10px 12px", background: "#fff", borderRadius: 8, border: "1px solid #C0EAD3" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>#{i + 1} · {r.nom || "Prof"}{r.prix ? ` · ${r.prix}` : ""}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: col, fontFamily: "'Outfit',sans-serif" }}>{r.score}/100</div>
+                    </div>
+                    {r.titre && <div style={{ fontSize: 12, color: "#3F3F46", fontWeight: 600, marginBottom: 4, lineHeight: 1.4 }}>{r.titre}</div>}
+                    {r.experience && <div style={{ fontSize: 10, color: "#71717A", marginBottom: 4 }}>📊 {r.experience}</div>}
+                    {r.raison && <div style={{ fontSize: 11, color: "#3F3F46", fontStyle: "italic", marginBottom: 6 }}>💡 {r.raison}</div>}
+                    {profileUrl && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <a href={profileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", padding: "4px 10px", background: "#EFF6FF", color: "#0B68B4", borderRadius: 6, fontSize: 10, fontWeight: 700, textDecoration: "none", border: "1px solid #BFDBFE" }}>🔗 Voir profil</a>
+                        <button onClick={() => { setProfUrl(profileUrl); }} style={{ padding: "4px 10px", background: "#7C3AED", color: "#fff", border: "none", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>✨ Analyser en détail</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {searchResults._searchUrl && (
+                <a href={searchResults._searchUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, padding: "8px 12px", background: "#16A34A", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>👉 Voir les profils sur sherpas.com</a>
+              )}
+            </div>
+          )}
+        </C>
 
-        {/* ── STEP 3 : Résultats IA ── */}
-        {step === 3 && aiArguments && <C style={{ marginBottom: 12, background: "#FAF5FF", border: "2px solid #DDD6FE", padding: "16px 18px" }}>
+        {/* ── Résultats IA (si profUrl renseigné via recherche auto) ── */}
+        {aiArguments && <C style={{ marginBottom: 12, background: "#FAF5FF", border: "2px solid #DDD6FE", padding: "16px 18px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 900, color: "#6D28D9", fontFamily: "'Outfit',sans-serif" }}>🎯 Arguments personnalisés</div>
-            <CopyBtn text={Object.entries(aiArguments).map(([k, v]) => `${k.toUpperCase()} :\n${v}`).join("\n\n")} />
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#6D28D9", fontFamily: "'Outfit',sans-serif" }}>🎯 Analyse IA du profil</div>
+            <CopyBtn text={JSON.stringify(aiArguments, null, 2)} />
           </div>
+
+          {/* SCORE GLOBAL + VERDICT */}
+          {typeof aiArguments.matchScore === "number" && (() => {
+            const s = aiArguments.matchScore;
+            const color = s >= 75 ? "#16A34A" : s >= 50 ? "#D97706" : "#E11D48";
+            const bg = s >= 75 ? "#F0FDF4" : s >= 50 ? "#FFFBEB" : "#FEF2F2";
+            const border = s >= 75 ? "#86EFAC" : s >= 50 ? "#FDE68A" : "#FCA5A5";
+            return <div style={{ marginBottom: 14, padding: "16px 18px", background: bg, border: `2px solid ${border}`, borderRadius: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+                <div style={{ fontSize: 36, fontWeight: 900, color, fontFamily: "'Outfit',sans-serif" }}>{s}<span style={{ fontSize: 16, opacity: .7 }}>/100</span></div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Score global de match</div>
+                  <div style={{ height: 8, background: "#fff", borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${s}%`, background: color, transition: "width .4s" }} />
+                  </div>
+                </div>
+              </div>
+              {aiArguments.verdict && <div style={{ fontSize: 13, color: "#3F3F46", fontWeight: 600, marginTop: 4 }}>{aiArguments.verdict}</div>}
+            </div>;
+          })()}
+
+          {/* SCORES PAR CRITÈRE */}
+          {aiArguments.criteria && (
+            <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #DDD6FE" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6D28D9", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>📊 Détail par critère</div>
+              {[
+                ["matieres", "📚 Matières"],
+                ["niveau", "🎓 Niveau"],
+                ["parcours", "🎖️ Parcours académique"],
+                ["experience", "⭐ Expérience"],
+                ["profilPsy", "🧠 Profil psy"],
+                ["specifique", "🎯 Spécifique"],
+              ].map(([key, label]) => {
+                const c = aiArguments.criteria[key];
+                if (!c) return null;
+                const sc = c.score || 0;
+                const col = sc >= 75 ? "#16A34A" : sc >= 50 ? "#D97706" : "#E11D48";
+                return <div key={key} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#3F3F46" }}>{label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: col, fontFamily: "'Outfit',sans-serif" }}>{sc}/100</span>
+                  </div>
+                  <div style={{ height: 5, background: "#F4F4F5", borderRadius: 99, overflow: "hidden", marginBottom: 4 }}>
+                    <div style={{ height: "100%", width: `${sc}%`, background: col, transition: "width .3s" }} />
+                  </div>
+                  {c.evidence && (
+                    <div style={{ fontSize: 10, color: "#3F3F46", background: "#F4F4F5", padding: "4px 8px", borderRadius: 4, marginBottom: 3, borderLeft: `2px solid ${col}` }}>
+                      📌 <span style={{ fontStyle: "italic" }}>{c.evidence}</span>
+                    </div>
+                  )}
+                  {c.comment && <div style={{ fontSize: 10, color: "#71717A", fontStyle: "italic", lineHeight: 1.4 }}>{c.comment}</div>}
+                </div>;
+              })}
+            </div>
+          )}
+
           {aiArguments.summary && (
             <div style={{ marginBottom: 12, padding: "10px 12px", background: "#fff", borderRadius: 8, fontSize: 12, color: "#3F3F46", fontStyle: "italic", borderLeft: "3px solid #7C3AED" }}>
               📋 {aiArguments.summary}
@@ -1293,27 +1972,110 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
               <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.6 }}>{aiArguments[key]}</div>
             </div>
           ))}
+
+          {/* Toggle contenu brut récupéré (debug) */}
+          {aiRawContent && (
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setShowRawContent(!showRawContent)}
+                style={{ background: "none", border: "1px dashed #A1A1AA", borderRadius: 6, padding: "6px 12px", fontSize: 11, color: "#71717A", cursor: "pointer", fontFamily: "'Inter',sans-serif" }}>
+                {showRawContent ? "🔒 Masquer" : "🔍 Voir"} le contenu brut récupéré (debug)
+              </button>
+              {showRawContent && (
+                <pre style={{ marginTop: 8, padding: "10px 12px", background: "#18181B", color: "#E4E4E7", borderRadius: 8, fontSize: 10, lineHeight: 1.5, maxHeight: 300, overflow: "auto", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                  {aiRawContent}
+                </pre>
+              )}
+            </div>
+          )}
         </C>}
 
-        {/* Stock (Step 1) */}
-        <C style={{ marginBottom: 14, background: "#F0FDF4", border: "1px solid #C0EAD3", padding: "12px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-            <Logo size={15} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>Stock plateforme Sherpas (temps reel)</span>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-            {stock.map(s => (
-              <span key={s.typ} style={{
-                fontSize: 11, padding: "3px 10px", borderRadius: 99,
-                background: s.dispo ? "#D1FAE5" : "#FEE2E2",
-                color: s.dispo ? "#15803D" : "#B91C1C", fontWeight: 600,
-                border: `1px solid ${s.dispo ? "#86EFAC" : "#FCA5A5"}`,
-              }}>
-                {s.dispo ? "✓" : "✗"} {s.typ} ({s.nb})
-              </span>
-            ))}
-          </div>
-        </C>
+        {/* ── SCRIPT CRM moved to top after tabs ── */}
+        {false && (() => {
+          if (!niveau && !prenom) return null;
+          const ppLab = PARENT_PROFILES.find(p => p.id === parentProfile)?.label || "";
+          const lines = [];
+          if (modeCours) lines.push(`📍 Mode : ${modeCours === "domicile" ? "À domicile" + (villeClient ? " — " + villeClient : "") : modeCours === "enligne" ? "En ligne" : "Peu importe"}`);
+          lines.push(`🎓 DIAGNOSTIC ACADÉMIQUE`);
+          if (niveau) {
+            let niv = niveau;
+            if (classe) niv += ` · ${classe}`;
+            if (brevetPrep) niv += ` (prep brevet)`;
+            if (serieTechno) niv += ` · ${serieTechno}`;
+            if (spes.length > 0) niv += ` · spés ${spes.join("/")}`;
+            if (prepaFiliere) niv += ` · ${prepaAnnee ? prepaAnnee + " " : ""}prépa ${prepaFiliere}`;
+            if (univFiliere) niv += ` · ${univFiliere}`;
+            lines.push(`• Niveau : ${niv}`);
+          }
+          if (matieres.length > 0) lines.push(`• Matières : ${matieres.join(", ")}`);
+          if (parcoursupCible) lines.push(`• Parcoursup : ${parcoursupCible}${parcoursupEcole ? " — " + parcoursupEcole : ""}`);
+          if (objectifVie) lines.push(`• Objectif : ${objectifVie}`);
+          if (nbProfs) lines.push(`• Nombre de profs souhaité : ${nbProfs}`);
+          if (neuroActive && neuroTrouble) lines.push(`• Neuroatypique : ${neuroTrouble}`);
+          // Moyennes
+          const hasMoyMat = Object.keys(moyennesMat).some(k => moyennesMat[k]);
+          if (moyenneGenerale || hasMoyMat) {
+            lines.push(``);
+            lines.push(`📊 MOYENNES`);
+            if (moyenneGenerale) lines.push(`• Générale : ${moyenneGenerale}/20`);
+            matieres.forEach(m => {
+              if (moyennesMat[m]) lines.push(`• ${m} : ${moyennesMat[m]}/20`);
+            });
+          }
+          lines.push(``);
+          // Disponibilités
+          if (dispoJours.length > 0 || dispoCreneaux.length > 0 || dispoNote) {
+            lines.push(`📅 DISPONIBILITÉS`);
+            if (dispoJours.length > 0) lines.push(`• Créneaux 1 : ${dispoJours.join(", ")} — ${dispoCreneaux.join(", ")}`);
+            if (dispoNote) lines.push(`• Note : ${dispoNote}`);
+            if (dispoJours2.length > 0 || dispoCreneaux2.length > 0) lines.push(`• Créneaux 2 : ${dispoJours2.join(", ")} — ${dispoCreneaux2.join(", ")}`);
+            lines.push(``);
+          }
+          if (budget) {
+            const budgetLabel = { petit: "Budget serré", moyen: "Budget moyen", gros: "Budget confortable" }[budget];
+            lines.push(`💰 ${budgetLabel}`);
+            lines.push(``);
+          }
+          if (notePerso) {
+            lines.push(`📝 NOTE`);
+            lines.push(`${notePerso}`);
+            lines.push(``);
+          }
+          if (psycho) {
+            lines.push(`🧠 PROFIL PSY ÉLÈVE`);
+            lines.push(`• Personnalité : ${psycho}`);
+            lines.push(``);
+          }
+          if (parentProfile || souhaitParent) {
+            lines.push(`👨‍👩‍👧 PROFIL FAMILLE`);
+            if (ppLab) lines.push(`• Profil parent : ${ppLab}`);
+            if (souhaitParent && souhaitParent !== "Pas d'avis") lines.push(`• Souhait : ${souhaitParent}`);
+            lines.push(``);
+          }
+          // Recommandation
+          // Analyse IA prof
+          if (aiArguments) {
+            lines.push(`🤖 MATCH PROF PROPOSÉ`);
+            if (profUrl) lines.push(`URL : ${profUrl}`);
+            if (typeof aiArguments.matchScore === "number") lines.push(`Score : ${aiArguments.matchScore}/100`);
+            if (aiArguments.verdict) lines.push(`Verdict : ${aiArguments.verdict}`);
+            if (aiArguments.summary) lines.push(`Profil : ${aiArguments.summary}`);
+            lines.push(``);
+          }
+          lines.push(`— Fiche générée via Sherpas Sales Center V5`);
+          const scriptText = lines.join("\n");
+          return <C style={{ marginBottom: 12, background: "#F0F9FF", border: "2px solid #BAE6FD", padding: "12px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>📋</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#0369A1", fontFamily: "'Outfit',sans-serif" }}>Script CRM — Notes d'appel</div>
+                  <div style={{ fontSize: 10, color: "#0284C7" }}>Se met à jour en live — clique pour copier</div>
+                </div>
+              </div>
+              <CopyBtn text={scriptText} />
+            </div>
+          </C>;
+        })()}
 
         {/* Matieres compatibility analysis (shown in step 1 if applicable) */}
         {matAnalysis && matAnalysis.type === "college_polyvalent" && (()=>{
@@ -1429,9 +2191,7 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
 
         {/* Bottom nav */}
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          {step > 1 && <Btn onClick={() => setStep(step - 1)} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>← Step {step - 1}</Btn>}
-          {step < 3 && <Btn onClick={() => setStep(step + 1)} flex={1} color="#16A34A" style={{ padding: "13px", borderRadius: 99, fontSize: 14 }}>Step {step + 1} →</Btn>}
-          {step === 3 && <Btn onClick={resetAndSave} flex={1} outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>↺ Nouveau diagnostic</Btn>}
+          <Btn onClick={resetAndSave} full outline color="#71717A" style={{ padding: "11px", borderRadius: 99, fontSize: 13 }}>↺ Nouveau diagnostic</Btn>
         </div>
       </div>
     );
@@ -1548,219 +2308,14 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
           </div>
         </C>
 
-        {/* ── GUIDE D'ARGUMENTATION (Step 3 uniquement) ── */}
-        {step === 3 && (()=>{
-          const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, prepaAnnee, univFiliere, serieTechno };
-          const profProfilLabel = profProposePath.length > 0 ? profProposePath[profProposePath.length - 1] : "";
-          const guide = getArgumentationGuide(parentProfile || "rationnel", nom, profProposeNom, diagCtx, profProfilLabel);
-          return <C style={{ marginBottom: 12, background: "#FFFBEB", border: "2px solid #FCD34D", padding: openGuide ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenGuide(!openGuide)}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 20 }}>🎤</span>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Guide d'argumentation</div>
-                  <div style={{ fontSize: 11, color: "#A16207" }}>Profil parent : {ppLabel}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: 16, color: "#92400E", transition: "transform .2s", transform: openGuide ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
-            </div>
-            {openGuide && <div onClick={e => e.stopPropagation()} style={{ marginTop: 14 }}>
-
-            {/* SELECTEUR HIERARCHIQUE PROF PROPOSE */}
-            <div style={{ marginBottom: 14, padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #FDE68A" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>👨‍🏫 Profil du professeur proposé</div>
-
-              {/* Breadcrumb */}
-              {profProposePath.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, padding: "6px 10px", background: "#FFFBEB", borderRadius: 8, border: "1px solid #FDE68A", flexWrap: "wrap" }}>
-                  <button onClick={() => setProfProposePath([])} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#D97706", fontWeight: 700 }}>↺ Reset</button>
-                  {profProposePath.map((p, i) => (
-                    <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ color: "#A1A1AA", fontSize: 11 }}>›</span>
-                      <button onClick={() => setProfProposePath(profProposePath.slice(0, i + 1))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#92400E", fontWeight: 600, fontFamily: "'Outfit',sans-serif" }}>{p}</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Cascade */}
-              {(()=>{
-                let currentLevel = PROF_HIERARCHY;
-                for (const key of profProposePath) {
-                  if (currentLevel[key]?.children) currentLevel = currentLevel[key].children;
-                  else return null;
-                }
-                const entries = Object.entries(currentLevel || {});
-                if (entries.length === 0) return null;
-                return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  {entries.map(([key, val]) => {
-                    const hasChildren = val.children && Object.keys(val.children).length > 0;
-                    return (
-                      <button key={key} onClick={() => setProfProposePath([...profProposePath, key])} style={{ padding: "9px 12px", borderRadius: 9, border: "1px solid #FDE68A", background: "#FFFBEB", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 14 }}>{val.emoji || "📌"}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif", flex: 1 }}>{key}</span>
-                          {hasChildren && <span style={{ fontSize: 12, color: "#A1A1AA" }}>›</span>}
-                        </div>
-                        {val.description && <div style={{ fontSize: 10, color: "#A1A1AA", marginTop: 3, marginLeft: 20 }}>{val.description}</div>}
-                      </button>
-                    );
-                  })}
-                </div>;
-              })()}
-
-              {/* Selection finale */}
-              {profProposePath.length >= 2 && (()=>{
-                const last = profProposePath[profProposePath.length - 1];
-                let node = PROF_HIERARCHY;
-                for (let i = 0; i < profProposePath.length - 1; i++) node = node[profProposePath[i]]?.children || {};
-                const finalNode = node[last];
-                return <div style={{ marginTop: 10, padding: "10px 12px", background: "#F0FDF4", borderRadius: 8, border: "1px solid #C0EAD3" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 16 }}>{finalNode?.emoji || "✓"}</span>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#15803D", fontFamily: "'Outfit',sans-serif" }}>{last}</div>
-                  </div>
-                  {finalNode?.description && <div style={{ fontSize: 11, color: "#71717A", marginTop: 3, marginLeft: 22 }}>{finalNode.description}</div>}
-                </div>;
-              })()}
-            </div>
-
-
-            {/* Questions à poser */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>❓ Questions à poser à la famille</div>
-                <CopyBtn text={guide.questions.join("\n\n")} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {guide.questions.map((q, i) => (
-                  <div key={i} style={{ fontSize: 13, color: "#3F3F46", padding: "9px 12px", background: "rgba(255,255,255,.7)", borderRadius: 8, borderLeft: "3px solid #D97706", fontStyle: "italic" }}>
-                    {q}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Arguments */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>💪 Arguments à utiliser</div>
-                <CopyBtn text={guide.arguments.join("\n\n")} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {guide.arguments.map((a, i) => (
-                  <div key={i} style={{ fontSize: 13, color: "#3F3F46", padding: "9px 12px", background: "rgba(255,255,255,.7)", borderRadius: 8, borderLeft: "3px solid #16A34A", fontStyle: "italic" }}>
-                    {a}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Objections */}
-            {guide.objections.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>🛡️ Gestion des objections</div>
-                  <CopyBtn text={guide.objections.join("\n\n")} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {guide.objections.map((o, i) => (
-                    <div key={i} style={{ fontSize: 12, color: "#3F3F46", padding: "9px 12px", background: "rgba(255,255,255,.7)", borderRadius: 8, borderLeft: "3px solid #0B68B4" }}>
-                      {o}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* GUIDE NEURO (PAP) */}
-            {neuroActive && neuroTrouble && (()=>{
-              const ng = getNeuroGuide(neuroTrouble, nom, niveau);
-              if (!ng) return null;
-              return <div style={{ marginBottom: 14, padding: "14px 16px", background: "#F5F3FF", borderRadius: 12, border: "2px solid #DDD6FE" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 18 }}>🧠</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>Guide Neuro — {neuroTrouble}</div>
-                    <div style={{ fontSize: 10, color: "#A855F7" }}>Inspiré du PAP (Plan d'Accompagnement Personnalisé)</div>
-                  </div>
-                </div>
-
-                {/* Questions specifiques neuro */}
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>❓ Questions spécifiques {neuroTrouble}</div>
-                    <CopyBtn text={ng.questions.join("\n\n")} />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    {ng.questions.map((q, i) => (
-                      <div key={i} style={{ fontSize: 12, color: "#3F3F46", padding: "8px 10px", background: "rgba(255,255,255,.7)", borderRadius: 7, borderLeft: "3px solid #7C3AED", fontStyle: "italic" }}>
-                        {q}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Arguments specifiques neuro */}
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>💪 Arguments {neuroTrouble} (PAP)</div>
-                    <CopyBtn text={ng.arguments.join("\n\n")} />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    {ng.arguments.map((a, i) => (
-                      <div key={i} style={{ fontSize: 12, color: "#3F3F46", padding: "8px 10px", background: "rgba(255,255,255,.7)", borderRadius: 7, borderLeft: "3px solid #16A34A", fontStyle: "italic" }}>
-                        {a}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Adaptations PAP officielles */}
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>📋 Adaptations PAP recommandées</div>
-                    <CopyBtn text={ng.adaptationsPAP.map(a => `• ${a}`).join("\n")} />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {ng.adaptationsPAP.map((a, i) => (
-                      <div key={i} style={{ fontSize: 11, color: "#3F3F46", padding: "6px 10px", background: "rgba(255,255,255,.7)", borderRadius: 6, display: "flex", gap: 6 }}>
-                        <span style={{ color: "#16A34A", fontWeight: 700 }}>✓</span>
-                        <span>{a}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>;
-            })()}
-
-            {/* FOMO */}
-            <div style={{ padding: "14px 16px", background: "linear-gradient(135deg,#E11D48,#F97316)", borderRadius: 12, color: "#fff" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>⚡</span>
-                  <div style={{ fontSize: 13, fontWeight: 900, fontFamily: "'Outfit',sans-serif" }}>FOMO — Créer l'urgence</div>
-                </div>
-                <CopyBtn text={guide.fomo} />
-              </div>
-              <div style={{ fontSize: 13, lineHeight: 1.7, fontStyle: "italic", padding: "10px 14px", background: "rgba(255,255,255,.18)", borderRadius: 10 }}>
-                {guide.fomo}
-              </div>
-              <div style={{ fontSize: 10, opacity: .85, marginTop: 8 }}>💡 À utiliser quand le parent hésite — crée la peur de manquer l'opportunité</div>
-            </div>
-            </div>}
-          </C>;
-        })()}
-
         {/* ── BOITE A OUTILS FAMILLE : echeances + programmes ── */}
         {(()=>{
           const echeances = niveau ? getEcheances(niveau) : [];
           const matieresWithProg = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
           if (echeances.length === 0 && matieresWithProg.length === 0) return null;
-          // Determine la classe pour le programme (le helper getProgramme fait un match intelligent)
           const classeForProg = classe === "Première" ? "Première (spé)"
             : classe === "Terminale" ? "Terminale (spé)"
-            : classe; // 6e/5e/4e/3e/Seconde restent tels quels, le helper trouve la bonne key
+            : classe;
           return <C style={{ marginBottom: 12, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: openToolkit ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenToolkit(!openToolkit)}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1808,58 +2363,32 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
                     const details = getProgrammeDetails(mat, niveau);
                     return (
                       <div key={mat} style={{ padding: "12px 14px", background: "#fff", borderRadius: 8, border: "1px solid #BFDBFE" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "#1E40AF", fontFamily: "'Outfit',sans-serif" }}>📖 {mat}{classeLabel}</div>
-                          <CopyBtn text={
-                            `📖 ${mat}${classeLabel}\n\n` +
-                            (details?.objectifs ? `🎯 OBJECTIFS\n${details.objectifs}\n\n` : "") +
-                            `📚 CHAPITRES\n${items.map(i => `• ${i}`).join("\n")}\n\n` +
-                            (details?.competences ? `🧠 COMPÉTENCES\n${details.competences.map(c => `• ${c}`).join("\n")}\n\n` : "") +
-                            (details?.difficultes ? `⚠️ POINTS DIFFICILES\n${details.difficultes.map(d => `• ${d}`).join("\n")}\n\n` : "") +
-                            (details?.conseils ? `💡 CONSEIL SHERPAS\n${details.conseils}` : "")
-                          } />
-                        </div>
-
-                        {/* Objectifs de l'annee */}
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#1E40AF", marginBottom: 8, fontFamily: "'Outfit',sans-serif" }}>📖 {mat}{classeLabel}</div>
                         {details?.objectifs && (
                           <div style={{ marginBottom: 8, padding: "8px 10px", background: "#F0FDF4", borderRadius: 6, borderLeft: "3px solid #16A34A" }}>
-                            <div style={{ fontSize: 10, fontWeight: 800, color: "#15803D", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em" }}>🎯 Objectifs de l'année</div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#15803D", marginBottom: 3, textTransform: "uppercase" }}>🎯 Objectifs</div>
                             <div style={{ fontSize: 11, color: "#3F3F46", lineHeight: 1.6 }}>{details.objectifs}</div>
                           </div>
                         )}
-
-                        {/* Chapitres */}
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ fontSize: 10, fontWeight: 800, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>📚 Chapitres au programme</div>
-                          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#3F3F46", lineHeight: 1.7 }}>
-                            {items.map((it, i) => <li key={i}>{it}</li>)}
-                          </ul>
-                        </div>
-
-                        {/* Competences evaluees */}
-                        {details?.competences && (
-                          <div style={{ marginBottom: 8, padding: "8px 10px", background: "#F5F3FF", borderRadius: 6, borderLeft: "3px solid #7C3AED" }}>
-                            <div style={{ fontSize: 10, fontWeight: 800, color: "#6D28D9", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>🧠 Compétences évaluées</div>
-                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#3F3F46", lineHeight: 1.6 }}>
-                              {details.competences.map((c, i) => <li key={i}>{c}</li>)}
+                        {items && (
+                          <div style={{ marginBottom: 8 }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase" }}>📚 Chapitres</div>
+                            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#3F3F46", lineHeight: 1.7 }}>
+                              {items.map((it, i) => <li key={i}>{it}</li>)}
                             </ul>
                           </div>
                         )}
-
-                        {/* Difficultes classiques */}
                         {details?.difficultes && (
                           <div style={{ marginBottom: 8, padding: "8px 10px", background: "#FEF2F2", borderRadius: 6, borderLeft: "3px solid #E11D48" }}>
-                            <div style={{ fontSize: 10, fontWeight: 800, color: "#B91C1C", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>⚠️ Points difficiles classiques</div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#B91C1C", marginBottom: 4, textTransform: "uppercase" }}>⚠️ Points difficiles</div>
                             <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#3F3F46", lineHeight: 1.6 }}>
                               {details.difficultes.map((d, i) => <li key={i}>{d}</li>)}
                             </ul>
                           </div>
                         )}
-
-                        {/* Conseil Sherpas */}
                         {details?.conseils && (
                           <div style={{ padding: "8px 10px", background: "#FFFBEB", borderRadius: 6, borderLeft: "3px solid #D97706" }}>
-                            <div style={{ fontSize: 10, fontWeight: 800, color: "#92400E", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em" }}>💡 Conseil Sherpas pour la prescription</div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#92400E", marginBottom: 3, textTransform: "uppercase" }}>💡 Conseil Sherpas</div>
                             <div style={{ fontSize: 11, color: "#3F3F46", lineHeight: 1.6, fontStyle: "italic" }}>{details.conseils}</div>
                           </div>
                         )}
@@ -1867,165 +2396,11 @@ Format de réponse JSON strict (rien d'autre, juste le JSON) :
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 10, color: "#71717A", marginTop: 8, fontStyle: "italic" }}>💡 Cite ces points pour montrer au parent que tu connais le programme officiel — ça crédibilise instantanément la prescription.</div>
               </div>
             )}
             </div>}
           </C>;
         })()}
-
-        {/* ── TOP 3 PROFILS — RECTANGLE DEROULANT ── */}
-        <C style={{ marginBottom: 12, background: "#fff", border: "2px solid #E4E4E7", padding: openTop3 ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenTop3(!openTop3)}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🏆</span>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>Top 3 profils recommandés</div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>Classement avec scores et arguments</div>
-              </div>
-            </div>
-            <span style={{ fontSize: 16, color: "#71717A", transition: "transform .2s", transform: openTop3 ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
-          </div>
-          {openTop3 && <div onClick={e => e.stopPropagation()} style={{ marginTop: 14 }}>
-        {/* TOP 3 CARDS */}
-        {top3.map(({ typ, score, neuroEntry: neuroFromMatrix }, idx) => {
-          // Detection : profil neuro de la matrice (pas dans PROF_TYPES)
-          const isNeuroProfile = neuroActive && NEURO_PROFS && NEURO_PROFS.includes(typ);
-          const label = isNeuroProfile ? typ : getLabel(typ, psycho);
-          const refined = isNeuroProfile
-            ? `Spécialiste neuroatypique — ${typ}`
-            : refine(typ, matieres);
-          const args = isNeuroProfile ? null : getArgs(typ, psycho);
-          const dispo = isNeuroProfile ? true : stockMap[typ]?.dispo;
-          const nb = isNeuroProfile ? "—" : (stockMap[typ]?.nb || 0);
-          const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-          const color = rankColors[idx];
-          const bg = rankBgs[idx];
-          const border = rankBorders[idx];
-          const fullScript = isNeuroProfile && neuroFromMatrix
-            ? `═══ ${typ} — ${neuroTrouble} ═══\n\n📋 RÉALITÉ\n${neuroFromMatrix.realite}\n\n📞 EN APPEL\n${neuroFromMatrix.appel}`
-            : buildFullScript(typ);
-
-          // Neuro
-          const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
-          const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
-          // Le warning niveau ne s'affiche QUE si la matrice n'a pas deja un match "ideal"
-          const neuroWarn = (neuroActive && neuroTrouble && (!neuroEntry || neuroEntry.badge !== "ideal")) ? getNeuroNiveauWarning(niveau, neuroTrouble, nom, classe) : null;
-
-          const isExpanded = expandedRank === idx;
-          return (
-            <C key={typ} style={{ marginBottom: 14, border: `2px solid ${border}`, background: idx === 0 ? bg : "#fff", padding: "18px 20px", cursor: "pointer" }} onClick={() => setExpandedRank(isExpanded ? null : idx)}>
-              {/* Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: "50%", background: color, display: "flex",
-                    alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, fontWeight: 900,
-                    fontFamily: "'Outfit',sans-serif", flexShrink: 0,
-                  }}>
-                    {rankLabels[idx]}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", lineHeight: 1.3 }}>{label}</div>
-                    <div style={{ fontSize: 12, color, fontWeight: 600 }}>↳ {refined}</div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
-                  <CopyBtn text={fullScript} />
-                  <span style={{ fontSize: 18, color, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
-                </div>
-              </div>
-
-              {/* Score bar */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <div style={{ flex: 1, height: 6, background: "#E4E4E7", borderRadius: 99 }}>
-                  <div style={{ height: 6, background: color, borderRadius: 99, width: `${pct}%`, transition: "width .3s" }} />
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'Outfit',sans-serif", minWidth: 36, textAlign: "right" }}>
-                  {isNeuroProfile && neuroFromMatrix
-                    ? (neuroFromMatrix.badge === "ideal" ? "✅ Idéal" : neuroFromMatrix.badge === "acceptable" ? "⚠️ Acceptable" : "❌ Déconseillé")
-                    : `${pct}%`}
-                </span>
-              </div>
-
-              {/* Stock status (masqué pour profils neuro) */}
-              {!isNeuroProfile && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: isExpanded ? 14 : 0 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: dispo ? "#16A34A" : "#E11D48" }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: dispo ? "#15803D" : "#B91C1C" }}>
-                    {dispo ? `✓ Disponible en stock (${nb})` : `✗ Stock indisponible (${nb})`}
-                  </span>
-                </div>
-              )}
-
-              {/* Indication clic si replie */}
-              {!isExpanded && (
-                <div style={{ marginTop: 10, fontSize: 11, color: "#A1A1AA", textAlign: "center", fontStyle: "italic" }}>
-                  {isNeuroProfile ? `Clique pour voir la réalité + le script d'appel pour ${neuroTrouble}` : "Clique pour voir les 4 arguments de prescription"}
-                </div>
-              )}
-
-              {/* Contenu deplie */}
-              {isExpanded && (
-                <div onClick={e => e.stopPropagation()}>
-                  {/* Argument cards : neuro matrix OU getArgs classique */}
-                  {isNeuroProfile && neuroFromMatrix ? (
-                    <div style={{ marginBottom: 10 }}>
-                      {/* Badge */}
-                      <div style={{ marginBottom: 10 }}>
-                        <span style={{
-                          fontSize: 11, padding: "4px 12px", borderRadius: 99,
-                          background: NEURO_BADGE[neuroFromMatrix.badge]?.bg, color: NEURO_BADGE[neuroFromMatrix.badge]?.color,
-                          border: `1px solid ${NEURO_BADGE[neuroFromMatrix.badge]?.border}`, fontWeight: 700,
-                        }}>
-                          {neuroFromMatrix.badge === "ideal" ? "✅" : neuroFromMatrix.badge === "acceptable" ? "⚠️" : "❌"} {NEURO_BADGE[neuroFromMatrix.badge]?.label}
-                        </span>
-                      </div>
-                      {/* Realite */}
-                      <div style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#7C3AED", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>📋 La réalité (en interne)</div>
-                        <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.7 }}>{neuroFromMatrix.realite}</div>
-                      </div>
-                      {/* En appel */}
-                      <div style={{ padding: "12px 14px", borderRadius: 10, background: "#F0FDF4", border: "1px solid #C0EAD3" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                          <div style={{ fontSize: 10, fontWeight: 800, color: "#16A34A", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "'Outfit',sans-serif" }}>📞 En appel (à dire au parent)</div>
-                          <CopyBtn text={neuroFromMatrix.appel} />
-                        </div>
-                        <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.7, fontStyle: "italic" }}>"{neuroFromMatrix.appel}"</div>
-                      </div>
-                    </div>
-                  ) : (
-                    renderArgCards(args)
-                  )}
-
-                  {/* Neuro section (uniquement si pas deja un profil neuro) */}
-                  {!isNeuroProfile && renderNeuroSection(typ)}
-
-                  {/* Neuro niveau warning */}
-                  {neuroWarn && (
-                    <div style={{ marginTop: 10 }}>
-                      <C style={{ background: "#FFFBEB", border: "2px solid #FDE68A", padding: "12px 14px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: 14 }}>⚠️</span>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: "#D97706", fontFamily: "'Outfit',sans-serif" }}>{neuroWarn.title}</span>
-                          </div>
-                          <CopyBtn text={neuroWarn.script} />
-                        </div>
-                        <div style={{ fontSize: 12, color: "#3F3F46", lineHeight: 1.7, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 8, padding: "10px 12px", borderLeft: "3px solid #D97706", maxHeight: 200, overflow: "auto" }}>
-                          {neuroWarn.script}
-                        </div>
-                      </C>
-                    </div>
-                  )}
-                </div>
-              )}
-            </C>
-          );
-        })}
-          </div>}
-        </C>
 
       </>
     );

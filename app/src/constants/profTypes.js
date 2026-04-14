@@ -297,7 +297,22 @@ export const PARCOURSUP_HIERARCHY = {
     },
   },
 };
-export const MATIERES=["📚 Soutien scolaire (toutes matières)","Maths","Français","Anglais","Physique","Chimie","SVT","Technologie","Histoire-Géo","Philosophie","Espagnol","Allemand","Économie","Droit","Informatique","Autre"];
+export const MATIERES=[
+  "📚 Soutien scolaire (toutes matières)",
+  // Scientifique
+  "Maths","Maths expertes","Maths complémentaires","Physique","Chimie","SVT","NSI","Sciences de l'ingénieur","Biologie-Écologie","Biotechnologies","Technologie",
+  // Littéraire
+  "Français","Littérature","Philosophie","HLP","LLCE",
+  // Langues
+  "Anglais","Espagnol","Allemand","Italien","Chinois","Japonais","Russe","Arabe","Portugais","Latin","Grec ancien",
+  // Sciences humaines
+  "Histoire-Géo","HGGSP","SES","EMC",
+  // Éco & Droit
+  "Économie","Management","Droit","Gestion","Comptabilité","Marketing","Finance","Sciences de gestion",
+  // Info
+  "Informatique",
+  "Autre"
+];
 
 // ─── Filtre les matieres disponibles selon le niveau, la classe et la filiere ───
 export function getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno) {
@@ -305,25 +320,34 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno
   const AUTRE = "Autre";
   if (!niveau) return MATIERES;
 
-  // Primaire : pas de langues vivantes 2, pas de physique/chimie separees, pas de philo, pas d'eco, pas d'info
+  // Primaire
   if (niveau === "Primaire") {
     return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", AUTRE];
   }
 
-  // College : Espagnol/Allemand a partir de la 5e (LV2). 6e = LV1 seule. Techno presente toute la scolarite.
+  // Collège
   if (niveau === "Collège") {
     if (classe === "6e") {
-      return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "SVT", "Technologie", AUTRE];
+      return [SOUTIEN, "Maths", "Français", "Anglais", "Histoire-Géo", "EMC", "SVT", "Technologie", "Latin", AUTRE];
     }
-    // 5e, 4e, 3e : LV2 + Physique/Chimie introduites
-    return [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo", "SVT", "Physique", "Chimie", "Technologie", AUTRE];
+    // 5e, 4e, 3e : LV2 + Physique/Chimie introduites + langues anciennes en option
+    return [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Italien", "Chinois", "Portugais", "Arabe", "Latin", "Grec ancien", "Histoire-Géo", "EMC", "SVT", "Physique", "Chimie", "Technologie", AUTRE];
   }
 
-  // Lycee general : Philo apparait en Terminale uniquement
+  // Lycée général
   if (niveau === "Lycée général") {
-    const base = [SOUTIEN, "Maths", "Français", "Anglais", "Espagnol", "Allemand", "Histoire-Géo", "SVT", "Physique", "Chimie", "Économie", "Informatique"];
+    const base = [
+      SOUTIEN, "Maths", "Français", "Littérature",
+      "Anglais", "Espagnol", "Allemand", "Italien", "Chinois", "Japonais", "Russe", "Arabe", "Portugais", "Latin", "Grec ancien", "LLCE",
+      "Histoire-Géo", "HGGSP", "SES", "EMC",
+      "SVT", "Physique", "Chimie", "NSI", "Sciences de l'ingénieur", "Biologie-Écologie",
+      "Économie", "Droit", "Informatique"
+    ];
     if (classe === "Terminale") {
-      return [...base.slice(0, 3), "Philosophie", ...base.slice(3), AUTRE];
+      return [SOUTIEN, "Maths", "Maths expertes", "Maths complémentaires", "Français", "Philosophie", "HLP", ...base.filter(m => m !== SOUTIEN && m !== "Maths" && m !== "Français"), AUTRE];
+    }
+    if (classe === "Première") {
+      return [SOUTIEN, "Maths", "Français", "HLP", ...base.filter(m => !["Maths","Français",SOUTIEN].includes(m)), AUTRE];
     }
     return [...base, AUTRE];
   }
@@ -391,11 +415,11 @@ export function getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno
     }
     // ECG : Maths, Eco-droit-management, HGGMC ou ESH, Francais-Philo, LV1, LV2
     if (f.includes("ECG")) {
-      return [SOUTIEN, "Maths", "Économie", "Histoire-Géo", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+      return [SOUTIEN, "Maths", "Économie", "Management", "Droit", "Histoire-Géo", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", "Italien", "Chinois", AUTRE];
     }
-    // ECT : Maths, Eco-Droit-Management, Francais-Philo, LV1, LV2
+    // ECT : Maths, Eco-Droit-Management-Gestion-Compta, Francais-Philo, LV1, LV2
     if (f.includes("ECT")) {
-      return [SOUTIEN, "Maths", "Économie", "Droit", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", AUTRE];
+      return [SOUTIEN, "Maths", "Économie", "Management", "Droit", "Gestion", "Comptabilité", "Sciences de gestion", "Français", "Philosophie", "Anglais", "Espagnol", "Allemand", "Italien", AUTRE];
     }
     // Khagne A/L : Francais, Philo, HG, LV1, LV2 (latin/grec en option)
     if (f.includes("Khâgne A/L")) {
