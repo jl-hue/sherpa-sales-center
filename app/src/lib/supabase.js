@@ -1,9 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
+import { USERS } from '../constants/brand';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Fallback local quand allowed_users est vide ou inaccessible
+const LOCAL_TEAM = USERS.map(u => ({
+  email: u.email, name: u.name, avatar: u.avatar, color: u.color, role: u.role, active: true,
+}));
+
+export async function fetchTeam() {
+  try {
+    const { data, error } = await sb.from("allowed_users").select("email, name, avatar, color, role, active").eq("active", true);
+    if (!error && data && data.length > 0) return data;
+  } catch {}
+  return LOCAL_TEAM;
+}
 
 export function rowToFeedback(r){return{id:r.id,date:r.date,auteur:r.auteur,anonyme:r.anonyme,clientTypes:r.client_types||[],objections:r.objections||[],bien:r.bien||[],bloque:r.bloque||[],confiance:r.confiance,suggestions:r.suggestions||""};}
 export function rowToMatching(r){return{id:r.id,date:r.date,auteur:r.auteur,idealTyp:r.ideal_typ,chosenTyp:r.chosen_typ,followed:r.followed,niveau:r.niveau,psycho:r.psycho};}

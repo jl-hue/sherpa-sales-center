@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { sb } from '../../lib/supabase';
+import { fetchTeam } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 // ── Helpers dates ──
@@ -139,24 +139,27 @@ function EmploiDuTemps({ user }) {
     });
   }
 
-  // Charge l'équipe depuis Supabase (ou fallback)
-  useEffect(() => {
-    sb.from("allowed_users").select("email, name, avatar, color, role, active")
-      .eq("active", true)
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) setTeam(sortTeam(data));
-        else setTeam([
-          { email: "j.leterrier310@gmail.com", name: "Julien", avatar: "JL", color: "#0369A1", role: "manager" },
-        ]);
-      });
-  }, []);
+  // Charge l'équipe (fallback local si Supabase vide)
+  useEffect(() => { fetchTeam().then(data => setTeam(sortTeam(data))); }, []);
 
-  // Charge les plannings depuis localStorage
+  // Charge les plannings depuis localStorage, ou importe depuis edt_data.json
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_EDT);
-      if (raw) setSchedules(JSON.parse(raw));
+      if (raw) { setSchedules(JSON.parse(raw)); return; }
     } catch {}
+    // Premier lancement : importer les données du planning Excel
+    fetch("/edt_data.json")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Object.keys(data).length > 0) {
+          setSchedules(data);
+          localStorage.setItem(LS_EDT, JSON.stringify(data));
+          // Publier aussi directement
+          localStorage.setItem("sherpas_edt_published_v1", JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function persist(newSchedules) {

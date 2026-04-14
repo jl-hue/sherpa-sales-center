@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { sb } from '../../lib/supabase';
+import { fetchTeam } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 const LS_OKR = "sherpas_okr_v1";
@@ -54,10 +54,7 @@ function Objectifs({ user }) {
   });
   const [newDefi, setNewDefi] = useState({ titre: "", description: "", mois: new Date().getMonth(), annee: new Date().getFullYear() });
 
-  useEffect(() => {
-    sb.from("allowed_users").select("email, name, avatar, color, role, active")
-      .eq("active", true).then(({ data }) => { if (data) setTeam(data); });
-  }, []);
+  useEffect(() => { fetchTeam().then(setTeam); }, []);
 
   const [published, setPublished] = useState(false);
   const [pubTimestamp, setPubTimestamp] = useState(() => localStorage.getItem("sherpas_objectifs_pub_ts") || "");

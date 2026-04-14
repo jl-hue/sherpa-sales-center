@@ -1,11 +1,28 @@
 import { useState, useEffect } from 'react';
-import { sb } from '../../lib/supabase';
+import { sb, fetchTeam } from '../../lib/supabase';
 import { Logo } from '../ui';
+
+const IS_LOCAL = ["localhost","127.0.0.1","10."].some(h => window.location.hostname.startsWith(h) || window.location.hostname === h.replace(".",""));
 
 function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(true);
+  const [localTeam, setLocalTeam] = useState([]);
+  const [showLocal, setShowLocal] = useState(false);
+
+  useEffect(() => { if (IS_LOCAL) fetchTeam().then(setLocalTeam); }, []);
+
+  function loginAsUser(member) {
+    onLogin({
+      id: member.email,
+      email: member.email,
+      name: member.name || member.email.split("@")[0],
+      avatar: member.avatar || member.name?.slice(0, 2).toUpperCase() || "??",
+      color: member.color || "#16A34A",
+      role: member.role,
+    });
+  }
 
   // Au montage : pas d'auto-login
   // Si l'URL contient un hash OAuth (#access_token=...) → on traite le retour OAuth
@@ -153,6 +170,39 @@ function LoginScreen({ onLogin }) {
         <div style={{ marginTop: 20, padding: "10px 14px", background: "#F4F4F5", borderRadius: 10, fontSize: 10, color: "#71717A", lineHeight: 1.5, textAlign: "center" }}>
           🔒 Accès réservé à l'équipe Sherpas · Toute connexion est journalisée
         </div>
+
+        {IS_LOCAL && (
+          <div style={{ marginTop: 16 }}>
+            <button onClick={() => setShowLocal(!showLocal)} style={{
+              width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #E4E4E7",
+              background: "#FAFAFA", cursor: "pointer", fontSize: 12, fontWeight: 600,
+              color: "#71717A", fontFamily: "'Outfit',sans-serif", textAlign: "center",
+            }}>
+              {showLocal ? "▲ Masquer" : "🏠 Connexion locale (réseau)"}
+            </button>
+            {showLocal && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {localTeam.map(m => (
+                  <button key={m.email} onClick={() => loginAsUser(m)} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                    borderRadius: 10, border: `2px solid ${m.color || "#16A34A"}22`,
+                    background: "#fff", cursor: "pointer", textAlign: "left", transition: "all .15s",
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%", background: m.color || "#16A34A",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Outfit',sans-serif", flexShrink: 0,
+                    }}>{m.avatar || (m.name || "").slice(0, 2).toUpperCase()}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#18181B", fontFamily: "'Outfit',sans-serif" }}>{m.name}</div>
+                      <div style={{ fontSize: 10, color: "#71717A" }}>{m.role} · {m.email}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

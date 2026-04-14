@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { sb } from '../../lib/supabase';
+import { fetchTeam } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 // ── Config ──
@@ -46,14 +46,8 @@ function PlanDeTable({ user }) {
   const assignments = allPlans[selectedDate] || {};
   const selectedDateObj = new Date(selectedDate + "T12:00:00");
 
-  // Charge l'équipe
-  useEffect(() => {
-    sb.from("allowed_users").select("email, name, avatar, color, role, active")
-      .eq("active", true)
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) setTeam(data);
-      });
-  }, []);
+  // Charge l'équipe (fallback local si Supabase vide)
+  useEffect(() => { fetchTeam().then(setTeam); }, []);
 
   // Charge tous les plans par date
   useEffect(() => {

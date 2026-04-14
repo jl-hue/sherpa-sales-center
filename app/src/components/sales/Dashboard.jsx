@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { GC, C, Pill, Stat } from '../ui';
 import { Logo } from '../ui/Logo';
-import { sb } from '../../lib/supabase';
+import { fetchTeam } from '../../lib/supabase';
 import PlanDeTableView from './PlanDeTableView';
 
 // ── Helpers dates (copiés de EmploiDuTemps) ──
@@ -83,11 +83,8 @@ function MonPlanDeTable() {
     } catch {}
   }, []);
 
-  // Load team from Supabase
-  useEffect(() => {
-    sb.from("allowed_users").select("email, name, avatar, color").eq("active", true)
-      .then(({ data }) => { if (data) setTeam(data); });
-  }, []);
+  // Load team (fallback local si Supabase vide)
+  useEffect(() => { fetchTeam().then(setTeam); }, []);
 
   if (!plan || Object.keys(plan).length === 0) return null;
 

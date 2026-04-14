@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { sb } from '../../lib/supabase';
+import { fetchTeam } from '../../lib/supabase';
 import { C, ST } from '../ui';
 
 function fmtDate(d) {
@@ -84,11 +84,7 @@ function Statistiques({ user, isManager }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
 
-  useEffect(() => {
-    sb.from("allowed_users").select("email, name, avatar, color, role, active")
-      .eq("active", true)
-      .then(({ data }) => { if (data) setTeam(data); });
-  }, []);
+  useEffect(() => { fetchTeam().then(setTeam); }, []);
 
   useEffect(() => {
     try {

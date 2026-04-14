@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { sb } from '../../lib/supabase';
+import { fetchTeam } from '../../lib/supabase';
 import { C, ST } from '../ui';
 
 const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
@@ -15,8 +15,7 @@ function ObjectifsSales({ user }) {
   const [pubOkrs, setPubOkrs] = useState({});
 
   useEffect(() => {
-    sb.from("allowed_users").select("email, name, avatar, color, role, active")
-      .eq("active", true).then(({ data }) => { if (data) setTeam(data); });
+    fetchTeam().then(setTeam);
     try { setPubPaliers(JSON.parse(localStorage.getItem("sherpas_paliers_published_v1") || "{}")); } catch {}
     try { setPubDefis(JSON.parse(localStorage.getItem("sherpas_defis_published_v1") || "[]")); } catch {}
     try { setPubOkrs(JSON.parse(localStorage.getItem("sherpas_okr_published_v1") || "{}")); } catch {}
