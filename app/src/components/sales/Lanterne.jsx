@@ -1183,7 +1183,7 @@ Format JSON STRICT (rien d'autre) :
         matieres: ef.matieres, psycho: ef.psycho, objectif: ef.objectifVie
       });
     }
-    if (livePath && !neuroActive) {
+    if (livePath && !ef.neuroActive) {
       let node = PROF_HIERARCHY;
       for (let i = 0; i < livePath.length; i++) {
         const k = livePath[i];
