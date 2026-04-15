@@ -32,6 +32,19 @@ export async function loadFromSupabase(key) {
   return null;
 }
 
+// Realtime subscription for a specific config key. Returns the channel for cleanup.
+export function subscribeConfig(key, onUpdate) {
+  const ch = sb.channel(`cfg-${key}-${Math.random().toString(36).slice(2,8)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "config", filter: `key=eq.${key}` }, payload => {
+      try {
+        const v = payload.new?.value;
+        if (v) onUpdate(JSON.parse(v));
+      } catch {}
+    })
+    .subscribe();
+  return ch;
+}
+
 // Mapping localStorage keys → Supabase config keys
 export const LS_TO_SB = {
   "sherpas_okr_v1": "okr",

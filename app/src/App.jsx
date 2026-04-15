@@ -34,6 +34,7 @@ import ManagerEmploiDuTemps from './components/manager/EmploiDuTemps';
 import ManagerPlanDeTable from './components/manager/PlanDeTable';
 import ManagerObjectifs from './components/manager/Objectifs';
 import ManagerCarte from './components/manager/CarteFrance';
+import ManagerNotifications from './components/manager/Notifications';
 
 import FormateurScripts from './components/formateur/Scripts';
 import FormateurFormations from './components/formateur/Formations';
@@ -108,11 +109,11 @@ export default function App(){
   }
 
   function handleLogin(u){
-    const roleToSpace={sales:"sales",manager:"manager",formateur:"formateur"};
-    const roleToPage={sales:"dash",manager:"m-vue",formateur:"f-scripts"};
+    const roleToSpace={sales:"sales",manager:"manager",formateur:"formateur",admin:"manager"};
+    const roleToPage={sales:"dash",manager:"m-vue",formateur:"f-scripts",admin:"m-vue"};
     setUser(u);
-    setSpace(roleToSpace[u.role]);
-    setPage(roleToPage[u.role]);
+    setSpace(roleToSpace[u.role]||"sales");
+    setPage(roleToPage[u.role]||"dash");
     setTimeout(()=>loadAll(), 0);
   }
 
@@ -229,6 +230,7 @@ export default function App(){
     "m-stats":      ()=><Statistiques user={user} isManager={true}/>,
     "m-objectifs":  ()=><ManagerObjectifs user={user}/>,
     "m-carte":      ()=><ManagerCarte user={user}/>,
+    "m-notif":      ()=><ManagerNotifications user={user}/>,
     "m-matching":   ()=><ManagerMatching matchings={matchings}/>,
     "m-besoins":    ()=><ManagerBesoins feedbacks={feedbacks}/>,
     "m-rentree":    ()=><ManagerRentree rentree={rentree}/>,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTeam, syncToSupabase } from '../../lib/supabase';
+import { sb, fetchTeam, syncToSupabase, loadFromSupabase, subscribeConfig } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 const LS_OKR = "sherpas_okr_v1";
@@ -58,6 +58,61 @@ function Objectifs({ user }) {
 
   const [published, setPublished] = useState(false);
   const [pubTimestamp, setPubTimestamp] = useState(() => localStorage.getItem("sherpas_objectifs_pub_ts") || "");
+  // Timestamps de publication consolidés (sync Supabase pour que tous les managers voient en temps réel)
+  const [okrPubTs, setOkrPubTs] = useState(() => { try { return JSON.parse(localStorage.getItem("sherpas_okr_pub_ts") || "{}"); } catch { return {}; } });
+  const [paliersPubTs, setPaliersPubTs] = useState(() => { try { return JSON.parse(localStorage.getItem("sherpas_paliers_pub_ts") || "{}"); } catch { return {}; } });
+  const [defisPubTs, setDefisPubTs] = useState(() => localStorage.getItem("sherpas_defis_pub_ts") || "");
+
+  // Hydrate depuis Supabase + subscribe realtime
+  // Au mount : merge local + remote (remote prioritaire), push si local-only détecté
+  useEffect(() => {
+    (async () => {
+      // OKR
+      const ro = (await loadFromSupabase("okr_pub_ts")) || {};
+      let lo = {}; try { lo = JSON.parse(localStorage.getItem("sherpas_okr_pub_ts") || "{}"); } catch {}
+      // Migration : récupérer aussi les anciennes clés individuelles `sherpas_okr_pub_ts_${k}`
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("sherpas_okr_pub_ts_")) {
+            const periodKey = k.replace("sherpas_okr_pub_ts_", "");
+            if (!lo[periodKey]) lo[periodKey] = localStorage.getItem(k);
+          }
+        }
+      } catch {}
+      const okrMerged = { ...lo, ...ro };
+      setOkrPubTs(okrMerged);
+      localStorage.setItem("sherpas_okr_pub_ts", JSON.stringify(okrMerged));
+      if (Object.keys(lo).some(k => !(k in ro))) await syncToSupabase("okr_pub_ts", okrMerged);
+
+      // Paliers
+      const rp = (await loadFromSupabase("paliers_pub_ts")) || {};
+      let lp = {}; try { lp = JSON.parse(localStorage.getItem("sherpas_paliers_pub_ts") || "{}"); } catch {}
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("sherpas_paliers_pub_ts_")) {
+            const periodKey = k.replace("sherpas_paliers_pub_ts_", "");
+            if (!lp[periodKey]) lp[periodKey] = localStorage.getItem(k);
+          }
+        }
+      } catch {}
+      const palMerged = { ...lp, ...rp };
+      setPaliersPubTs(palMerged);
+      localStorage.setItem("sherpas_paliers_pub_ts", JSON.stringify(palMerged));
+      if (Object.keys(lp).some(k => !(k in rp))) await syncToSupabase("paliers_pub_ts", palMerged);
+
+      // Défis (string global, prend remote si existe sinon push local)
+      const rd = await loadFromSupabase("defis_pub_ts");
+      const ld = localStorage.getItem("sherpas_defis_pub_ts") || "";
+      if (rd) { setDefisPubTs(rd); localStorage.setItem("sherpas_defis_pub_ts", rd); }
+      else if (ld) { await syncToSupabase("defis_pub_ts", ld); }
+    })();
+    const chO = subscribeConfig("okr_pub_ts", v => { setOkrPubTs(v); localStorage.setItem("sherpas_okr_pub_ts", JSON.stringify(v)); });
+    const chP = subscribeConfig("paliers_pub_ts", v => { setPaliersPubTs(v); localStorage.setItem("sherpas_paliers_pub_ts", JSON.stringify(v)); });
+    const chD = subscribeConfig("defis_pub_ts", v => { setDefisPubTs(v); localStorage.setItem("sherpas_defis_pub_ts", v); });
+    return () => { [chO, chP, chD].forEach(c => { try { sb.removeChannel(c); } catch {} }); };
+  }, []);
 
   function saveOkrs(next) { setOkrs(next); localStorage.setItem(LS_OKR, JSON.stringify(next)); syncToSupabase("okr", next); }
   function savePaliers(next) { setPaliers(next); localStorage.setItem(LS_PALIERS, JSON.stringify(next)); syncToSupabase("paliers", next); }
@@ -68,7 +123,7 @@ function Objectifs({ user }) {
     syncToSupabase("okr_published", okrs);
     syncToSupabase("paliers_published", paliers);
     syncToSupabase("defis_published", defis);
-    const ts = new Date().toLocaleString("fr-FR");
+    const ts = `${new Date().toLocaleString("fr-FR")} par ${user?.name || user?.email || "?"}`;
     localStorage.setItem("sherpas_objectifs_pub_ts", ts);
     setPubTimestamp(ts);
     setPublished(true);
@@ -114,13 +169,16 @@ function Objectifs({ user }) {
               pub[okrKey] = {};
               team.forEach(m => { const o = okrs[`${m.email}|${okrKey}`]; if (o) pub[okrKey][m.email] = o; });
               localStorage.setItem("sherpas_okr_published_v1", JSON.stringify(pub));
-              const ts = new Date().toLocaleString("fr-FR");
-              localStorage.setItem(`sherpas_okr_pub_ts_${okrKey}`, ts);
+              const ts = `${new Date().toLocaleString("fr-FR")} par ${user?.name || user?.email || "?"}`;
+              const nextTs = { ...okrPubTs, [okrKey]: ts };
+              setOkrPubTs(nextTs);
+              localStorage.setItem("sherpas_okr_pub_ts", JSON.stringify(nextTs));
+              syncToSupabase("okr_pub_ts", nextTs);
               setPublished("okr"); setTimeout(() => setPublished(false), 3000);
             }} color="#16A34A" style={{ padding: "7px 16px", borderRadius: 8, fontSize: 11 }}>
               {published === "okr" ? "✅ Publié !" : `📤 Valider ${TRIMESTRES[okrTrimestre]}`}
             </Btn>
-            {localStorage.getItem(`sherpas_okr_pub_ts_${okrKey}`) && <span style={{ fontSize: 9, color: "#71717A" }}>✅ {localStorage.getItem(`sherpas_okr_pub_ts_${okrKey}`)}</span>}
+            {okrPubTs[okrKey] && <span style={{ fontSize: 9, color: "#71717A" }}>✅ {okrPubTs[okrKey]}</span>}
           </div>
 
           {[...team].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email)).map(m => {
@@ -259,13 +317,16 @@ function Objectifs({ user }) {
               const pub = JSON.parse(localStorage.getItem("sherpas_paliers_published_v1") || "{}");
               pub[palierMoisKey] = { names: palierNames, members: palierMembers };
               localStorage.setItem("sherpas_paliers_published_v1", JSON.stringify(pub));
-              const ts = new Date().toLocaleString("fr-FR");
-              localStorage.setItem(`sherpas_paliers_pub_ts_${palierMoisKey}`, ts);
+              const ts = `${new Date().toLocaleString("fr-FR")} par ${user?.name || user?.email || "?"}`;
+              const nextTs = { ...paliersPubTs, [palierMoisKey]: ts };
+              setPaliersPubTs(nextTs);
+              localStorage.setItem("sherpas_paliers_pub_ts", JSON.stringify(nextTs));
+              syncToSupabase("paliers_pub_ts", nextTs);
               setPublished("paliers"); setTimeout(() => setPublished(false), 3000);
             }} color="#16A34A" style={{ padding: "7px 16px", borderRadius: 8, fontSize: 11 }}>
               {published === "paliers" ? "✅ Publié !" : `📤 Valider ${MOIS[palierMois]}`}
             </Btn>
-            {localStorage.getItem(`sherpas_paliers_pub_ts_${palierMoisKey}`) && <span style={{ fontSize: 9, color: "#71717A" }}>✅ {localStorage.getItem(`sherpas_paliers_pub_ts_${palierMoisKey}`)}</span>}
+            {paliersPubTs[palierMoisKey] && <span style={{ fontSize: 9, color: "#71717A" }}>✅ {paliersPubTs[palierMoisKey]}</span>}
           </div>
 
           {/* Config des noms de paliers (commun à tous) */}
@@ -364,13 +425,15 @@ function Objectifs({ user }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Btn onClick={() => {
               localStorage.setItem("sherpas_defis_published_v1", JSON.stringify(defis));
-              const ts = new Date().toLocaleString("fr-FR");
+              const ts = `${new Date().toLocaleString("fr-FR")} par ${user?.name || user?.email || "?"}`;
+              setDefisPubTs(ts);
               localStorage.setItem("sherpas_defis_pub_ts", ts);
+              syncToSupabase("defis_pub_ts", ts);
               setPublished("defis"); setTimeout(() => setPublished(false), 3000);
             }} color="#16A34A" style={{ padding: "7px 16px", borderRadius: 8, fontSize: 11 }}>
               {published === "defis" ? "✅ Publié !" : "📤 Valider les défis"}
             </Btn>
-            {localStorage.getItem("sherpas_defis_pub_ts") && <span style={{ fontSize: 9, color: "#71717A" }}>✅ {localStorage.getItem("sherpas_defis_pub_ts")}</span>}
+            {defisPubTs && <span style={{ fontSize: 9, color: "#71717A" }}>✅ {defisPubTs}</span>}
           </div>
 
           {/* Défi actuel */}

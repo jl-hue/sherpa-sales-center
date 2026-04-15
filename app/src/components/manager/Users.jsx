@@ -35,8 +35,8 @@ function ManagerUsers({extraUsers,setExtraUsers}){
     setExtraUsers(p=>(p||[]).filter(u=>u.id!==id));
   }
 
-  const rc={sales:"#16A34A",manager:"#0B68B4",formateur:"#DA4F00"};
-  const rl={sales:"Sales 📞",manager:"Manager 👔",formateur:"Formateur 🎓"};
+  const rc={sales:"#16A34A",manager:"#0B68B4",formateur:"#DA4F00",admin:"#7C3AED"};
+  const rl={sales:"Sales 📞",manager:"Manager 👔",formateur:"Formateur 🎓",admin:"Admin 👑"};
 
   return <div>
     <ST emoji="👥" sub="Créez et gérez les comptes de l'équipe. Le mot de passe est commun à tous les comptes.">Gestion des utilisateurs</ST>
@@ -80,7 +80,7 @@ function ManagerUsers({extraUsers,setExtraUsers}){
       <div style={{marginBottom:14}}>
         <div style={{fontSize:11,fontWeight:600,color:"#71717A",marginBottom:8}}>Rôle *</div>
         <div style={{display:"flex",gap:9}}>
-          {[["sales","Sales 📞","#16A34A"],["manager","Manager 👔","#0B68B4"],["formateur","Formateur 🎓","#DA4F00"]].map(([r,l,c])=>(
+          {[["sales","Sales 📞","#16A34A"],["manager","Manager 👔","#0B68B4"],["formateur","Formateur 🎓","#DA4F00"],["admin","Admin 👑","#7C3AED"]].map(([r,l,c])=>(
             <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"10px",borderRadius:10,border:`2px solid ${role===r?c:"#E4E4E7"}`,background:role===r?c+"10":"#fff",color:role===r?c:"#71717A",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>{l}</button>
           ))}
         </div>

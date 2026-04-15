@@ -46,7 +46,7 @@ function SidebarWithUser({role,page,setPage,setSpace,onLogout,user,dbReady,loadi
   const th=B[role];
   const menus={
     sales:[["dash","📊","Tableau de bord"],["planning","📋","Mon planning ✦"],["objectifs","🏆","Objectifs & Classement"],["stats","📈","Mes stats"],["lanterne","🔦","Lanterne V5 ✦"],["ressources","📚","Ressources"],["formation","🎓","Formation"],["feedback","💬","Mon feedback"]],
-    manager:[["m-vue","🧭","Vue d'ensemble"],["m-equipe","👥","Gestion équipe ✦"],["m-edt","📅","Emploi du temps ✦"],["m-plan","🪑","Plan de table ✦"],["m-carte","🗺️","Carte demandes ✦"],["m-stats","📈","Stats équipe ✦"],["m-objectifs","🎯","Objectifs & Défis ✦"],["m-besoins","🎯","Besoins formation"],["m-feedback","💬","Feedbacks équipe"],["m-progression","👥","Progression"]],
+    manager:[["m-vue","🧭","Vue d'ensemble"],["m-equipe","👥","Gestion équipe ✦"],["m-edt","📅","Emploi du temps ✦"],["m-plan","🪑","Plan de table ✦"],["m-carte","🗺️","Carte demandes ✦"],["m-stats","📈","Stats équipe ✦"],["m-objectifs","🎯","Objectifs & Défis ✦"],["m-notif","📧","Notifications email"],["m-besoins","🎯","Besoins formation"],["m-feedback","💬","Feedbacks équipe"],["m-progression","👥","Progression"]],
     formateur:[["f-scripts","📞","Éditeur Scripts"],["f-formations","🎓","Éditeur Formations"],["f-stock","📦","Gestion du Stock"],["f-suggestions","💡","Suggestions équipe"],["f-users","👤","Utilisateurs"]],
   };
   return <div style={{width:226,background:th.sidebar,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"fixed",top:0,left:0,zIndex:30}}>
@@ -55,8 +55,8 @@ function SidebarWithUser({role,page,setPage,setSpace,onLogout,user,dbReady,loadi
       <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Logo size={20} white={true}/><span style={{fontSize:13,fontWeight:900,color:"#fff",fontFamily:"'Outfit',sans-serif",letterSpacing:"-.02em"}}>LES SHERPAS</span></div>
       <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:10,background:th.accent+"28",color:th.accent,borderRadius:99,padding:"3px 10px",fontWeight:800,fontFamily:"'Outfit',sans-serif",textTransform:"uppercase",letterSpacing:".08em"}}>{th.emoji} {th.label}</span><span style={{fontSize:10,background:"rgba(255,255,255,.1)",color:"rgba(255,255,255,.5)",borderRadius:99,padding:"3px 8px",fontFamily:"'Outfit',sans-serif"}}>V5</span></div>
     </div>
-    {/* Switcher d'espace (manager uniquement) */}
-    {user.role === "manager" && setSpace && (
+    {/* Switcher d'espace (manager + admin) */}
+    {(user.role === "manager" || user.role === "admin") && setSpace && (
       <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
         <div style={{fontSize:9,fontWeight:800,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6}}>🔀 Changer d'espace</div>
         <div style={{display:"flex",gap:4}}>
@@ -94,7 +94,7 @@ function SidebarWithUser({role,page,setPage,setSpace,onLogout,user,dbReady,loadi
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
         <div style={{width:32,height:32,borderRadius:"50%",background:user.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#fff",fontFamily:"'Outfit',sans-serif",flexShrink:0}}>{user.avatar}</div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:"#fff",fontFamily:"'Outfit',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name}</div>
+          <div style={{fontSize:13,fontWeight:700,color:"#fff",fontFamily:"'Outfit',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"flex",alignItems:"center",gap:5}}>{user.name}{user.role==="admin" && <span title="Gestionnaire du site" style={{fontSize:9,fontWeight:900,background:"linear-gradient(135deg,#FBBF24,#F59E0B)",color:"#451A03",padding:"1px 6px",borderRadius:99,letterSpacing:".04em",textTransform:"uppercase"}}>👑 Admin</span>}</div>
           <div style={{fontSize:10,color:"rgba(255,255,255,.45)"}}>{user.email}</div>
         </div>
       </div>

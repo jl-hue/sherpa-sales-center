@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { sb, fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam, loadFromSupabase, syncToSupabase, subscribeConfig } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 // ── Helpers dates ──
@@ -141,6 +141,26 @@ function EmploiDuTemps({ user }) {
 
   // Charge l'équipe (fallback local si Supabase vide)
   useEffect(() => { fetchTeam().then(data => setTeam(sortTeam(data))); }, []);
+
+  // Sync pubTimestamps : Supabase ↔ localStorage (real-time pour tous les managers)
+  // Au mount : merge local + remote (remote prioritaire), push si local-only détecté
+  useEffect(() => {
+    (async () => {
+      const remote = (await loadFromSupabase("edt_pub_timestamps")) || {};
+      let local = {};
+      try { local = JSON.parse(localStorage.getItem("sherpas_edt_pub_timestamps_v1") || "{}"); } catch {}
+      const merged = { ...local, ...remote };
+      setPubTimestamps(merged);
+      localStorage.setItem("sherpas_edt_pub_timestamps_v1", JSON.stringify(merged));
+      const hasLocalOnly = Object.keys(local).some(k => !(k in remote));
+      if (hasLocalOnly) await syncToSupabase("edt_pub_timestamps", merged);
+    })();
+    const ch = subscribeConfig("edt_pub_timestamps", val => {
+      setPubTimestamps(val);
+      localStorage.setItem("sherpas_edt_pub_timestamps_v1", JSON.stringify(val));
+    });
+    return () => { try { sb.removeChannel(ch); } catch {} };
+  }, []);
 
   // Charge les plannings : Supabase > localStorage > edt_data.json
   useEffect(() => {
@@ -409,9 +429,10 @@ function EmploiDuTemps({ user }) {
                           localStorage.setItem("sherpas_edt_published_v1", JSON.stringify(pub));
                           // Sync to Supabase for all users
                           try { await sb.from("config").upsert({ key: "edt_published", value: JSON.stringify(pub) }, { onConflict: "key" }); } catch {}
-                          const ts = { ...pubTimestamps, [fmtDate(week.monday)]: new Date().toLocaleString("fr-FR") };
+                          const ts = { ...pubTimestamps, [fmtDate(week.monday)]: `${new Date().toLocaleString("fr-FR")} par ${user?.name || user?.email || "?"}` };
                           setPubTimestamps(ts);
                           localStorage.setItem("sherpas_edt_pub_timestamps_v1", JSON.stringify(ts));
+                          syncToSupabase("edt_pub_timestamps", ts);
                         }}
                           style={{ fontSize: 9, padding: "3px 8px", borderRadius: 4, border: "1px solid rgba(255,255,255,.3)", background: "rgba(255,255,255,.15)", color: "#fff", cursor: "pointer", fontWeight: 700 }}>
                           📤 Valider

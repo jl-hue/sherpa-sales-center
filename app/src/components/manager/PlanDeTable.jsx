@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { sb, fetchTeam } from '../../lib/supabase';
+import { sb, fetchTeam, loadFromSupabase, syncToSupabase, subscribeConfig } from '../../lib/supabase';
 import { C, Btn, ST } from '../ui';
 
 // ── Config ──
@@ -48,6 +48,26 @@ function PlanDeTable({ user }) {
 
   // Charge l'équipe (fallback local si Supabase vide)
   useEffect(() => { fetchTeam().then(setTeam); }, []);
+
+  // Sync planPubTimestamps : Supabase ↔ localStorage (real-time pour tous les managers)
+  // Au mount : merge local + remote (remote prioritaire), push si local-only détecté
+  useEffect(() => {
+    (async () => {
+      const remote = (await loadFromSupabase("plan_pub_timestamps")) || {};
+      let local = {};
+      try { local = JSON.parse(localStorage.getItem("sherpas_plan_pub_timestamps_v1") || "{}"); } catch {}
+      const merged = { ...local, ...remote };
+      setPlanPubTimestamps(merged);
+      localStorage.setItem("sherpas_plan_pub_timestamps_v1", JSON.stringify(merged));
+      const hasLocalOnly = Object.keys(local).some(k => !(k in remote));
+      if (hasLocalOnly) await syncToSupabase("plan_pub_timestamps", merged);
+    })();
+    const ch = subscribeConfig("plan_pub_timestamps", val => {
+      setPlanPubTimestamps(val);
+      localStorage.setItem("sherpas_plan_pub_timestamps_v1", JSON.stringify(val));
+    });
+    return () => { try { sb.removeChannel(ch); } catch {} };
+  }, []);
 
   // Charge tous les plans par date
   useEffect(() => {
@@ -453,9 +473,10 @@ function PlanDeTable({ user }) {
           const pub = JSON.parse(localStorage.getItem("sherpas_plan_table_published_v1") || "{}");
           pub[selectedDate] = assignments;
           localStorage.setItem("sherpas_plan_table_published_v1", JSON.stringify(pub));
-          const ts = { ...planPubTimestamps, [selectedDate]: new Date().toLocaleString("fr-FR") };
+          const ts = { ...planPubTimestamps, [selectedDate]: `${new Date().toLocaleString("fr-FR")} par ${user?.name || user?.email || "?"}` };
           setPlanPubTimestamps(ts);
           localStorage.setItem("sherpas_plan_pub_timestamps_v1", JSON.stringify(ts));
+          syncToSupabase("plan_pub_timestamps", ts);
           // Sync to Supabase for all users
           try { await sb.from("config").upsert({ key: "plan_table_published", value: JSON.stringify(pub) }, { onConflict: "key" }); } catch {}
           setPublished(true);
