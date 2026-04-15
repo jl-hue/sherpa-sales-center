@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { C, ST } from '../ui';
+import { USERS } from '../../constants/brand';
 
 const GEOJSON_DEPS = "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson";
 const GEOJSON_REGIONS = "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson";
@@ -46,6 +47,17 @@ function CarteFrance({ user }) {
   const [demandes, setDemandes] = useState([]);
   const [filtreNiveau, setFiltreNiveau] = useState("");
   const [filtreMatiere, setFiltreMatiere] = useState("");
+  const [filtreVendeur, setFiltreVendeur] = useState("");
+  const [filtreDateDe, setFiltreDateDe] = useState("");
+  const [filtreDateA, setFiltreDateA] = useState("");
+  const [openHistorique, setOpenHistorique] = useState(false);
+
+  // Email → Name lookup
+  const emailToName = useMemo(() => {
+    const m = {};
+    USERS.forEach(u => { if (u.email) m[u.email] = u.name; });
+    return m;
+  }, []);
   const [geoJsonDeps, setGeoJsonDeps] = useState(null);
   const [geoJsonRegions, setGeoJsonRegions] = useState(null);
   const [geoJsonVilles, setGeoJsonVilles] = useState([]);
@@ -80,22 +92,26 @@ function CarteFrance({ user }) {
     } catch {}
   }, []);
 
-  // Extraire les niveaux et matières uniques des demandes
+  // Extraire les niveaux, matières et vendeurs uniques des demandes
   const allNiveaux = useMemo(() => [...new Set(demandes.map(d => d.niveau).filter(Boolean))].sort(), [demandes]);
   const allMatieres = useMemo(() => {
     const s = new Set();
     demandes.forEach(d => { if (d.matieres) d.matieres.split(", ").forEach(m => s.add(m)); });
     return [...s].sort();
   }, [demandes]);
+  const allVendeurs = useMemo(() => [...new Set(demandes.map(d => d.auteur).filter(Boolean))].sort(), [demandes]);
 
-  // Demandes filtrées
+  // Demandes filtrées (niveau + matière + vendeur + dates)
   const filteredDemandes = useMemo(() => {
     return demandes.filter(d => {
       if (filtreNiveau && d.niveau !== filtreNiveau) return false;
       if (filtreMatiere && (!d.matieres || !d.matieres.includes(filtreMatiere))) return false;
+      if (filtreVendeur && d.auteur !== filtreVendeur) return false;
+      if (filtreDateDe && d.date && d.date < filtreDateDe) return false;
+      if (filtreDateA && d.date && d.date > filtreDateA + "T23:59:59") return false;
       return true;
     });
-  }, [demandes, filtreNiveau, filtreMatiere]);
+  }, [demandes, filtreNiveau, filtreMatiere, filtreVendeur, filtreDateDe, filtreDateA]);
 
   const parVille = useMemo(() => {
     const m = {};
@@ -144,7 +160,7 @@ function CarteFrance({ user }) {
       </div>
 
       {/* Filtres */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
         <select value={filtreNiveau} onChange={e => setFiltreNiveau(e.target.value)}
           style={{ fontSize: 11, padding: "6px 10px", borderRadius: 8, border: "1px solid #E4E4E7", background: filtreNiveau ? "#F0FDF4" : "#fff", fontWeight: 700, color: filtreNiveau ? "#15803D" : "#71717A", cursor: "pointer" }}>
           <option value="">🎓 Tous niveaux</option>
@@ -155,13 +171,28 @@ function CarteFrance({ user }) {
           <option value="">📚 Toutes matières</option>
           {allMatieres.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
-        {(filtreNiveau || filtreMatiere) && (
-          <button onClick={() => { setFiltreNiveau(""); setFiltreMatiere(""); }}
+        <select value={filtreVendeur} onChange={e => setFiltreVendeur(e.target.value)}
+          style={{ fontSize: 11, padding: "6px 10px", borderRadius: 8, border: "1px solid #E4E4E7", background: filtreVendeur ? "#FFFBEB" : "#fff", fontWeight: 700, color: filtreVendeur ? "#92400E" : "#71717A", cursor: "pointer" }}>
+          <option value="">👤 Tous vendeurs</option>
+          {allVendeurs.map(v => <option key={v} value={v}>{emailToName[v] || v}</option>)}
+        </select>
+        <span style={{ fontSize: 10, color: "#A1A1AA", display: "flex", alignItems: "center" }}>{filteredDemandes.length}/{demandes.length}</span>
+      </div>
+
+      {/* Filtres par date */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <label style={{ fontSize: 10, fontWeight: 700, color: "#71717A" }}>📅 Du</label>
+        <input type="date" value={filtreDateDe} onChange={e => setFiltreDateDe(e.target.value)}
+          style={{ fontSize: 11, padding: "5px 8px", borderRadius: 8, border: `1px solid ${filtreDateDe ? "#16A34A" : "#E4E4E7"}`, background: filtreDateDe ? "#F0FDF4" : "#fff", fontWeight: 600, color: "#3F3F46", cursor: "pointer" }} />
+        <label style={{ fontSize: 10, fontWeight: 700, color: "#71717A" }}>au</label>
+        <input type="date" value={filtreDateA} onChange={e => setFiltreDateA(e.target.value)}
+          style={{ fontSize: 11, padding: "5px 8px", borderRadius: 8, border: `1px solid ${filtreDateA ? "#16A34A" : "#E4E4E7"}`, background: filtreDateA ? "#F0FDF4" : "#fff", fontWeight: 600, color: "#3F3F46", cursor: "pointer" }} />
+        {(filtreNiveau || filtreMatiere || filtreVendeur || filtreDateDe || filtreDateA) && (
+          <button onClick={() => { setFiltreNiveau(""); setFiltreMatiere(""); setFiltreVendeur(""); setFiltreDateDe(""); setFiltreDateA(""); }}
             style={{ fontSize: 10, padding: "5px 10px", borderRadius: 6, border: "1px solid #FCA5A5", background: "#FEF2F2", color: "#E11D48", cursor: "pointer", fontWeight: 700 }}>
             ✕ Réinitialiser
           </button>
         )}
-        <span style={{ fontSize: 10, color: "#A1A1AA", display: "flex", alignItems: "center" }}>{filteredDemandes.length}/{demandes.length} signalements</span>
       </div>
 
       {/* Légende */}
@@ -261,6 +292,45 @@ function CarteFrance({ user }) {
         })}
         {demandes.length === 0 && <div style={{ fontSize: 12, color: "#A1A1AA", textAlign: "center", padding: 20 }}>Aucun signalement pour le moment</div>}
       </C>
+
+      {/* Historique des demandes (collapsible) */}
+      {filteredDemandes.length > 0 && (
+        <C style={{ marginTop: 14 }}>
+          <button
+            onClick={() => setOpenHistorique(!openHistorique)}
+            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+                📋 Historique des demandes
+                <span style={{ fontSize: 11, background: "#F4F4F5", color: "#71717A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>{filteredDemandes.length}</span>
+              </div>
+              <span style={{ fontSize: 16, color: "#71717A", transform: openHistorique ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+            </div>
+          </button>
+          {openHistorique && (
+            <div style={{ marginTop: 12, maxHeight: 400, overflowY: "auto" }}>
+              {[...filteredDemandes].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((d, i) => {
+                const dateStr = d.date ? new Date(d.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+                const vendeurName = emailToName[d.auteur] || d.auteur || "Inconnu";
+                return (
+                  <div key={i} style={{ display: "flex", gap: 10, padding: "8px 10px", marginBottom: 4, background: i % 2 === 0 ? "#FAFAFA" : "#fff", borderRadius: 8, alignItems: "center" }}>
+                    <div style={{ fontSize: 10, color: "#71717A", minWidth: 105, whiteSpace: "nowrap" }}>📅 {dateStr}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#18181B" }}>📍 {d.ville || "?"}{d.cp ? ` (${d.cp})` : ""}</div>
+                      <div style={{ fontSize: 10, color: "#71717A" }}>
+                        {d.niveau && <span>{d.niveau}</span>}
+                        {d.matieres && <span> · {d.matieres}</span>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#D97706", whiteSpace: "nowrap" }}>👤 {vendeurName}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </C>
+      )}
     </div>
   );
 }
