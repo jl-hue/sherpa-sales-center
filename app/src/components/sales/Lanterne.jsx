@@ -549,24 +549,40 @@ function getRebondScript(idealTyp, chosenTyp, psycho, nom, niveau) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MULTI-CHILDREN HELPER
+// ═══════════════════════════════════════════════════════════════════
+function emptyEnfant(id) {
+  return {
+    id: id || Date.now(),
+    prenom: "", niveau: "", classe: "", brevetPrep: false, spes: [],
+    parcoursupCategorie: "", parcoursupCible: "", parcoursupEcole: "",
+    prepaFiliere: "", prepaAnnee: "", univFiliere: "", serieTechno: "",
+    matieres: [], psycho: "", accomp: 5, objectifVie: "",
+    neuroActive: false, neuroTrouble: "",
+    moyenneGenerale: "", moyennesMat: {},
+    openMatGroup: null,
+    listeEnvoyee: false,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════
 function SalesLanterne({ stock, setMatchings, user }) {
   // ── State: Step ─────────────────────────────────────────────────
   const [step, setStep] = useState(1);
 
-  // ── State: Form inputs ─────────────────────────────────────────
-  const [prenom, setPrenom] = useState("");
-  const [niveau, setNiveau] = useState("");
-  const [matieres, setMatieres] = useState([]);
-  const [psycho, setPsycho] = useState("");
-  const [accomp, setAccomp] = useState(5);
-  const [objectifVie, setObjectifVie] = useState("");
-  const [souhaitParent, setSouhaitParent] = useState("");
+  // ── State: Multi-children ─────────────────────────────────────
+  const [enfants, setEnfants] = useState([emptyEnfant(1)]);
+  const [activeEnfantIdx, setActiveEnfantIdx] = useState(0);
+  // Helper: current child
+  const ef = enfants[activeEnfantIdx] || emptyEnfant();
+  // Helper: update current child field
+  function setEF(field, val) {
+    setEnfants(prev => prev.map((e, i) => i === activeEnfantIdx ? { ...e, [field]: val } : e));
+  }
 
-  // ── State: Neuro toggle ────────────────────────────────────────
-  const [neuroActive, setNeuroActive] = useState(false);
-  const [neuroTrouble, setNeuroTrouble] = useState("");
+  const [souhaitParent, setSouhaitParent] = useState("");
 
   // ── State: Parent profile ──────────────────────────────────────
   const [parentProfile, setParentProfile] = useState("");
@@ -613,24 +629,9 @@ function SalesLanterne({ stock, setMatchings, user }) {
       .finally(() => setVilleLoading(false));
   }
 
-  // ── State: UI matières par groupe ──────────────────────────────
-  const [openMatGroup, setOpenMatGroup] = useState(null);
-
-  // ── State: Moyennes (optionnel) ────────────────────────────────
-  const [moyenneGenerale, setMoyenneGenerale] = useState("");
-  const [moyennesMat, setMoyennesMat] = useState({}); // { "Maths": "12", ... }
-
-  // ── State: Diagnostic académique détaillé ──────────────────────
-  const [classe, setClasse] = useState("");
-  const [brevetPrep, setBrevetPrep] = useState(false);
-  const [spes, setSpes] = useState([]);
-  const [parcoursupCategorie, setParcoursupCategorie] = useState(""); // ex: "Prépa scientifique"
-  const [parcoursupCible, setParcoursupCible] = useState(""); // ex: "MPSI / MP (Maths-Physique)"
-  const [parcoursupEcole, setParcoursupEcole] = useState(""); // ex: "Louis-le-Grand (Paris)"
-  const [prepaFiliere, setPrepaFiliere] = useState("");
-  const [prepaAnnee, setPrepaAnnee] = useState(""); // "1re année" ou "2e année"
-  const [univFiliere, setUnivFiliere] = useState("");
-  const [serieTechno, setSerieTechno] = useState("");
+  // ── State: Collapsible psycho/objectif ────────────────────────
+  const [openPsycho, setOpenPsycho] = useState(false);
+  const [openObjectif, setOpenObjectif] = useState(false);
 
   // ── State: Guide d'argumentation (Step 2) ──────────────────────
   const [profProposeNom, setProfProposeNom] = useState(""); // ex: "Martin, étudiant en Prépa MP à Louis-le-Grand"
@@ -656,8 +657,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
     demandes.push({
       ville: villeClient,
       cp: villeCP,
-      niveau: niveau || "",
-      matieres: matieres.join(", "),
+      niveau: ef.niveau || "",
+      matieres: ef.matieres.join(", "),
       date: new Date().toISOString(),
       auteur: user?.email || "",
     });
@@ -677,8 +678,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
   function buildSherpasSearchUrl() {
     const params = new URLSearchParams();
     // Matière (on prend la première sélectionnée, sans accents/caractères spéciaux pour l'URL)
-    if (matieres.length > 0) {
-      const m = matieres[0]
+    if (ef.matieres.length > 0) {
+      const m = ef.matieres[0]
         .replace("Physique-Chimie", "Physique-chimie")
         .replace("Histoire-Géo", "Histoire-géographie")
         .replace("SES", "SES")
@@ -696,7 +697,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
       "Prépa": "superieur",
       "Université": "superieur",
     };
-    const nivKey = niveauMap[niveau];
+    const nivKey = niveauMap[ef.niveau];
     if (nivKey) params.set("educationalStages", nivKey);
     // Mode online / à domicile
     params.set("courseLocation", searchMode);
@@ -709,7 +710,7 @@ function SalesLanterne({ stock, setMatchings, user }) {
   async function searchProfsWithAI() {
     setSearchError("");
     setSearchResults(null);
-    if (!niveau || matieres.length === 0) {
+    if (!ef.niveau || ef.matieres.length === 0) {
       setSearchError("Il faut au moins un niveau et une matière en Step 1");
       return;
     }
@@ -729,13 +730,13 @@ function SalesLanterne({ stock, setMatchings, user }) {
 
       // Contexte diag
       const ctx = [];
-      if (niveau) ctx.push(`Niveau : ${niveau}${classe ? " " + classe : ""}`);
-      if (matieres.length > 0) ctx.push(`Matières : ${matieres.join(", ")}`);
-      if (spes.length > 0) ctx.push(`Spécialités : ${spes.join(", ")}`);
-      if (prepaFiliere) ctx.push(`Prépa : ${prepaAnnee || ""} ${prepaFiliere}`.trim());
-      if (objectifVie) ctx.push(`Objectif : ${objectifVie}`);
-      if (psycho) ctx.push(`Profil psy enfant : ${psycho}`);
-      if (neuroActive && neuroTrouble) ctx.push(`Neuroatypique : ${neuroTrouble}`);
+      if (ef.niveau) ctx.push(`Niveau : ${ef.niveau}${ef.classe ? " " + ef.classe : ""}`);
+      if (ef.matieres.length > 0) ctx.push(`Matières : ${ef.matieres.join(", ")}`);
+      if (ef.spes.length > 0) ctx.push(`Spécialités : ${ef.spes.join(", ")}`);
+      if (ef.prepaFiliere) ctx.push(`Prépa : ${ef.prepaAnnee || ""} ${ef.prepaFiliere}`.trim());
+      if (ef.objectifVie) ctx.push(`Objectif : ${ef.objectifVie}`);
+      if (ef.psycho) ctx.push(`Profil psy enfant : ${ef.psycho}`);
+      if (ef.neuroActive && ef.neuroTrouble) ctx.push(`Neuroatypique : ${ef.neuroTrouble}`);
 
       const prompt = `Tu es un expert en sélection de profs pour Les Sherpas. Voici la page de résultats de recherche Sherpas (markdown brut) :
 
@@ -801,15 +802,15 @@ Format JSON STRICT :
 
       // 2. Construire le contexte Step 1 + Step 2
       const ctx = [];
-      if (prenom) ctx.push(`Élève : ${prenom}`);
-      if (niveau) ctx.push(`Niveau : ${niveau}${classe ? " " + classe : ""}`);
-      if (spes.length > 0) ctx.push(`Spécialités : ${spes.join(", ")}`);
-      if (prepaFiliere) ctx.push(`Prépa : ${prepaAnnee || ""} ${prepaFiliere}`.trim());
-      if (serieTechno) ctx.push(`Série techno : ${serieTechno}`);
-      if (matieres.length > 0) ctx.push(`Matières : ${matieres.join(", ")}`);
-      if (objectifVie) ctx.push(`Objectif : ${objectifVie}`);
-      if (neuroActive && neuroTrouble) ctx.push(`Neuroatypique : ${neuroTrouble}`);
-      if (psycho) ctx.push(`Profil psy enfant : ${psycho}`);
+      if (ef.prenom) ctx.push(`Élève : ${ef.prenom}`);
+      if (ef.niveau) ctx.push(`Niveau : ${ef.niveau}${ef.classe ? " " + ef.classe : ""}`);
+      if (ef.spes.length > 0) ctx.push(`Spécialités : ${ef.spes.join(", ")}`);
+      if (ef.prepaFiliere) ctx.push(`Prépa : ${ef.prepaAnnee || ""} ${ef.prepaFiliere}`.trim());
+      if (ef.serieTechno) ctx.push(`Série techno : ${ef.serieTechno}`);
+      if (ef.matieres.length > 0) ctx.push(`Matières : ${ef.matieres.join(", ")}`);
+      if (ef.objectifVie) ctx.push(`Objectif : ${ef.objectifVie}`);
+      if (ef.neuroActive && ef.neuroTrouble) ctx.push(`Neuroatypique : ${ef.neuroTrouble}`);
+      if (ef.psycho) ctx.push(`Profil psy enfant : ${ef.psycho}`);
       if (parentProfile) {
         const ppLab = PARENT_PROFILES.find(p => p.id === parentProfile)?.label;
         if (ppLab) ctx.push(`Profil parent : ${ppLab}`);
@@ -894,12 +895,12 @@ Format JSON STRICT (rien d'autre) :
     "profilPsy": {
       "score": <0-100>,
       "evidence": "<CITATION ou 'Aucune info dans le profil'>",
-      "comment": "<adapté à ${psycho || "(non renseigné)"} ?>"
+      "comment": "<adapté à ${ef.psycho || "(non renseigné)"} ?>"
     },
     "specifique": {
       "score": <0-100>,
       "evidence": "<CITATION ou 'Non mentionné'>",
-      "comment": "<adapté à ${neuroActive ? neuroTrouble : "objectif " + (objectifVie || "non précisé")} ?>"
+      "comment": "<adapté à ${ef.neuroActive ? ef.neuroTrouble : "objectif " + (ef.objectifVie || "non précisé")} ?>"
     }
   },
   "summary": "<résumé factuel du profil prof basé sur le contenu réel — ne rien inventer>",
@@ -964,46 +965,32 @@ Format JSON STRICT (rien d'autre) :
   // ── Auto-compute portrait live (remplace l'ancien bouton "Allumer la Lanterne") ──
   // Dès que niveau est rempli, on calcule. Psycho/objectif prennent un fallback en Step 1.
   const portrait = useMemo(() => {
-    if (!niveau) return null;
-    if (neuroActive && neuroTrouble) {
+    const current = enfants[activeEnfantIdx];
+    if (!current?.niveau) return null;
+    if (current.neuroActive && current.neuroTrouble) {
       const badgeScore = { ideal: 100, acceptable: 60, deconseille: 20 };
-      const matrixEntries = NEURO_MATRIX.filter(e => e.trouble === neuroTrouble);
+      const matrixEntries = NEURO_MATRIX.filter(e => e.trouble === current.neuroTrouble);
       return matrixEntries
         .map(e => ({ typ: e.prof, score: badgeScore[e.badge] || 0, neuroEntry: e }))
         .sort((a, b) => b.score - a.score);
     }
-    const psychoEff = psycho || "Stressé / Anxieux";
-    const objectifEff = objectifVie || "Remise à niveau";
-    return computeV5(niveau, psychoEff, objectifEff, accomp);
-  }, [niveau, psycho, objectifVie, accomp, neuroActive, neuroTrouble]);
+    const psychoEff = current.psycho || "Stressé / Anxieux";
+    const objectifEff = current.objectifVie || "Remise à niveau";
+    return computeV5(current.niveau, psychoEff, objectifEff, current.accomp);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enfants, activeEnfantIdx]);
 
-  const canAnalyze = niveau; // navigation libre, juste besoin du niveau pour avoir un résultat
+  const canAnalyze = ef.niveau; // navigation libre, juste besoin du niveau pour avoir un résultat
 
   function reset() {
     setStep(1);
     setChosenRebond("");
     setRebondPath([]);
-    setPrenom("");
-    setNiveau("");
-    setMatieres([]);
-    setPsycho("");
-    setAccomp(5);
-    setObjectifVie("");
+    setEnfants([emptyEnfant(1)]);
+    setActiveEnfantIdx(0);
     setSouhaitParent("");
-    setNeuroActive(false);
-    setNeuroTrouble("");
     setParentProfile("");
     setNbProfs("1");
-    setClasse("");
-    setBrevetPrep(false);
-    setSpes([]);
-    setParcoursupCategorie("");
-    setParcoursupCible("");
-    setParcoursupEcole("");
-    setPrepaFiliere("");
-    setPrepaAnnee("");
-    setMoyenneGenerale("");
-    setMoyennesMat({});
     setDispoJours([]);
     setDispoCreneaux([]);
     setDispoNote("");
@@ -1016,8 +1003,6 @@ Format JSON STRICT (rien d'autre) :
     setVilleCP("");
     setVilleSearch("");
     setVilleSuggestions([]);
-    setUnivFiliere("");
-    setSerieTechno("");
     setProfProposeNom("");
     setProfProposePath([]);
   }
@@ -1028,39 +1013,39 @@ Format JSON STRICT (rien d'autre) :
     if (!matchingSavedRef.current && portrait) {
       matchingSavedRef.current = true;
       const idealTyp = portrait[0].typ;
-      setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp: idealTyp, followed: true, niveau, psycho });
+      setMatchings({ id: Date.now(), date: today(), auteur: user?.name || "Moi", idealTyp, chosenTyp: idealTyp, followed: true, niveau: ef.niveau, psycho: ef.psycho });
     }
     reset();
     matchingSavedRef.current = false;
   }
 
-  const accompLabel = accomp <= 3 ? "Douceur & Empathie" : accomp >= 7 ? "Fermete & Cadre" : "Equilibre";
-  const accompColor = accomp <= 3 ? "#16A34A" : accomp >= 7 ? "#DA4F00" : "#0B68B4";
+  const accompLabel = ef.accomp <= 3 ? "Douceur & Empathie" : ef.accomp >= 7 ? "Fermete & Cadre" : "Equilibre";
+  const accompColor = ef.accomp <= 3 ? "#16A34A" : ef.accomp >= 7 ? "#DA4F00" : "#0B68B4";
 
   function injectPrenom(text) {
     if (!text) return "";
-    return text.replace(/\[Prénom\]/g, prenom || "votre enfant").replace(/\[nom\]/g, prenom || "votre enfant");
+    return text.replace(/\[Prénom\]/g, ef.prenom || "votre enfant").replace(/\[nom\]/g, ef.prenom || "votre enfant");
   }
 
   // ── Helper: Build full script for a given prof type ────────────
   function buildFullScript(typ) {
-    const nom = prenom || "l'eleve";
-    const label = getLabel(typ, psycho);
-    const refined = refine(typ, matieres);
-    const args = getArgs(typ, psycho);
+    const nom = ef.prenom || "l'eleve";
+    const label = getLabel(typ, ef.psycho);
+    const refined = refine(typ, ef.matieres);
+    const args = getArgs(typ, ef.psycho);
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
-    const diagCtx = { niveau, classe, brevetPrep, spes, parcoursupCible, parcoursupEcole, prepaFiliere, prepaAnnee, univFiliere, serieTechno };
-    const introText = getIntroScript(pp, nom, psycho, diagCtx);
-    const spinQuestions = getSpinQuestions(pp, nom, psycho, objectifVie, diagCtx);
+    const diagCtx = { niveau: ef.niveau, classe: ef.classe, brevetPrep: ef.brevetPrep, spes: ef.spes, parcoursupCible: ef.parcoursupCible, parcoursupEcole: ef.parcoursupEcole, prepaFiliere: ef.prepaFiliere, prepaAnnee: ef.prepaAnnee, univFiliere: ef.univFiliere, serieTechno: ef.serieTechno };
+    const introText = getIntroScript(pp, nom, ef.psycho, diagCtx);
+    const spinQuestions = getSpinQuestions(pp, nom, ef.psycho, ef.objectifVie, diagCtx);
     const closingText = getClosingScript(pp, nom, label, diagCtx);
-    const neuroEntry = (neuroActive && neuroTrouble) ? findNeuroMatch(typ, neuroTrouble) : null;
+    const neuroEntry = (ef.neuroActive && ef.neuroTrouble) ? findNeuroMatch(typ, ef.neuroTrouble) : null;
 
     return [
       `═══ SCRIPT COMPLET — ${label} ═══`,
-      `Eleve : ${nom} | Psycho : ${psycho} | Objectif : ${objectifVie} | Parent : ${ppLabel}`,
+      `Eleve : ${nom} | Psycho : ${ef.psycho} | Objectif : ${ef.objectifVie} | Parent : ${ppLabel}`,
       `Profil : ${refined}`,
-      neuroActive && neuroTrouble ? `Neuro : ${neuroTrouble}` : null,
+      ef.neuroActive && ef.neuroTrouble ? `Neuro : ${ef.neuroTrouble}` : null,
       ``,
       `── SECTION 1 : INTRODUCTION ──`,
       introText,
@@ -1073,7 +1058,7 @@ Format JSON STRICT (rien d'autre) :
       args ? `\n🏆 L'ARGUMENT DE CONFIANCE\n${injectPrenom(args.trust)}` : null,
       args ? `\n🌉 LE PONT PEDAGOGIQUE\n${injectPrenom(args.bridge)}` : null,
       args ? `\n↩️ L'ARGUMENT DE REBOND\n${injectPrenom(args.rebound)}` : null,
-      neuroEntry ? `\n── SECTION 4 : NEURO (${neuroTrouble}) ──` : null,
+      neuroEntry ? `\n── SECTION 4 : NEURO (${ef.neuroTrouble}) ──` : null,
       neuroEntry ? `📋 Realite :\n${neuroEntry.realite}` : null,
       neuroEntry ? `\n📞 En appel :\n${neuroEntry.appel}` : null,
       ``,
@@ -1120,16 +1105,16 @@ Format JSON STRICT (rien d'autre) :
 
   // ── Helper: Render neuro section for a given prof type ────────
   function renderNeuroSection(typ) {
-    if (!neuroActive || !neuroTrouble) return null;
-    const neuroEntry = findNeuroMatch(typ, neuroTrouble);
+    if (!ef.neuroActive || !ef.neuroTrouble) return null;
+    const neuroEntry = findNeuroMatch(typ, ef.neuroTrouble);
     const neuroBadge = neuroEntry ? NEURO_BADGE[neuroEntry.badge] : null;
-    const nom = prenom || "l'eleve";
+    const nom = ef.prenom || "l'eleve";
 
     return (
       <div style={{ marginTop: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <span style={{ fontSize: 14 }}>{NEURO_EMOJIS[neuroTrouble] || "🧩"}</span>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>NEURO — {neuroTrouble}</span>
+          <span style={{ fontSize: 14 }}>{NEURO_EMOJIS[ef.neuroTrouble] || "🧩"}</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#7C3AED", fontFamily: "'Outfit',sans-serif" }}>NEURO — {ef.neuroTrouble}</span>
         </div>
         {neuroEntry ? (
           <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: "10px 12px" }}>
@@ -1170,16 +1155,16 @@ Format JSON STRICT (rien d'autre) :
   // ═══════════════════════════════════════════════════════════════
   // MAIN RENDER : 3 steps (besoins / psycho enfant / famille)
   // ═══════════════════════════════════════════════════════════════
-  const matAnalysis = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
-    const nom = prenom || "l'eleve";
+  const matAnalysis = (nbProfs === "1" && ef.matieres.length >= 2) ? analyzeMatieresCompatibility(ef.matieres, ef.niveau) : null;
+    const nom = ef.prenom || "l'eleve";
 
     // ── Recommandation hierarchique LIVE (preview) ──
     // Si neuro actif + trouble selectionne : prend le meilleur profil neuro de la matrice
     let livePath = null;
     let liveEmoji = "🎯", liveDesc = "", liveLabel = "", liveBadge = null;
-    if (neuroActive && neuroTrouble) {
+    if (ef.neuroActive && ef.neuroTrouble) {
       const matrixEntries = NEURO_MATRIX
-        .filter(e => e.trouble === neuroTrouble)
+        .filter(e => e.trouble === ef.neuroTrouble)
         .sort((a, b) => {
           const score = { ideal: 100, acceptable: 60, deconseille: 20 };
           return (score[b.badge] || 0) - (score[a.badge] || 0);
@@ -1189,13 +1174,13 @@ Format JSON STRICT (rien d'autre) :
         livePath = ["🧠 Profil neuro", best.prof];
         liveEmoji = best.badge === "ideal" ? "✅" : best.badge === "acceptable" ? "⚠️" : "❌";
         liveLabel = best.prof;
-        liveDesc = `Spécialiste ${neuroTrouble} — ${best.badge === "ideal" ? "Profil idéal" : best.badge === "acceptable" ? "Acceptable" : "Déconseillé"}`;
+        liveDesc = `Spécialiste ${ef.neuroTrouble} — ${best.badge === "ideal" ? "Profil idéal" : best.badge === "acceptable" ? "Acceptable" : "Déconseillé"}`;
         liveBadge = best.badge;
       }
-    } else if (niveau) {
+    } else if (ef.niveau) {
       livePath = getRecommendedHierarchy({
-        niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno,
-        matieres, psycho, objectif: objectifVie
+        niveau: ef.niveau, classe: ef.classe, brevetPrep: ef.brevetPrep, spes: ef.spes, parcoursupCategorie: ef.parcoursupCategorie, parcoursupCible: ef.parcoursupCible, parcoursupEcole: ef.parcoursupEcole, prepaFiliere: ef.prepaFiliere, univFiliere: ef.univFiliere, serieTechno: ef.serieTechno,
+        matieres: ef.matieres, psycho: ef.psycho, objectif: ef.objectifVie
       });
     }
     if (livePath && !neuroActive) {
@@ -1217,38 +1202,114 @@ Format JSON STRICT (rien d'autre) :
       <div>
         <ST emoji="🔦" sub="Le cerveau strategique de l'application — prescription, neuro & argumentation dynamique.">Lanterne Match V5</ST>
 
+        {/* ── Multi-children tabs ── */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
+          {enfants.map((child, idx) => {
+            const isActive = idx === activeEnfantIdx;
+            return (
+              <div key={child.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={() => setActiveEnfantIdx(idx)}
+                  style={{
+                    padding: "8px 14px", borderRadius: 10,
+                    border: `2px solid ${isActive ? "#0B68B4" : "#E4E4E7"}`,
+                    background: isActive ? "#EFF6FF" : "#FAFAFA",
+                    cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    color: isActive ? "#1E40AF" : "#71717A",
+                    fontFamily: "'Outfit',sans-serif",
+                  }}
+                >
+                  {child.prenom || `Enfant ${idx + 1}`}
+                  {child.listeEnvoyee && <span style={{ marginLeft: 5, color: "#16A34A" }}>📤</span>}
+                </button>
+                {enfants.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const newEnfants = enfants.filter((_, i) => i !== idx);
+                      setEnfants(newEnfants);
+                      setActiveEnfantIdx(Math.min(activeEnfantIdx, newEnfants.length - 1));
+                    }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#A1A1AA", fontSize: 14, padding: "0 2px" }}
+                  >×</button>
+                )}
+              </div>
+            );
+          })}
+          <button
+            onClick={() => {
+              const newChild = emptyEnfant(Date.now());
+              setEnfants(prev => [...prev, newChild]);
+              setActiveEnfantIdx(enfants.length);
+            }}
+            style={{
+              padding: "8px 12px", borderRadius: 10, border: "2px dashed #D4D4D8",
+              background: "#FAFAFA", cursor: "pointer", fontSize: 12, fontWeight: 700,
+              color: "#71717A", fontFamily: "'Outfit',sans-serif",
+            }}
+          >+ Ajouter un enfant</button>
+        </div>
+
         {/* ── SCRIPT CRM : bouton sticky en haut ── */}
         {(() => {
-          if (!niveau && !prenom) return null;
+          if (!ef.niveau && !ef.prenom && enfants.length <= 1) return null;
           const ppLab = PARENT_PROFILES.find(p => p.id === parentProfile)?.label || "";
           const lines = [];
           if (modeCours) lines.push(`📍 Mode : ${modeCours === "domicile" ? "À domicile" + (villeClient ? " — " + villeClient : "") : modeCours === "enligne" ? "En ligne" : "Peu importe"}`);
-          lines.push(`🎓 DIAGNOSTIC ACADÉMIQUE`);
-          if (niveau) {
-            let niv = niveau;
-            if (classe) niv += ` · ${classe}`;
-            if (brevetPrep) niv += ` (prep brevet)`;
-            if (serieTechno) niv += ` · ${serieTechno}`;
-            if (spes.length > 0) niv += ` · spés ${spes.join("/")}`;
-            if (prepaFiliere) niv += ` · ${prepaAnnee ? prepaAnnee + " " : ""}prépa ${prepaFiliere}`;
-            if (univFiliere) niv += ` · ${univFiliere}`;
-            lines.push(`• Niveau : ${niv}`);
-          }
-          if (matieres.length > 0) lines.push(`• Matières : ${matieres.join(", ")}`);
-          if (parcoursupCible) lines.push(`• Parcoursup : ${parcoursupCible}${parcoursupEcole ? " — " + parcoursupEcole : ""}`);
-          if (objectifVie) lines.push(`• Objectif : ${objectifVie}`);
-          if (nbProfs) lines.push(`• Nombre de profs souhaité : ${nbProfs}`);
-          if (neuroActive && neuroTrouble) lines.push(`• Neuroatypique : ${neuroTrouble}`);
-          // Moyennes
-          const hasMoyMat = Object.keys(moyennesMat).some(k => moyennesMat[k]);
-          if (moyenneGenerale || hasMoyMat) {
-            lines.push(``);
-            lines.push(`📊 MOYENNES`);
-            if (moyenneGenerale) lines.push(`• Générale : ${moyenneGenerale}/20`);
-            matieres.forEach(m => {
-              if (moyennesMat[m]) lines.push(`• ${m} : ${moyennesMat[m]}/20`);
+
+          // Multi-children vs single child
+          if (enfants.length > 1) {
+            lines.push(`👨‍👩‍👧 ${enfants.length} ENFANTS`);
+            enfants.forEach((child, idx) => {
+              if (child.niveau || child.matieres.length > 0) {
+                lines.push(`\n── Enfant ${idx + 1}${child.prenom ? ` (${child.prenom})` : ""} ──`);
+                if (child.niveau) {
+                  let niv = child.niveau;
+                  if (child.classe) niv += ` · ${child.classe}`;
+                  if (child.brevetPrep) niv += ` (prep brevet)`;
+                  if (child.serieTechno) niv += ` · ${child.serieTechno}`;
+                  if (child.spes.length > 0) niv += ` · spés ${child.spes.join("/")}`;
+                  if (child.prepaFiliere) niv += ` · ${child.prepaAnnee ? child.prepaAnnee + " " : ""}prépa ${child.prepaFiliere}`;
+                  if (child.univFiliere) niv += ` · ${child.univFiliere}`;
+                  lines.push(`• Niveau : ${niv}`);
+                }
+                if (child.matieres.length > 0) lines.push(`• Matières : ${child.matieres.join(", ")}`);
+                if (child.listeEnvoyee) lines.push(`• 📤 Liste envoyée`);
+                else lines.push(`• ⏳ Liste non envoyée`);
+              }
             });
+            lines.push("");
+          } else {
+            lines.push(`🎓 DIAGNOSTIC ACADÉMIQUE`);
+            if (ef.niveau) {
+              let niv = ef.niveau;
+              if (ef.classe) niv += ` · ${ef.classe}`;
+              if (ef.brevetPrep) niv += ` (prep brevet)`;
+              if (ef.serieTechno) niv += ` · ${ef.serieTechno}`;
+              if (ef.spes.length > 0) niv += ` · spés ${ef.spes.join("/")}`;
+              if (ef.prepaFiliere) niv += ` · ${ef.prepaAnnee ? ef.prepaAnnee + " " : ""}prépa ${ef.prepaFiliere}`;
+              if (ef.univFiliere) niv += ` · ${ef.univFiliere}`;
+              lines.push(`• Niveau : ${niv}`);
+            }
+            if (ef.matieres.length > 0) lines.push(`• Matières : ${ef.matieres.join(", ")}`);
+            if (ef.parcoursupCible) lines.push(`• Parcoursup : ${ef.parcoursupCible}${ef.parcoursupEcole ? " — " + ef.parcoursupEcole : ""}`);
+            if (ef.objectifVie) lines.push(`• Objectif : ${ef.objectifVie}`);
+            if (nbProfs) lines.push(`• Nombre de profs souhaité : ${nbProfs}`);
+            if (ef.neuroActive && ef.neuroTrouble) lines.push(`• Neuroatypique : ${ef.neuroTrouble}`);
+            // Moyennes
+            const hasMoyMat = Object.keys(ef.moyennesMat).some(k => ef.moyennesMat[k]);
+            if (ef.moyenneGenerale || hasMoyMat) {
+              lines.push(``);
+              lines.push(`📊 MOYENNES`);
+              if (ef.moyenneGenerale) lines.push(`• Générale : ${ef.moyenneGenerale}/20`);
+              ef.matieres.forEach(m => {
+                if (ef.moyennesMat[m]) lines.push(`• ${m} : ${ef.moyennesMat[m]}/20`);
+              });
+            }
+            // Liste de profs
+            if (ef.listeEnvoyee) lines.push(`📤 Liste de profs : ENVOYÉE`);
+            else lines.push(`⏳ Liste de profs : Non envoyée`);
           }
+
           lines.push(``);
           // Disponibilités
           if (dispoJours.length > 0 || dispoCreneaux.length > 0 || dispoNote) {
@@ -1268,9 +1329,9 @@ Format JSON STRICT (rien d'autre) :
             lines.push(`${notePerso}`);
             lines.push(``);
           }
-          if (psycho) {
+          if (ef.psycho) {
             lines.push(`🧠 PROFIL PSY ÉLÈVE`);
-            lines.push(`• Personnalité : ${psycho}`);
+            lines.push(`• Personnalité : ${ef.psycho}`);
             lines.push(``);
           }
           if (parentProfile || souhaitParent) {
@@ -1352,82 +1413,95 @@ Format JSON STRICT (rien d'autre) :
         {/* Diagnostic academique */}
         <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 16, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>📚 Diagnostic academique</div>
+
+          {/* Prénom de l'enfant */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Prénom de l'enfant</div>
+            <input
+              type="text"
+              value={ef.prenom}
+              onChange={e => setEF("prenom", e.target.value)}
+              placeholder="Ex: Léa, Thomas..."
+              style={{ width: "100%", fontSize: 13, border: "1px solid #E4E4E7", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box" }}
+            />
+          </div>
+
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Niveau scolaire <span style={{ color: "#E11D48" }}>*</span></div>
-            <Chips options={NIVEAUX} selected={niveau} onChange={n => { setNiveau(n); setClasse(""); setBrevetPrep(false); setSpes([]); setParcoursupCible(""); setPrepaFiliere(""); setSerieTechno(""); const dispos = getMatieresDisponibles(n, "", "", ""); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+            <Chips options={NIVEAUX} selected={ef.niveau} onChange={n => { setEF("niveau", n); setEF("classe", ""); setEF("brevetPrep", false); setEF("spes", []); setEF("parcoursupCible", ""); setEF("prepaFiliere", ""); setEF("serieTechno", ""); const dispos = getMatieresDisponibles(n, "", "", ""); setEF("matieres", ef.matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
           </div>
 
           {/* QUESTIONS CONDITIONNELLES SELON NIVEAU */}
-          {niveau === "Primaire" && (
+          {ef.niveau === "Primaire" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe précise</div>
-              <Chips options={CLASSES_PRIMAIRE} selected={classe} onChange={c => { setClasse(c); }} color="#16A34A" single={true} />
+              <Chips options={CLASSES_PRIMAIRE} selected={ef.classe} onChange={c => { setEF("classe", c); }} color="#16A34A" single={true} />
             </div>
           )}
-          {niveau === "Collège" && (
+          {ef.niveau === "Collège" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe précise <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_COLLEGE} selected={classe} onChange={c => { setClasse(c); const dispos = getMatieresDisponibles("Collège", c); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
-              {classe === "3e" && (
+              <Chips options={CLASSES_COLLEGE} selected={ef.classe} onChange={c => { setEF("classe", c); const dispos = getMatieresDisponibles("Collège", c); setEF("matieres", ef.matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+              {ef.classe === "3e" && (
                 <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => setBrevetPrep(!brevetPrep)} style={{ width: 22, height: 22, borderRadius: 5, border: `2px solid ${brevetPrep ? "#16A34A" : "#D4D4D8"}`, background: brevetPrep ? "#16A34A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 12 }}>{brevetPrep ? "✓" : ""}</button>
+                  <button onClick={() => setEF("brevetPrep", !ef.brevetPrep)} style={{ width: 22, height: 22, borderRadius: 5, border: `2px solid ${ef.brevetPrep ? "#16A34A" : "#D4D4D8"}`, background: ef.brevetPrep ? "#16A34A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 12 }}>{ef.brevetPrep ? "✓" : ""}</button>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "#3F3F46" }}>Prépare le brevet (DNB) ?</span>
                 </div>
               )}
             </div>
           )}
 
-          {niveau === "Lycée général" && (
+          {ef.niveau === "Lycée général" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_LYCEE_GENERAL} selected={classe} onChange={c => { setClasse(c); setSpes([]); setParcoursupCible(""); const dispos = getMatieresDisponibles("Lycée général", c); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+              <Chips options={CLASSES_LYCEE_GENERAL} selected={ef.classe} onChange={c => { setEF("classe", c); setEF("spes", []); setEF("parcoursupCible", ""); const dispos = getMatieresDisponibles("Lycée général", c); setEF("matieres", ef.matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
 
-              {(classe === "Première" || classe === "Terminale") && (
+              {(ef.classe === "Première" || ef.classe === "Terminale") && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 6 }}>{classe === "Première" ? "Spécialités (3 choix)" : "Spécialités conservées (2 choix)"}</div>
-                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Sélectionne {classe === "Première" ? "les 3 spécialités" : "les 2 spécialités gardées"}</div>
-                  <Chips options={SPE_PREMIERE} selected={spes} onChange={setSpes} color="#0B68B4" />
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 6 }}>{ef.classe === "Première" ? "Spécialités (3 choix)" : "Spécialités conservées (2 choix)"}</div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Sélectionne {ef.classe === "Première" ? "les 3 spécialités" : "les 2 spécialités gardées"}</div>
+                  <Chips options={SPE_PREMIERE} selected={ef.spes} onChange={v => setEF("spes", v)} color="#0B68B4" />
                 </div>
               )}
 
-              {classe === "Terminale" && (
+              {ef.classe === "Terminale" && (
                 <div style={{ marginTop: 14 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 6 }}>🎯 Cible Parcoursup</div>
                   <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8 }}>Sélection en 3 étapes : catégorie → option → école précise</div>
 
                   {/* Étape 1 : Catégorie */}
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#71717A", marginBottom: 5 }}>1. Type d'études</div>
-                  <select value={parcoursupCategorie} onChange={e => { setParcoursupCategorie(e.target.value); setParcoursupCible(""); setParcoursupEcole(""); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff", marginBottom: 10 }}>
+                  <select value={ef.parcoursupCategorie} onChange={e => { setEF("parcoursupCategorie", e.target.value); setEF("parcoursupCible", ""); setEF("parcoursupEcole", ""); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff", marginBottom: 10 }}>
                     <option value="">— Sélectionner —</option>
                     {Object.entries(PARCOURSUP_HIERARCHY).map(([k, v]) => <option key={k} value={k}>{v.emoji} {k}</option>)}
                   </select>
 
                   {/* Étape 2 : Option précise */}
-                  {parcoursupCategorie && PARCOURSUP_HIERARCHY[parcoursupCategorie] && (
+                  {ef.parcoursupCategorie && PARCOURSUP_HIERARCHY[ef.parcoursupCategorie] && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#71717A", marginBottom: 5 }}>2. Filière / Programme précis</div>
-                      <select value={parcoursupCible} onChange={e => { setParcoursupCible(e.target.value); setParcoursupEcole(""); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff", marginBottom: 10 }}>
+                      <select value={ef.parcoursupCible} onChange={e => { setEF("parcoursupCible", e.target.value); setEF("parcoursupEcole", ""); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff", marginBottom: 10 }}>
                         <option value="">— Sélectionner —</option>
-                        {Object.entries(PARCOURSUP_HIERARCHY[parcoursupCategorie].options).map(([k, v]) => <option key={k} value={k}>{v.emoji} {k}</option>)}
+                        {Object.entries(PARCOURSUP_HIERARCHY[ef.parcoursupCategorie].options).map(([k, v]) => <option key={k} value={k}>{v.emoji} {k}</option>)}
                       </select>
                     </div>
                   )}
 
                   {/* Étape 3 : École précise */}
-                  {parcoursupCible && PARCOURSUP_HIERARCHY[parcoursupCategorie]?.options[parcoursupCible] && (
+                  {ef.parcoursupCible && PARCOURSUP_HIERARCHY[ef.parcoursupCategorie]?.options[ef.parcoursupCible] && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#71717A", marginBottom: 5 }}>3. École / Établissement ciblé <span style={{ color: "#A1A1AA" }}>(optionnel)</span></div>
-                      <select value={parcoursupEcole} onChange={e => setParcoursupEcole(e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+                      <select value={ef.parcoursupEcole} onChange={e => setEF("parcoursupEcole", e.target.value)} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
                         <option value="">— Sélectionner (optionnel) —</option>
-                        {PARCOURSUP_HIERARCHY[parcoursupCategorie].options[parcoursupCible].ecoles.map(e => <option key={e} value={e}>{e}</option>)}
+                        {PARCOURSUP_HIERARCHY[ef.parcoursupCategorie].options[ef.parcoursupCible].ecoles.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                     </div>
                   )}
 
                   {/* Récapitulatif */}
-                  {parcoursupCible && (
+                  {ef.parcoursupCible && (
                     <div style={{ marginTop: 10, padding: "8px 12px", background: "#F0FDF4", borderRadius: 8, border: "1px solid #C0EAD3", fontSize: 11, color: "#15803D" }}>
-                      🎯 <strong>{parcoursupCategorie}</strong> › {parcoursupCible}{parcoursupEcole && ` › ${parcoursupEcole}`}
+                      🎯 <strong>{ef.parcoursupCategorie}</strong> › {ef.parcoursupCible}{ef.parcoursupEcole && ` › ${ef.parcoursupEcole}`}
                     </div>
                   )}
                 </div>
@@ -1435,50 +1509,50 @@ Format JSON STRICT (rien d'autre) :
             </div>
           )}
 
-          {niveau === "Lycée techno" && (
+          {ef.niveau === "Lycée techno" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_LYCEE_TECHNO} selected={classe} onChange={c => { setClasse(c); const dispos = getMatieresDisponibles("Lycée techno", c, "", serieTechno); setMatieres(matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
+              <Chips options={CLASSES_LYCEE_TECHNO} selected={ef.classe} onChange={c => { setEF("classe", c); const dispos = getMatieresDisponibles("Lycée techno", c, "", ef.serieTechno); setEF("matieres", ef.matieres.filter(m => dispos.includes(m))); }} color="#16A34A" single={true} />
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 8 }}>Série technologique <span style={{ color: "#E11D48" }}>*</span></div>
-              <select value={serieTechno} onChange={e => { const s = e.target.value; setSerieTechno(s); const dispos = getMatieresDisponibles("Lycée techno", classe, "", s); setMatieres(matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+              <select value={ef.serieTechno} onChange={e => { const s = e.target.value; setEF("serieTechno", s); const dispos = getMatieresDisponibles("Lycée techno", ef.classe, "", s); setEF("matieres", ef.matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
                 <option value="">— Sélectionner la série —</option>
                 {LYCEE_TECHNO_SERIES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           )}
 
-          {niveau === "Lycée pro" && (
+          {ef.niveau === "Lycée pro" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_LYCEE_PRO} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+              <Chips options={CLASSES_LYCEE_PRO} selected={ef.classe} onChange={c => setEF("classe", c)} color="#16A34A" single={true} />
             </div>
           )}
 
-          {niveau === "BTS / IUT" && (
+          {ef.niveau === "BTS / IUT" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Classe <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={CLASSES_BTS} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+              <Chips options={CLASSES_BTS} selected={ef.classe} onChange={c => setEF("classe", c)} color="#16A34A" single={true} />
             </div>
           )}
 
-          {niveau === "Prépa" && (
+          {ef.niveau === "Prépa" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Année <span style={{ color: "#E11D48" }}>*</span></div>
-              <Chips options={["1re année", "2e année"]} selected={prepaAnnee} onChange={setPrepaAnnee} color="#16A34A" single={true} />
+              <Chips options={["1re année", "2e année"]} selected={ef.prepaAnnee} onChange={v => setEF("prepaAnnee", v)} color="#16A34A" single={true} />
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 8 }}>Filière de prépa <span style={{ color: "#E11D48" }}>*</span></div>
-              <select value={prepaFiliere} onChange={e => { const f = e.target.value; setPrepaFiliere(f); const dispos = getMatieresDisponibles("Prépa", "", f); setMatieres(matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
+              <select value={ef.prepaFiliere} onChange={e => { const f = e.target.value; setEF("prepaFiliere", f); const dispos = getMatieresDisponibles("Prépa", "", f); setEF("matieres", ef.matieres.filter(m => dispos.includes(m))); }} style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "10px 12px", fontFamily: "'Inter',sans-serif", background: "#fff" }}>
                 <option value="">— Sélectionner —</option>
                 {PREPA_FILIERES.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
           )}
 
-          {niveau === "Université" && (
+          {ef.niveau === "Université" && (
             <div style={{ marginBottom: 14, padding: 12, background: "#F0FDF4", borderRadius: 10, border: "1px solid #C0EAD3" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginBottom: 8 }}>Année</div>
-              <Chips options={CLASSES_UNIV} selected={classe} onChange={setClasse} color="#16A34A" single={true} />
+              <Chips options={CLASSES_UNIV} selected={ef.classe} onChange={c => setEF("classe", c)} color="#16A34A" single={true} />
               <div style={{ fontSize: 12, fontWeight: 600, color: "#15803D", marginTop: 12, marginBottom: 6 }}>Filière</div>
-              <input value={univFiliere} onChange={e => setUnivFiliere(e.target.value)} placeholder="Ex : Médecine, Maths-info, Droit, Lettres..." style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
+              <input value={ef.univFiliere} onChange={e => setEF("univFiliere", e.target.value)} placeholder="Ex : Médecine, Maths-info, Droit, Lettres..." style={{ width: "100%", fontSize: 13, border: "1px solid #C0EAD3", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box", fontFamily: "'Inter',sans-serif" }} />
             </div>
           )}
 
@@ -1486,7 +1560,7 @@ Format JSON STRICT (rien d'autre) :
             <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 4 }}>Matiere(s)</div>
             <div style={{ fontSize: 11, color: "#A1A1AA", marginBottom: 8 }}>Clique sur un groupe pour voir les matières</div>
             {(() => {
-              const dispos = getMatieresDisponibles(niveau, classe, prepaFiliere, serieTechno);
+              const dispos = getMatieresDisponibles(ef.niveau, ef.classe, ef.prepaFiliere, ef.serieTechno);
               // Groupes de matières
               const GROUPS = [
                 { id: "scientifique", label: "🔬 Scientifique", color: "#0B68B4",
@@ -1520,10 +1594,10 @@ Format JSON STRICT (rien d'autre) :
                 <div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     {visibleGroups.map(g => {
-                      const nbSelected = g.mats.filter(m => matieres.includes(m)).length;
-                      const isOpen = openMatGroup === g.id;
+                      const nbSelected = g.mats.filter(m => ef.matieres.includes(m)).length;
+                      const isOpen = ef.openMatGroup === g.id;
                       return (
-                        <button key={g.id} onClick={() => setOpenMatGroup(isOpen ? null : g.id)}
+                        <button key={g.id} onClick={() => setEF("openMatGroup", isOpen ? null : g.id)}
                           style={{
                             padding: "10px 12px", borderRadius: 10,
                             border: `2px solid ${isOpen ? g.color : nbSelected > 0 ? g.color : "#E4E4E7"}`,
@@ -1540,23 +1614,23 @@ Format JSON STRICT (rien d'autre) :
                       );
                     })}
                   </div>
-                  {openMatGroup && (() => {
-                    const g = visibleGroups.find(gg => gg.id === openMatGroup);
+                  {ef.openMatGroup && (() => {
+                    const g = visibleGroups.find(gg => gg.id === ef.openMatGroup);
                     if (!g) return null;
                     return (
                       <div style={{ marginTop: 10, padding: "10px 12px", background: g.color + "08", border: `1px dashed ${g.color}`, borderRadius: 10 }}>
-                        <Chips options={g.mats} selected={matieres} onChange={setMatieres} color={g.color} />
+                        <Chips options={g.mats} selected={ef.matieres} onChange={v => setEF("matieres", v)} color={g.color} />
                       </div>
                     );
                   })()}
-                  {matieres.length > 0 && (
+                  {ef.matieres.length > 0 && (
                     <div style={{ marginTop: 10, padding: "8px 10px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#15803D", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>✓ Matières sélectionnées</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                        {matieres.map(m => (
+                        {ef.matieres.map(m => (
                           <span key={m} style={{ fontSize: 11, background: "#fff", color: "#15803D", padding: "3px 10px", borderRadius: 99, border: "1px solid #86EFAC", display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
                             {m}
-                            <button onClick={() => setMatieres(matieres.filter(x => x !== m))} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717A", fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+                            <button onClick={() => setEF("matieres", ef.matieres.filter(x => x !== m))} style={{ background: "none", border: "none", cursor: "pointer", color: "#71717A", fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
                           </span>
                         ))}
                       </div>
@@ -1569,7 +1643,7 @@ Format JSON STRICT (rien d'autre) :
         </C>
 
         {/* Nombre de profs */}
-        {matieres.length>=2&&<C style={{ marginBottom: 12, borderLeft: `4px solid ${nbProfs==="1"?"#0B68B4":"#16A34A"}` }}>
+        {ef.matieres.length>=2&&<C style={{ marginBottom: 12, borderLeft: `4px solid ${nbProfs==="1"?"#0B68B4":"#16A34A"}` }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             👥 Nombre de professeurs
             <span style={{ fontSize: 11, background: "#EFF6FF", color: "#0B68B4", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
@@ -1587,60 +1661,39 @@ Format JSON STRICT (rien d'autre) :
           </div>
         </C>}
 
-        {/* Profil psychologique */}
-        <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-            🧠 Profil Psychologique <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>La personnalite de l'eleve determine le profil de prof ideal</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-            {PSYCH_PROFILES.map(p => {
-              const on = psycho === p;
-              const emoji = { "Introverti / Réservé": "🤫", "Décrocheur / Démotivé": "😮‍💨", "Compétiteur / Haut Potentiel": "🔥", "Stressé / Anxieux": "😰" }[p] || "👤";
-              return (
-                <button key={p} onClick={() => setPsycho(on ? "" : p)}
-                  style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#16A34A" : "#E4E4E7"}`, background: on ? "#E1FFED" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{emoji}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#16A34A" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p}</div>
-                </button>
-              );
-            })}
-          </div>
-        </C>
-
-        {/* Neuroatypique toggle (Step 1) */}
-        <C style={{ marginBottom: 12, borderLeft: `4px solid ${neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: neuroActive ? 12 : 0 }}>
+        {/* Neuroatypique toggle */}
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${ef.neuroActive ? "#7C3AED" : "#E4E4E7"}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ef.neuroActive ? 12 : 0 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
                 🧩 Neuroatypique
-                <span style={{ fontSize: 11, background: neuroActive ? "#F5F3FF" : "#F4F4F5", color: neuroActive ? "#7C3AED" : "#71717A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>
-                  {neuroActive ? "ACTIF" : "OFF"}
+                <span style={{ fontSize: 11, background: ef.neuroActive ? "#F5F3FF" : "#F4F4F5", color: ef.neuroActive ? "#7C3AED" : "#71717A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>
+                  {ef.neuroActive ? "ACTIF" : "OFF"}
                 </span>
               </div>
               <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>L'eleve a un profil neuroatypique</div>
             </div>
-            <button onClick={() => { setNeuroActive(!neuroActive); if (neuroActive) setNeuroTrouble(""); }}
+            <button onClick={() => { setEF("neuroActive", !ef.neuroActive); if (ef.neuroActive) setEF("neuroTrouble", ""); }}
               style={{
                 width: 48, height: 26, borderRadius: 99, border: "none", cursor: "pointer", position: "relative",
-                background: neuroActive ? "#7C3AED" : "#D4D4D8", transition: "background .2s",
+                background: ef.neuroActive ? "#7C3AED" : "#D4D4D8", transition: "background .2s",
               }}>
               <div style={{
                 width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3,
-                left: neuroActive ? 25 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)",
+                left: ef.neuroActive ? 25 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)",
               }} />
             </button>
           </div>
 
-          {neuroActive && (
+          {ef.neuroActive && (
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#71717A", marginBottom: 8 }}>Type de trouble <span style={{ color: "#E11D48" }}>*</span></div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {NEURO_TROUBLES.map(t => {
-                  const on = neuroTrouble === t;
+                  const on = ef.neuroTrouble === t;
                   const tc = NEURO_COLORS[t] || "#6B7280";
                   return (
-                    <button key={t} onClick={() => setNeuroTrouble(on ? "" : t)}
+                    <button key={t} onClick={() => setEF("neuroTrouble", on ? "" : t)}
                       style={{
                         padding: "8px 14px", borderRadius: 99, border: `2px solid ${on ? tc : "#E4E4E7"}`,
                         background: on ? tc + "15" : "#FAFAFA", cursor: "pointer", transition: "all .15s",
@@ -1656,33 +1709,7 @@ Format JSON STRICT (rien d'autre) :
           )}
         </C>
 
-        {/* Objectif de vie (Step 1) */}
-        <C style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-            🎯 Objectif de vie <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Qu'est-ce que cette famille veut vraiment accomplir ?</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-            {[
-              ["Remise à niveau", "🔄", "Rattraper le niveau de la classe"],
-              ["Réussite concours", "🏆", "Integrer une grande ecole ou un programme selectif"],
-              ["Méthodologie pure", "🗂️", "Apprendre a apprendre"],
-              ["Excellence académique", "⭐", "Etre le meilleur dans sa matiere"],
-            ].map(([o, em, desc]) => {
-              const on = objectifVie === o;
-              return (
-                <button key={o} onClick={() => setObjectifVie(on ? "" : o)}
-                  style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#0B68B4" : "#E4E4E7"}`, background: on ? "#EFF6FF" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{em}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#1E40AF" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{o}</div>
-                  <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{desc}</div>
-                </button>
-              );
-            })}
-          </div>
-        </C>
-
-        {/* Moyennes (Step 1, optionnel) */}
+        {/* Moyennes (optionnel) */}
         <C style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
             📊 Moyennes <span style={{ fontSize: 11, fontWeight: 400, color: "#A1A1AA" }}>(optionnel)</span>
@@ -1690,12 +1717,12 @@ Format JSON STRICT (rien d'autre) :
           <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Moyenne générale et par matière choisie</div>
           <div style={{ marginBottom: 10 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#3F3F46", display: "block", marginBottom: 4 }}>Moyenne générale / 20</label>
-            <input type="number" min="0" max="20" step="0.5" value={moyenneGenerale} onChange={e => setMoyenneGenerale(e.target.value)}
+            <input type="number" min="0" max="20" step="0.5" value={ef.moyenneGenerale} onChange={e => setEF("moyenneGenerale", e.target.value)}
               placeholder="ex: 12.5"
               style={{ width: "100%", fontSize: 13, border: "1px solid #E4E4E7", borderRadius: 8, padding: "9px 12px", boxSizing: "border-box" }} />
           </div>
           {(() => {
-            const matsPourMoy = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
+            const matsPourMoy = ef.matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
             if (matsPourMoy.length === 0) return null;
             return (
               <div>
@@ -1705,8 +1732,8 @@ Format JSON STRICT (rien d'autre) :
                     <div key={mat}>
                       <label style={{ fontSize: 10, color: "#71717A", display: "block", marginBottom: 3 }}>{mat}</label>
                       <input type="number" min="0" max="20" step="0.5"
-                        value={moyennesMat[mat] || ""}
-                        onChange={e => setMoyennesMat({ ...moyennesMat, [mat]: e.target.value })}
+                        value={ef.moyennesMat[mat] || ""}
+                        onChange={e => setEF("moyennesMat", { ...ef.moyennesMat, [mat]: e.target.value })}
                         placeholder="/20"
                         style={{ width: "100%", fontSize: 12, border: "1px solid #E4E4E7", borderRadius: 6, padding: "7px 10px", boxSizing: "border-box" }} />
                     </div>
@@ -1836,6 +1863,83 @@ Format JSON STRICT (rien d'autre) :
           </div>
         </C>
 
+        {/* 🧠 Profil Psychologique (collapsible) */}
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${ef.psycho ? "#16A34A" : "#E4E4E7"}` }}>
+          <button
+            onClick={() => setOpenPsycho(!openPsycho)}
+            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+                  🧠 Profil Psychologique <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
+                  {ef.psycho && <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600 }}>· {ef.psycho}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>La personnalité de l'élève détermine le profil de prof idéal</div>
+              </div>
+              <span style={{ fontSize: 16, color: "#71717A", transform: openPsycho ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+            </div>
+          </button>
+          {openPsycho && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+                {PSYCH_PROFILES.map(p => {
+                  const on = ef.psycho === p;
+                  const emoji = { "Introverti / Réservé": "🤫", "Décrocheur / Démotivé": "😮‍💨", "Compétiteur / Haut Potentiel": "🔥", "Stressé / Anxieux": "😰" }[p] || "👤";
+                  return (
+                    <button key={p} onClick={() => setEF("psycho", on ? "" : p)}
+                      style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#16A34A" : "#E4E4E7"}`, background: on ? "#E1FFED" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>{emoji}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#16A34A" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </C>
+
+        {/* 🎯 Objectif de vie (collapsible) */}
+        <C style={{ marginBottom: 12, borderLeft: `4px solid ${ef.objectifVie ? "#0B68B4" : "#E4E4E7"}` }}>
+          <button
+            onClick={() => setOpenObjectif(!openObjectif)}
+            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+                  🎯 Objectif de vie <span style={{ fontSize: 11, background: "#E1FFED", color: "#16A34A", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>V5</span>
+                  {ef.objectifVie && <span style={{ fontSize: 11, color: "#0B68B4", fontWeight: 600 }}>· {ef.objectifVie}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>Qu'est-ce que cette famille veut vraiment accomplir ?</div>
+              </div>
+              <span style={{ fontSize: 16, color: "#71717A", transform: openObjectif ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+            </div>
+          </button>
+          {openObjectif && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+                {[
+                  ["Remise à niveau", "🔄", "Rattraper le niveau de la classe"],
+                  ["Réussite concours", "🏆", "Integrer une grande ecole ou un programme selectif"],
+                  ["Méthodologie pure", "🗂️", "Apprendre a apprendre"],
+                  ["Excellence académique", "⭐", "Etre le meilleur dans sa matiere"],
+                ].map(([o, em, desc]) => {
+                  const on = ef.objectifVie === o;
+                  return (
+                    <button key={o} onClick={() => setEF("objectifVie", on ? "" : o)}
+                      style={{ padding: "12px 14px", borderRadius: 12, border: `2px solid ${on ? "#0B68B4" : "#E4E4E7"}`, background: on ? "#EFF6FF" : "#FAFAFA", textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>{em}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#1E40AF" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{o}</div>
+                      <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </C>
+
         {/* ── STEP 3 : Recherche automatique de profs via IA ── */}
         <C style={{ marginBottom: 12, borderLeft: "4px solid #16A34A", background: "#F0FDF4" }}>
           <Btn onClick={() => {
@@ -1843,7 +1947,7 @@ Format JSON STRICT (rien d'autre) :
             if (modeCours === "domicile" && villeClient) { setSearchMode("atHome"); setSearchCity(villeClient); }
             else { setSearchMode("online"); }
             setTimeout(searchProfsWithAI, 100);
-          }} disabled={searchLoading || !niveau || matieres.length === 0} full color="#16A34A" style={{ padding: "12px", borderRadius: 99, fontSize: 14 }}>
+          }} disabled={searchLoading || !ef.niveau || ef.matieres.length === 0} full color="#16A34A" style={{ padding: "12px", borderRadius: 99, fontSize: 14 }}>
             {searchLoading ? "🔎 Recherche en cours..." : "🔍 Trouver un prof avec l'IA"}
           </Btn>
           {modeCours === "domicile" && villeClient && (
@@ -1894,6 +1998,30 @@ Format JSON STRICT (rien d'autre) :
             </div>
           )}
         </C>
+
+        {/* ── Liste de profs envoyée ── */}
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={() => setEF("listeEnvoyee", !ef.listeEnvoyee)}
+            style={{
+              width: "100%", padding: "12px 16px", borderRadius: 12,
+              border: `2px solid ${ef.listeEnvoyee ? "#16A34A" : "#E4E4E7"}`,
+              background: ef.listeEnvoyee ? "#F0FDF4" : "#FAFAFA",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+              transition: "all .15s",
+            }}
+          >
+            <span style={{ fontSize: 20 }}>{ef.listeEnvoyee ? "📤" : "⏳"}</span>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: ef.listeEnvoyee ? "#15803D" : "#71717A", fontFamily: "'Outfit',sans-serif" }}>
+                {ef.listeEnvoyee ? "Liste de profs envoyée ✅" : "Liste de profs non envoyée"}
+              </div>
+              <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 1 }}>
+                {ef.listeEnvoyee ? "Cliquer pour marquer comme non envoyée" : "Cliquer pour marquer comme envoyée"}
+              </div>
+            </div>
+          </button>
+        </div>
 
         {/* ── Résultats IA (si profUrl renseigné via recherche auto) ── */}
         {aiArguments && <C style={{ marginBottom: 12, background: "#FAF5FF", border: "2px solid #DDD6FE", padding: "16px 18px" }}>
@@ -1991,104 +2119,16 @@ Format JSON STRICT (rien d'autre) :
           )}
         </C>}
 
-        {/* ── SCRIPT CRM moved to top after tabs ── */}
-        {false && (() => {
-          if (!niveau && !prenom) return null;
-          const ppLab = PARENT_PROFILES.find(p => p.id === parentProfile)?.label || "";
-          const lines = [];
-          if (modeCours) lines.push(`📍 Mode : ${modeCours === "domicile" ? "À domicile" + (villeClient ? " — " + villeClient : "") : modeCours === "enligne" ? "En ligne" : "Peu importe"}`);
-          lines.push(`🎓 DIAGNOSTIC ACADÉMIQUE`);
-          if (niveau) {
-            let niv = niveau;
-            if (classe) niv += ` · ${classe}`;
-            if (brevetPrep) niv += ` (prep brevet)`;
-            if (serieTechno) niv += ` · ${serieTechno}`;
-            if (spes.length > 0) niv += ` · spés ${spes.join("/")}`;
-            if (prepaFiliere) niv += ` · ${prepaAnnee ? prepaAnnee + " " : ""}prépa ${prepaFiliere}`;
-            if (univFiliere) niv += ` · ${univFiliere}`;
-            lines.push(`• Niveau : ${niv}`);
-          }
-          if (matieres.length > 0) lines.push(`• Matières : ${matieres.join(", ")}`);
-          if (parcoursupCible) lines.push(`• Parcoursup : ${parcoursupCible}${parcoursupEcole ? " — " + parcoursupEcole : ""}`);
-          if (objectifVie) lines.push(`• Objectif : ${objectifVie}`);
-          if (nbProfs) lines.push(`• Nombre de profs souhaité : ${nbProfs}`);
-          if (neuroActive && neuroTrouble) lines.push(`• Neuroatypique : ${neuroTrouble}`);
-          // Moyennes
-          const hasMoyMat = Object.keys(moyennesMat).some(k => moyennesMat[k]);
-          if (moyenneGenerale || hasMoyMat) {
-            lines.push(``);
-            lines.push(`📊 MOYENNES`);
-            if (moyenneGenerale) lines.push(`• Générale : ${moyenneGenerale}/20`);
-            matieres.forEach(m => {
-              if (moyennesMat[m]) lines.push(`• ${m} : ${moyennesMat[m]}/20`);
-            });
-          }
-          lines.push(``);
-          // Disponibilités
-          if (dispoJours.length > 0 || dispoCreneaux.length > 0 || dispoNote) {
-            lines.push(`📅 DISPONIBILITÉS`);
-            if (dispoJours.length > 0) lines.push(`• Créneaux 1 : ${dispoJours.join(", ")} — ${dispoCreneaux.join(", ")}`);
-            if (dispoNote) lines.push(`• Note : ${dispoNote}`);
-            if (dispoJours2.length > 0 || dispoCreneaux2.length > 0) lines.push(`• Créneaux 2 : ${dispoJours2.join(", ")} — ${dispoCreneaux2.join(", ")}`);
-            lines.push(``);
-          }
-          if (budget) {
-            const budgetLabel = { petit: "Budget serré", moyen: "Budget moyen", gros: "Budget confortable" }[budget];
-            lines.push(`💰 ${budgetLabel}`);
-            lines.push(``);
-          }
-          if (notePerso) {
-            lines.push(`📝 NOTE`);
-            lines.push(`${notePerso}`);
-            lines.push(``);
-          }
-          if (psycho) {
-            lines.push(`🧠 PROFIL PSY ÉLÈVE`);
-            lines.push(`• Personnalité : ${psycho}`);
-            lines.push(``);
-          }
-          if (parentProfile || souhaitParent) {
-            lines.push(`👨‍👩‍👧 PROFIL FAMILLE`);
-            if (ppLab) lines.push(`• Profil parent : ${ppLab}`);
-            if (souhaitParent && souhaitParent !== "Pas d'avis") lines.push(`• Souhait : ${souhaitParent}`);
-            lines.push(``);
-          }
-          // Recommandation
-          // Analyse IA prof
-          if (aiArguments) {
-            lines.push(`🤖 MATCH PROF PROPOSÉ`);
-            if (profUrl) lines.push(`URL : ${profUrl}`);
-            if (typeof aiArguments.matchScore === "number") lines.push(`Score : ${aiArguments.matchScore}/100`);
-            if (aiArguments.verdict) lines.push(`Verdict : ${aiArguments.verdict}`);
-            if (aiArguments.summary) lines.push(`Profil : ${aiArguments.summary}`);
-            lines.push(``);
-          }
-          lines.push(`— Fiche générée via Sherpas Sales Center V5`);
-          const scriptText = lines.join("\n");
-          return <C style={{ marginBottom: 12, background: "#F0F9FF", border: "2px solid #BAE6FD", padding: "12px 16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 18 }}>📋</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: "#0369A1", fontFamily: "'Outfit',sans-serif" }}>Script CRM — Notes d'appel</div>
-                  <div style={{ fontSize: 10, color: "#0284C7" }}>Se met à jour en live — clique pour copier</div>
-                </div>
-              </div>
-              <CopyBtn text={scriptText} />
-            </div>
-          </C>;
-        })()}
-
         {/* Matieres compatibility analysis (shown in step 1 if applicable) */}
         {matAnalysis && matAnalysis.type === "college_polyvalent" && (()=>{
-          const matsList = matieres.join(", ");
-          const polyScript = `Bonne nouvelle — au niveau ${niveau}, un seul professeur peut tout à fait accompagner ${nom} en ${matsList}.\n\nPourquoi ? Parce qu'au collège, le programme reste suffisamment généraliste pour qu'un bon étudiant universitaire ou un professeur de l'Éducation Nationale maîtrise l'ensemble des matières.\n\nCe que je vous recommande :\n• Un étudiant universitaire polyvalent (L2-M1) qui a un bon niveau général — il pourra travailler toutes les matières avec ${nom} dans la même séance\n• Ou un professeur de l'Éducation Nationale qui enseigne déjà à ce niveau et connaît parfaitement les attendus du programme\n\nL'avantage d'un seul prof pour ${nom} :\n• Un seul interlocuteur = ${nom} crée un vrai lien de confiance\n• Le prof voit les connexions entre les matières (ex : la rigueur en maths aide en français)\n• Organisation simplifiée pour vous — un seul créneau, un seul suivi\n• Le prof connaît les forces ET les faiblesses de ${nom} dans toutes les matières\n\nC'est d'ailleurs ce qu'on recommande jusqu'à la 3ème — un prof polyvalent qui suit l'élève globalement est souvent plus efficace que plusieurs spécialistes à ce niveau.`;
+          const matsList = ef.matieres.join(", ");
+          const polyScript = `Bonne nouvelle — au niveau ${ef.niveau}, un seul professeur peut tout à fait accompagner ${nom} en ${matsList}.\n\nPourquoi ? Parce qu'au collège, le programme reste suffisamment généraliste pour qu'un bon étudiant universitaire ou un professeur de l'Éducation Nationale maîtrise l'ensemble des matières.\n\nCe que je vous recommande :\n• Un étudiant universitaire polyvalent (L2-M1) qui a un bon niveau général — il pourra travailler toutes les matières avec ${nom} dans la même séance\n• Ou un professeur de l'Éducation Nationale qui enseigne déjà à ce niveau et connaît parfaitement les attendus du programme\n\nL'avantage d'un seul prof pour ${nom} :\n• Un seul interlocuteur = ${nom} crée un vrai lien de confiance\n• Le prof voit les connexions entre les matières (ex : la rigueur en maths aide en français)\n• Organisation simplifiée pour vous — un seul créneau, un seul suivi\n• Le prof connaît les forces ET les faiblesses de ${nom} dans toutes les matières\n\nC'est d'ailleurs ce qu'on recommande jusqu'à la 3ème — un prof polyvalent qui suit l'élève globalement est souvent plus efficace que plusieurs spécialistes à ce niveau.`;
           return <C style={{ marginBottom: 14, background: "#F0FDF4", border: "2px solid #86EFAC", padding: "16px 18px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                   <span style={{ fontSize: 16 }}>✅</span>
-                  <Pill color="#16A34A">1 PROF POLYVALENT — {niveau}</Pill>
+                  <Pill color="#16A34A">1 PROF POLYVALENT — {ef.niveau}</Pill>
                 </div>
                 <div style={{ fontSize: 11, color: "#71717A" }}>{matsList} — Un seul prof peut tout couvrir a ce niveau</div>
               </div>
@@ -2108,12 +2148,12 @@ Format JSON STRICT (rien d'autre) :
                   <span style={{ fontSize: 16 }}>{matAnalysis.combo.icon}</span>
                   <Pill color="#16A34A">1 PROF POSSIBLE — Combo compatible</Pill>
                 </div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} → {matAnalysis.combo.filiere}</div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{ef.matieres.join(" + ")} → {matAnalysis.combo.filiere}</div>
               </div>
-              <CopyBtn text={getComboScript(matAnalysis.combo, nom, niveau)} />
+              <CopyBtn text={getComboScript(matAnalysis.combo, nom, ef.niveau)} />
             </div>
             <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
-              {getComboScript(matAnalysis.combo, nom, niveau)}
+              {getComboScript(matAnalysis.combo, nom, ef.niveau)}
             </div>
           </C>
         )}
@@ -2126,21 +2166,21 @@ Format JSON STRICT (rien d'autre) :
                   <span style={{ fontSize: 16 }}>⚠️</span>
                   <Pill color="#E11D48">ALERTE — Matieres incompatibles pour 1 prof</Pill>
                 </div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} — Filieres trop differentes</div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{ef.matieres.join(" + ")} — Filieres trop differentes</div>
               </div>
-              <CopyBtn text={getIncompatibleScript(matAnalysis, nom, niveau)} />
+              <CopyBtn text={getIncompatibleScript(matAnalysis, nom, ef.niveau)} />
             </div>
             <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #E11D48" }}>
-              {getIncompatibleScript(matAnalysis, nom, niveau)}
+              {getIncompatibleScript(matAnalysis, nom, ef.niveau)}
             </div>
           </C>
         )}
 
         {/* SOUTIEN SCOLAIRE — toutes matieres */}
         {matAnalysis && matAnalysis.type === "soutien_scolaire" && (()=>{
-          const isPrimaire = niveau === "Primaire";
-          const isCollege = niveau === "Collège";
-          const isLycee = niveau === "Lycée général" || niveau === "Lycée pro";
+          const isPrimaire = ef.niveau === "Primaire";
+          const isCollege = ef.niveau === "Collège";
+          const isLycee = ef.niveau === "Lycée général" || ef.niveau === "Lycée pro";
           let recommandation = "";
           let script = "";
           if (isPrimaire) {
@@ -2179,14 +2219,14 @@ Format JSON STRICT (rien d'autre) :
               <span style={{ fontSize: 16 }}>✅</span>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Matieres de la meme famille — 1 prof possible</div>
-                <div style={{ fontSize: 11, color: "#71717A", marginTop: 2 }}>{matieres.join(" + ")} sont dans le meme domaine. Un bon profil peut couvrir les deux.</div>
+                <div style={{ fontSize: 11, color: "#71717A", marginTop: 2 }}>{ef.matieres.join(" + ")} sont dans le meme domaine. Un bon profil peut couvrir les deux.</div>
               </div>
             </div>
           </C>
         )}
 
 
-        {!niveau && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Renseigne le niveau pour voir la recommandation en direct</div>}
+        {!ef.niveau && <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10, textAlign: "center" }}>Renseigne le niveau pour voir la recommandation en direct</div>}
 
         {/* ── RESULTS PANEL : Top 3 + Toolkit + (step 3) Guide argumentation ── */}
         {portrait && renderResults()}
@@ -2204,19 +2244,19 @@ Format JSON STRICT (rien d'autre) :
   // ═══════════════════════════════════════════════════════════════
   function renderResults() {
     if (!portrait) return null;
-    const nom = prenom || "l'eleve";
+    const nom = ef.prenom || "l'eleve";
     const top3 = portrait.slice(0, 3);
     const maxScore = top3[0]?.score || 1;
     const pp = parentProfile || "rationnel";
     const ppLabel = PARENT_PROFILES.find(p => p.id === pp)?.label || "Parent rationnel";
 
     // ── Analyse compatibilite matieres (visible aussi en Step 2) ──
-    const matAnalysisStep2 = (nbProfs === "1" && matieres.length >= 2) ? analyzeMatieresCompatibility(matieres, niveau) : null;
+    const matAnalysisStep2 = (nbProfs === "1" && ef.matieres.length >= 2) ? analyzeMatieresCompatibility(ef.matieres, ef.niveau) : null;
 
     // ── Recommandation hiérarchique précise ──
     const recommendedPath = getRecommendedHierarchy({
-      niveau, classe, brevetPrep, spes, parcoursupCategorie, parcoursupCible, parcoursupEcole, prepaFiliere, univFiliere, serieTechno,
-      matieres, psycho, objectif: objectifVie
+      niveau: ef.niveau, classe: ef.classe, brevetPrep: ef.brevetPrep, spes: ef.spes, parcoursupCategorie: ef.parcoursupCategorie, parcoursupCible: ef.parcoursupCible, parcoursupEcole: ef.parcoursupEcole, prepaFiliere: ef.prepaFiliere, univFiliere: ef.univFiliere, serieTechno: ef.serieTechno,
+      matieres: ef.matieres, psycho: ef.psycho, objectif: ef.objectifVie
     });
     // Récupère l'emoji + description du nœud final
     let recoNode = PROF_HIERARCHY;
@@ -2245,9 +2285,9 @@ Format JSON STRICT (rien d'autre) :
           <div>
             <div style={{ fontSize: 11, color: "#71717A", fontWeight: 600, marginBottom: 2 }}>🔦 Résultats en direct</div>
             <div style={{ color: "#71717A", fontSize: 11 }}>
-              {nom}{psycho ? ` · ${psycho}` : ""}{objectifVie ? ` · ${objectifVie}` : ""}
-              {serieTechno && <span style={{ color: "#0B68B4", fontWeight: 600 }}> · 🏛️ {serieTechno}</span>}
-              {neuroActive && neuroTrouble && <span style={{ color: "#7C3AED", fontWeight: 600 }}> · 🧩 {neuroTrouble}</span>}
+              {nom}{ef.psycho ? ` · ${ef.psycho}` : ""}{ef.objectifVie ? ` · ${ef.objectifVie}` : ""}
+              {ef.serieTechno && <span style={{ color: "#0B68B4", fontWeight: 600 }}> · 🏛️ {ef.serieTechno}</span>}
+              {ef.neuroActive && ef.neuroTrouble && <span style={{ color: "#7C3AED", fontWeight: 600 }}> · 🧩 {ef.neuroTrouble}</span>}
               {parentProfile && <span style={{ color: "#D97706", fontWeight: 600 }}> · 🎭 {ppLabel}</span>}
             </div>
           </div>
@@ -2262,12 +2302,12 @@ Format JSON STRICT (rien d'autre) :
                   <span style={{ fontSize: 16 }}>⚠️</span>
                   <Pill color="#E11D48">ALERTE — Matières incompatibles pour 1 prof</Pill>
                 </div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} — Filières trop différentes</div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{ef.matieres.join(" + ")} — Filières trop différentes</div>
               </div>
-              <CopyBtn text={getIncompatibleScript(matAnalysisStep2, nom, niveau)} />
+              <CopyBtn text={getIncompatibleScript(matAnalysisStep2, nom, ef.niveau)} />
             </div>
             <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #E11D48" }}>
-              {getIncompatibleScript(matAnalysisStep2, nom, niveau)}
+              {getIncompatibleScript(matAnalysisStep2, nom, ef.niveau)}
             </div>
           </C>
         )}
@@ -2280,12 +2320,12 @@ Format JSON STRICT (rien d'autre) :
                   <span style={{ fontSize: 16 }}>{matAnalysisStep2.combo.icon}</span>
                   <Pill color="#16A34A">1 PROF POSSIBLE — Combo compatible</Pill>
                 </div>
-                <div style={{ fontSize: 11, color: "#71717A" }}>{matieres.join(" + ")} → {matAnalysisStep2.combo.filiere}</div>
+                <div style={{ fontSize: 11, color: "#71717A" }}>{ef.matieres.join(" + ")} → {matAnalysisStep2.combo.filiere}</div>
               </div>
-              <CopyBtn text={getComboScript(matAnalysisStep2.combo, nom, niveau)} />
+              <CopyBtn text={getComboScript(matAnalysisStep2.combo, nom, ef.niveau)} />
             </div>
             <div style={{ fontSize: 13, color: "#3F3F46", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255,255,255,.7)", borderRadius: 10, padding: "14px 16px", borderLeft: "3px solid #16A34A" }}>
-              {getComboScript(matAnalysisStep2.combo, nom, niveau)}
+              {getComboScript(matAnalysisStep2.combo, nom, ef.niveau)}
             </div>
           </C>
         )}
@@ -2306,18 +2346,18 @@ Format JSON STRICT (rien d'autre) :
             </div>
           </div>
           <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(255,255,255,.15)", borderRadius: 10, fontSize: 12, lineHeight: 1.6 }}>
-            💡 Basé sur : {niveau}{classe ? ` ${classe}` : ""}{brevetPrep ? " (brevet)" : ""}{serieTechno ? ` · ${serieTechno}` : ""}{spes.length > 0 ? ` · spés ${spes.join("/")}` : ""}{parcoursupCible ? ` · cible ${parcoursupCible}` : ""}{prepaFiliere ? ` · ${prepaAnnee ? prepaAnnee + " " : ""}${prepaFiliere}` : ""}
+            💡 Basé sur : {ef.niveau}{ef.classe ? ` ${ef.classe}` : ""}{ef.brevetPrep ? " (brevet)" : ""}{ef.serieTechno ? ` · ${ef.serieTechno}` : ""}{ef.spes.length > 0 ? ` · spés ${ef.spes.join("/")}` : ""}{ef.parcoursupCible ? ` · cible ${ef.parcoursupCible}` : ""}{ef.prepaFiliere ? ` · ${ef.prepaAnnee ? ef.prepaAnnee + " " : ""}${ef.prepaFiliere}` : ""}
           </div>
         </C>
 
         {/* ── BOITE A OUTILS FAMILLE : echeances + programmes ── */}
         {(()=>{
-          const echeances = niveau ? getEcheances(niveau) : [];
-          const matieresWithProg = matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
+          const echeances = ef.niveau ? getEcheances(ef.niveau) : [];
+          const matieresWithProg = ef.matieres.filter(m => m !== "📚 Soutien scolaire (toutes matières)" && m !== "Autre");
           if (echeances.length === 0 && matieresWithProg.length === 0) return null;
-          const classeForProg = classe === "Première" ? "Première (spé)"
-            : classe === "Terminale" ? "Terminale (spé)"
-            : classe;
+          const classeForProg = ef.classe === "Première" ? "Première (spé)"
+            : ef.classe === "Terminale" ? "Terminale (spé)"
+            : ef.classe;
           return <C style={{ marginBottom: 12, background: "#EFF6FF", border: "2px solid #BFDBFE", padding: openToolkit ? "16px 20px" : "12px 18px", cursor: "pointer" }} onClick={() => setOpenToolkit(!openToolkit)}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
