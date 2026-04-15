@@ -629,7 +629,8 @@ function SalesLanterne({ stock, setMatchings, user }) {
       .finally(() => setVilleLoading(false));
   }
 
-  // ── State: Collapsible psycho/objectif ────────────────────────
+  // ── State: Collapsible sections ────────────────────────────────
+  const [openParent, setOpenParent] = useState(false);
   const [openPsycho, setOpenPsycho] = useState(false);
   const [openObjectif, setOpenObjectif] = useState(false);
 
@@ -1352,6 +1353,10 @@ Format JSON STRICT (rien d'autre) :
                     <div style={{ fontSize: 11, opacity: .9, marginTop: 2 }}>Généré en live à partir de tes inputs</div>
                   </div>
                 </div>
+                <button onClick={() => setEF("listeEnvoyee", !ef.listeEnvoyee)}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: ef.listeEnvoyee ? "1px solid #86EFAC" : "1px solid rgba(255,255,255,.4)", background: ef.listeEnvoyee ? "#16A34A" : "rgba(255,255,255,.15)", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit',sans-serif", whiteSpace: "nowrap", transition: "all .15s", display: "flex", alignItems: "center", gap: 4 }}>
+                  {ef.listeEnvoyee ? "📤 Envoyée" : "⏳ Non envoyée"}
+                </button>
                 <CopyBtn text={scriptText} />
                 <button onClick={() => { if (confirm("Effacer le diagnostic en cours ?")) resetAndSave(); }} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #FCA5A5", background: "#E11D48", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit',sans-serif", whiteSpace: "nowrap" }}>↺ Nouveau</button>
               </div>
@@ -1836,31 +1841,45 @@ Format JSON STRICT (rien d'autre) :
           </div>
         </C>
 
-        {/* Profil du parent (Step 2) */}
+        {/* 🎭 Profil du parent (collapsible) */}
         <C style={{ marginBottom: 12, borderLeft: `4px solid ${parentProfile ? "#D97706" : "#E4E4E7"}` }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", marginBottom: 4, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-            🎭 Profil du parent
-            <span style={{ fontSize: 11, background: "#FFFBEB", color: "#D97706", borderRadius: 99, padding: "2px 8px", fontWeight: 700 }}>NOUVEAU</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>Adapte l'introduction, les questions SPIN et le closing du script</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-            {PARENT_PROFILES.map(p => {
-              const on = parentProfile === p.id;
-              return (
-                <button key={p.id} onClick={() => setParentProfile(on ? "" : p.id)}
-                  style={{
-                    padding: "12px 14px", borderRadius: 12,
-                    border: `2px solid ${on ? "#D97706" : "#E4E4E7"}`,
-                    background: on ? "#FFFBEB" : "#FAFAFA",
-                    textAlign: "left", cursor: "pointer", transition: "all .15s",
-                  }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{p.emoji}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#92400E" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p.label}</div>
-                  <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{p.desc}</div>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            onClick={() => setOpenParent(!openParent)}
+            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#18181B", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+                  🎭 Profil du parent
+                  {parentProfile && <span style={{ fontSize: 11, color: "#D97706", fontWeight: 600 }}>· {PARENT_PROFILES.find(p => p.id === parentProfile)?.label}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "#71717A", marginTop: 2 }}>Adapte l'introduction, les questions SPIN et le closing du script</div>
+              </div>
+              <span style={{ fontSize: 16, color: "#71717A", transform: openParent ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+            </div>
+          </button>
+          {openParent && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+                {PARENT_PROFILES.map(p => {
+                  const on = parentProfile === p.id;
+                  return (
+                    <button key={p.id} onClick={() => setParentProfile(on ? "" : p.id)}
+                      style={{
+                        padding: "12px 14px", borderRadius: 12,
+                        border: `2px solid ${on ? "#D97706" : "#E4E4E7"}`,
+                        background: on ? "#FFFBEB" : "#FAFAFA",
+                        textAlign: "left", cursor: "pointer", transition: "all .15s",
+                      }}>
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>{p.emoji}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#92400E" : "#3F3F46", fontFamily: "'Outfit',sans-serif" }}>{p.label}</div>
+                      <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2 }}>{p.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </C>
 
         {/* 🧠 Profil Psychologique (collapsible) */}
@@ -1998,30 +2017,6 @@ Format JSON STRICT (rien d'autre) :
             </div>
           )}
         </C>
-
-        {/* ── Liste de profs envoyée ── */}
-        <div style={{ marginBottom: 12 }}>
-          <button
-            onClick={() => setEF("listeEnvoyee", !ef.listeEnvoyee)}
-            style={{
-              width: "100%", padding: "12px 16px", borderRadius: 12,
-              border: `2px solid ${ef.listeEnvoyee ? "#16A34A" : "#E4E4E7"}`,
-              background: ef.listeEnvoyee ? "#F0FDF4" : "#FAFAFA",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
-              transition: "all .15s",
-            }}
-          >
-            <span style={{ fontSize: 20 }}>{ef.listeEnvoyee ? "📤" : "⏳"}</span>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: ef.listeEnvoyee ? "#15803D" : "#71717A", fontFamily: "'Outfit',sans-serif" }}>
-                {ef.listeEnvoyee ? "Liste de profs envoyée ✅" : "Liste de profs non envoyée"}
-              </div>
-              <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 1 }}>
-                {ef.listeEnvoyee ? "Cliquer pour marquer comme non envoyée" : "Cliquer pour marquer comme envoyée"}
-              </div>
-            </div>
-          </button>
-        </div>
 
         {/* ── Résultats IA (si profUrl renseigné via recherche auto) ── */}
         {aiArguments && <C style={{ marginBottom: 12, background: "#FAF5FF", border: "2px solid #DDD6FE", padding: "16px 18px" }}>
