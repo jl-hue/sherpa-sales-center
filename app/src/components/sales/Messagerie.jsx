@@ -244,18 +244,60 @@ export default function Messagerie({ user }) {
     await syncToSupabase(configKey, updatedMsgs);
   }
 
-  async function declarerGagnant(defiId, winnerEmail) {
+  async function voterGagnant(defiId, winnerEmail) {
     const defi = challenges.find(d => d.id === defiId);
     if (!defi || defi.status !== "accepted") return;
-    const loserEmail = winnerEmail === defi.from ? defi.to : defi.from;
-    const totalGain = defi.mise * 2;
-    // Transfer sherpoints
-    await addBalance(loserEmail, -defi.mise);
-    await addBalance(winnerEmail, defi.mise);
-    const updated = challenges.map(d => d.id === defiId ? { ...d, status: winnerEmail === defi.from ? "won_from" : "won_to", winner: winnerEmail } : d);
+    const myEmail = user?.email;
+    // Record this participant's vote
+    const votes = { ...(defi.votes || {}) };
+    votes[myEmail] = winnerEmail;
+    // Check if both participants voted
+    const otherEmail = myEmail === defi.from ? defi.to : defi.from;
+    const otherVote = votes[otherEmail];
+
+    if (otherVote && otherVote === winnerEmail) {
+      // Both agree → resolve the challenge
+      const loserEmail = winnerEmail === defi.from ? defi.to : defi.from;
+      const totalGain = defi.mise * 2;
+      await addBalance(loserEmail, -defi.mise);
+      await addBalance(winnerEmail, defi.mise);
+      const updated = challenges.map(d => d.id === defiId ? { ...d, status: "resolved", winner: winnerEmail, votes } : d);
+      setChallenges(updated);
+      await syncToSupabase(CHALLENGES_KEY, updated);
+      const sysMsg = { id: Date.now() + Math.random(), auteur: "system", nom: "🏆 Résultat", text: `Les deux participants sont d'accord ! ${getUserName(winnerEmail)} remporte le défi "${defi.titre}" et gagne ${totalGain} ${CURRENCY.emoji} !`, date: new Date().toISOString(), defiId };
+      const updatedMsgs = [...messages, sysMsg].slice(-MAX_MESSAGES);
+      prevCountRef.current = updatedMsgs.length;
+      setMessages(updatedMsgs);
+      await syncToSupabase(configKey, updatedMsgs);
+    } else if (otherVote && otherVote !== winnerEmail) {
+      // Disagreement → dispute
+      const updated = challenges.map(d => d.id === defiId ? { ...d, status: "dispute", votes } : d);
+      setChallenges(updated);
+      await syncToSupabase(CHALLENGES_KEY, updated);
+      const sysMsg = { id: Date.now() + Math.random(), auteur: "system", nom: "⚠️ Désaccord", text: `Désaccord sur le résultat du défi "${defi.titre}" ! ${getUserName(defi.from)} a voté ${getUserName(votes[defi.from])} et ${getUserName(defi.to)} a voté ${getUserName(votes[defi.to])}. Mettez-vous d'accord et revotez !`, date: new Date().toISOString(), defiId };
+      const updatedMsgs = [...messages, sysMsg].slice(-MAX_MESSAGES);
+      prevCountRef.current = updatedMsgs.length;
+      setMessages(updatedMsgs);
+      await syncToSupabase(configKey, updatedMsgs);
+    } else {
+      // First vote — waiting for the other
+      const updated = challenges.map(d => d.id === defiId ? { ...d, votes } : d);
+      setChallenges(updated);
+      await syncToSupabase(CHALLENGES_KEY, updated);
+      const sysMsg = { id: Date.now() + Math.random(), auteur: "system", nom: "🗳️ Vote", text: `${getUserName(myEmail)} a voté. En attente du vote de ${getUserName(otherEmail)}...`, date: new Date().toISOString(), defiId };
+      const updatedMsgs = [...messages, sysMsg].slice(-MAX_MESSAGES);
+      prevCountRef.current = updatedMsgs.length;
+      setMessages(updatedMsgs);
+      await syncToSupabase(configKey, updatedMsgs);
+    }
+  }
+
+  async function revoterDefi(defiId) {
+    // Reset votes for a disputed challenge, set back to accepted
+    const updated = challenges.map(d => d.id === defiId ? { ...d, status: "accepted", votes: {} } : d);
     setChallenges(updated);
     await syncToSupabase(CHALLENGES_KEY, updated);
-    const sysMsg = { id: Date.now() + Math.random(), auteur: "system", nom: "🏆 Résultat", text: `${getUserName(winnerEmail)} remporte le défi "${defi.titre}" et gagne ${totalGain} ${CURRENCY.emoji} ! (${defi.mise} récupérés + ${defi.mise} de ${getUserName(loserEmail)})`, date: new Date().toISOString(), defiId };
+    const sysMsg = { id: Date.now() + Math.random(), auteur: "system", nom: "🔄 Revote", text: `Les votes ont été réinitialisés. Revotez pour désigner le gagnant !`, date: new Date().toISOString(), defiId };
     const updatedMsgs = [...messages, sysMsg].slice(-MAX_MESSAGES);
     prevCountRef.current = updatedMsgs.length;
     setMessages(updatedMsgs);
@@ -291,7 +333,7 @@ export default function Messagerie({ user }) {
     return challenges.filter(d =>
       (d.from === user?.email && d.to === activeConv) ||
       (d.from === activeConv && d.to === user?.email)
-    ).filter(d => d.status === "pending" || d.status === "accepted");
+    ).filter(d => d.status === "pending" || d.status === "accepted" || d.status === "dispute");
   }, [challenges, activeConv, user?.email]);
 
   const convTitle = activeConv ? getUserName(activeConv) : "Général";
@@ -301,14 +343,17 @@ export default function Messagerie({ user }) {
   function renderDefiCard(defi) {
     const isPending = defi.status === "pending";
     const isAccepted = defi.status === "accepted";
+    const isDispute = defi.status === "dispute";
     const iAmTarget = defi.to === user?.email;
     const iAmFrom = defi.from === user?.email;
+    const myVote = defi.votes?.[user?.email];
+    const borderColor = isDispute ? "#E11D48" : "#F59E0B";
 
     return (
-      <div style={{ margin: "8px 0", padding: "12px 16px", background: "linear-gradient(135deg, #FFFBEB, #FEF3C7)", border: "2px solid #F59E0B", borderRadius: 12 }}>
+      <div style={{ margin: "8px 0", padding: "12px 16px", background: isDispute ? "linear-gradient(135deg, #FEF2F2, #FECACA)" : "linear-gradient(135deg, #FFFBEB, #FEF3C7)", border: `2px solid ${borderColor}`, borderRadius: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 20 }}>⚔️</span>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", fontFamily: "'Outfit',sans-serif" }}>Défi : {defi.titre}</div>
+          <span style={{ fontSize: 20 }}>{isDispute ? "⚠️" : "⚔️"}</span>
+          <div style={{ fontSize: 13, fontWeight: 800, color: isDispute ? "#991B1B" : "#92400E", fontFamily: "'Outfit',sans-serif" }}>Défi : {defi.titre}</div>
         </div>
         <div style={{ fontSize: 12, color: "#78350F", marginBottom: 8 }}>
           Mise : <strong>{defi.mise} {CURRENCY.emoji}</strong> chacun · Gain total : <strong>{defi.mise * 2} {CURRENCY.emoji}</strong>
@@ -317,22 +362,42 @@ export default function Messagerie({ user }) {
           {getUserName(defi.from)} vs {getUserName(defi.to)}
         </div>
 
+        {/* ── Pending: accept / refuse ── */}
         {isPending && iAmTarget && (
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => accepterDefi(defi.id)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>✅ Accepter</button>
-            <button onClick={() => refuserDefi(defi.id)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", background: "#E11D48", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>❌ Refuser</button>
+            <button onClick={() => accepterDefi(defi.id)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#16A34A", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 800, fontFamily: "'Outfit',sans-serif", boxShadow: "0 2px 8px rgba(22,163,74,.3)" }}>✅ Accepter le défi</button>
+            <button onClick={() => refuserDefi(defi.id)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#E11D48", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 800, fontFamily: "'Outfit',sans-serif", boxShadow: "0 2px 8px rgba(225,29,72,.3)" }}>❌ Refuser</button>
           </div>
         )}
         {isPending && iAmFrom && (
-          <div style={{ fontSize: 11, color: "#A16207", fontStyle: "italic" }}>⏳ En attente de réponse...</div>
+          <div style={{ fontSize: 11, color: "#A16207", fontStyle: "italic", padding: "6px 0" }}>⏳ En attente de réponse de {getUserName(defi.to)}...</div>
         )}
+
+        {/* ── Accepted: vote for winner (both must agree) ── */}
         {isAccepted && (iAmFrom || iAmTarget) && (
           <div>
-            <div style={{ fontSize: 11, color: "#15803D", fontWeight: 700, marginBottom: 6 }}>✅ Défi accepté ! Qui a gagné ?</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => declarerGagnant(defi.id, defi.from)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `2px solid ${getUserColor(defi.from)}`, background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 800, color: getUserColor(defi.from), fontFamily: "'Outfit',sans-serif" }}>🏆 {getUserName(defi.from)}</button>
-              <button onClick={() => declarerGagnant(defi.id, defi.to)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `2px solid ${getUserColor(defi.to)}`, background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 800, color: getUserColor(defi.to), fontFamily: "'Outfit',sans-serif" }}>🏆 {getUserName(defi.to)}</button>
+            <div style={{ fontSize: 11, color: "#15803D", fontWeight: 700, marginBottom: 8 }}>✅ Défi en cours ! Votez pour le gagnant (les 2 doivent être d'accord) :</div>
+            {myVote ? (
+              <div style={{ fontSize: 12, color: "#0B68B4", fontWeight: 700, padding: "6px 0" }}>
+                🗳️ Tu as voté : <strong>{getUserName(myVote)}</strong> — en attente de l'autre vote...
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => voterGagnant(defi.id, defi.from)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${getUserColor(defi.from)}`, background: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 800, color: getUserColor(defi.from), fontFamily: "'Outfit',sans-serif" }}>🏆 {getUserName(defi.from)} gagne</button>
+                <button onClick={() => voterGagnant(defi.id, defi.to)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${getUserColor(defi.to)}`, background: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 800, color: getUserColor(defi.to), fontFamily: "'Outfit',sans-serif" }}>🏆 {getUserName(defi.to)} gagne</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Dispute: votes don't match ── */}
+        {isDispute && (
+          <div>
+            <div style={{ fontSize: 12, color: "#991B1B", fontWeight: 700, marginBottom: 6 }}>⚠️ Désaccord ! Vos votes ne correspondent pas.</div>
+            <div style={{ fontSize: 11, color: "#78350F", marginBottom: 8 }}>
+              {getUserName(defi.from)} a voté <strong>{getUserName(defi.votes?.[defi.from])}</strong> · {getUserName(defi.to)} a voté <strong>{getUserName(defi.votes?.[defi.to])}</strong>
             </div>
+            <button onClick={() => revoterDefi(defi.id)} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: "#F59E0B", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>🔄 Réinitialiser les votes et revoter</button>
           </div>
         )}
       </div>
