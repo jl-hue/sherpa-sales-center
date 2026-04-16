@@ -56,13 +56,60 @@ export default function Messagerie({ user }) {
     })();
   }, []);
 
+  // ── Request notification permission on mount ──
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // ── Notification sound (short beep) ──
+  const playNotifSound = useRef(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = "sine";
+      gain.gain.value = 0.15;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.stop(ctx.currentTime + 0.25);
+    } catch {}
+  }).current;
+
+  // ── Track previous message count to detect new incoming ──
+  const prevCountRef = useRef(messages.length);
+
   // ── Realtime subscription ──
   useEffect(() => {
     const ch = subscribeConfig(CONFIG_KEY, (newData) => {
-      if (newData && Array.isArray(newData)) setMessages(newData);
+      if (newData && Array.isArray(newData)) {
+        // Detect new message from someone else
+        if (newData.length > prevCountRef.current) {
+          const lastMsg = newData[newData.length - 1];
+          if (lastMsg && lastMsg.auteur !== user?.email) {
+            // Play sound
+            playNotifSound();
+            // Browser notification
+            if ("Notification" in window && Notification.permission === "granted") {
+              const senderName = lastMsg.nom || getUserName(lastMsg.auteur);
+              new Notification(`💬 ${senderName}`, {
+                body: lastMsg.text?.slice(0, 100) || "Nouveau message",
+                icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>",
+                tag: "sherpas-msg",
+              });
+            }
+          }
+        }
+        prevCountRef.current = newData.length;
+        setMessages(newData);
+      }
     });
     return () => { sb.removeChannel(ch); };
-  }, []);
+  }, [user?.email, playNotifSound]);
 
   // ── Auto-scroll to bottom ──
   useEffect(() => {
@@ -83,6 +130,7 @@ export default function Messagerie({ user }) {
     };
 
     const updated = [...messages, msg].slice(-MAX_MESSAGES);
+    prevCountRef.current = updated.length; // don't self-notify
     setMessages(updated);
     setInput("");
     inputRef.current?.focus();
