@@ -17,6 +17,7 @@ import SalesMoi from './components/sales/Moi';
 import SalesBoutique from './components/sales/Boutique';
 import SalesTrophees from './components/sales/SalleTrophees';
 import { Annonces as SalesAnnonces, Evenements as SalesEvenements, Trombinoscope as SalesTrombinoscope } from './components/sales/Communaute';
+import SalesMessagerie from './components/sales/Messagerie';
 import { useRdvNotifier } from './lib/useRdvNotifier';
 import { initEconomySync, getEquipped } from './lib/economy';
 import { THEMES } from './constants/themes';
@@ -247,6 +248,7 @@ export default function App(){
     ressources:()=><SalesRessources scripts={scripts} objections={objections} setSuggestions={(s)=>addSuggestion(s)} user={user}/>,
     formation: ()=><SalesFormation formations={formations} progress={progress} setProgress={saveProgress} user={user}/>,
     feedback:  ()=><SalesFeedback feedbacks={myFeedbacks} setFeedbacks={addFeedback} setSuggestions={addSuggestion} user={user}/>,
+    messagerie:()=><SalesMessagerie user={user}/>,
     annonces:  ()=><SalesAnnonces/>,
     evenements:()=><SalesEvenements/>,
     trombinoscope:()=><SalesTrombinoscope/>,
